@@ -45,6 +45,36 @@ const _dialog = async ({el, message, doFadeOut=true, delay=2000, background="#33
 };
 
 var ToolSave = { save: (function() {
+  
+  // https://developer.mozilla.org/en-US/docs/Web/API/WindowEventHandlers/onbeforeunload
+  window.addEventListener('beforeunload', ev => {
+    for (const key in Microdraw.ImageInfo) {
+      if (!_sectionIsClean(key)) {
+        ev.preventDefault();
+        ev.returnValue = '';
+        break;
+      }
+    }
+    delete ev['returnValue'];
+  });
+
+  function _getSectionCurrentHash (sl) {
+    const section = Microdraw.ImageInfo[sl];
+    const value = Microdraw.sectionValueForHashing(section);
+    return Microdraw.hash(JSON.stringify(value)).toString(16);
+  }
+
+  // check if the section annotations have changed since loaded by computing a hash
+  // if the section hash is undefined, this section has not yet been loaded.
+  // Do not save anything for this section
+
+  // using function declaration to have this hoisted
+  // Otherwise, will have to move this to top of this block (beflore window.addEventListener)
+  function _sectionIsClean (sl) {
+    const section = Microdraw.ImageInfo[sl];
+    const h = _getSectionCurrentHash(sl)
+    return typeof section.Hash === 'undefined' || h === section.Hash
+  }
 
   const _processOneSection = function (sl) {
     if ((Microdraw.config.multiImageSave === false) && (sl !== Microdraw.currentImage)) {
@@ -52,20 +82,12 @@ var ToolSave = { save: (function() {
       return;
     }
 
-    // configure value to be saved
-    var section = Microdraw.ImageInfo[sl];
-    const value = Microdraw.sectionValueForHashing(section);
-    const h = Microdraw.hash(JSON.stringify(value)).toString(16);
-
-    // check if the section annotations have changed since loaded by computing a hash
-    // if the section hash is undefined, this section has not yet been loaded.
-    // Do not save anything for this section
-    if( typeof section.Hash === "undefined" || h === section.Hash ) {
-
-      return;
+    if (_sectionIsClean(sl)) {
+      return ;
     }
 
-    value.Hash = h;
+    // configure value to be saved
+    value.Hash = _getSectionCurrentHash(sl);
 
     const pr = new Promise(async (resolve, reject) => {
       let res, req;
