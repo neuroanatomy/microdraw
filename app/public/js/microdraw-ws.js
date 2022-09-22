@@ -31,7 +31,6 @@ const _decodeRandomUuidToNickname = (n) => {
   * @returns {void}
   */
 const receiveChatMessage = (data) => {
-  const { dom } = Microdraw;
   let theUsername;
   if (data.username !== "Anonymous") {
     theUsername = data.username;
@@ -41,12 +40,11 @@ const receiveChatMessage = (data) => {
     theUsername = data.uid;
   }
   const msg = "<b>" + theUsername + ":</b> " + data.msg + "<br />";
-  dom.querySelector("#logChat .text").innerHTML += msg;
-  dom.querySelector("#logChat .text").scrollTop = dom.querySelector("#logChat .text").scrollHeight;
+  Microdraw.appendChatMessage(msg);
 };
 
 const _getUserName = () => {
-  let username = document.querySelector("#MyLogin a").innerText;
+  let username = document.querySelector('header #menu .login a').innerText;
 
   if (typeof username === "undefined" || username === "Log in with GitHub") {
     username = "Anonymous";
@@ -55,36 +53,24 @@ const _getUserName = () => {
   return username;
 };
 
-const _makeMessageObject = () => {
-  const {dom} = Microdraw;
-
-  const msg = dom.querySelector('input#msg').value;
-
-  return {
-    type: "chat",
-    msg,
-    randomUuid,
-    username: _getUserName()
-  };
-};
-
 const _displayOwnMessage = (msg) => {
-  const {dom} = Microdraw;
   const _username = _getUserName();
   const username = _username === 'Anonymous'
     ? _decodeRandomUuidToNickname(randomUuid)
     : _username;
   msg = `<b>${username}</b> <i>(me)</i>: ${msg}<br />`;
-  dom.querySelector("#logChat .text").innerHTML += msg;
-  dom.querySelector("#logChat .text").scrollTop = dom.querySelector("#logChat .text").scrollHeight;
-  dom.querySelector('input#msg').value = "";
+  Microdraw.appendChatMessage(msg);
 };
 
-/**
-  * @returns {void}
-  */
-const sendChatMessage = () => {
-  const obj = _makeMessageObject();
+Microdraw.sendChatMessage = (msg) => {
+  const obj = {
+    type: "chat",
+    msg,
+    randomUuid,
+    username: _getUserName()
+  };
+
+  console.log('sennding', obj);
 
   try {
     ws.send(JSON.stringify(obj));
@@ -117,7 +103,7 @@ ws.onopen = () => {
     }
   };
 
-  dom.querySelector("#notifications").innerHTML = "Chat";
+  Microdraw.setNotification("Chat");
 
   const obj = {
     type: "chat",

@@ -11,9 +11,6 @@ const validator = function (req, res, next) {
 };
 
 const project = async function (req, res) {
-  const login = (req.user) ?
-    ('<a href=\'/user/' + req.user.username + '\'>' + req.user.username + '</a> (<a href=\'/logout\'>Log Out</a>)') :
-    ('<a href=\'/auth/github\'>Log in with GitHub</a>');
   const requestedProject = req.params.projectName;
   let loggedUser = "anyone";
   if(req.isAuthenticated()) {
@@ -36,7 +33,7 @@ const project = async function (req, res) {
       const context = {
         projectShortname: json.shortname,
         projectInfo: JSON.stringify(json),
-        login
+        loggedUser: JSON.stringify(req.user || null)
       };
       res.render('project', context);
     } else {
@@ -237,23 +234,6 @@ const apiProjectAll = function (req, res) {
     });
 };
 
-/**
- * @function apiProjectFiles
- */
-
-/**
- * @todo Check access rights for this route
- */
-
-const apiProjectFiles = function (req, res) {
-  const {projectName} = req.params;
-  const start = parseInt(req.query.start);
-  const length = parseInt(req.query.length);
-
-  console.log('projectName:', projectName, 'start:', start, 'length:', length);
-  res.send({});
-};
-
 const postProject = async function (req, res) {
   let loggedUser = 'anonymous';
   if(req.isAuthenticated()) {
@@ -340,7 +320,6 @@ module.exports = {
   validator,
   apiProject,
   apiProjectAll,
-  apiProjectFiles,
   project,
   projectNew,
   settings,
