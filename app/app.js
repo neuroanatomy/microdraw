@@ -10,7 +10,9 @@ const https = require('https');
 const http = require('http');
 const morgan = require('morgan');
 const nwl = require('neuroweblab');
+const { reduce, assign } = require('lodash');
 const microdrawWebsocketServer = require('./controller/microdrawWebsocketServer/microdrawWebsocketServer.js');
+const { Server: HocuspocusServer } = require('@hocuspocus/server');
 const routes = require('./routes/routes');
 let port;
 let server;
@@ -96,7 +98,6 @@ const start = async function () {
     microdrawWebsocketServer.initSocketConnection();
   });
 
-
   // CORS
   app.use(function (req, res, next) {
     // Website you wish to allow to connect
@@ -156,12 +157,48 @@ const start = async function () {
   });
   global.authTokenMiddleware = nwl.authTokenMiddleware;
 
+
+  // CRDT backend
+
+  const storeDocument = async (data) => {
+    const project = await app.db.queryProject({shortname: data.documentName});
+    const vectorialAnnotations = project.annotations.list.filter((annotation) => annotation.type === 'vectorial');
+    const textAnnotations = project.annotations.list.filter((annotation) => annotation.type === 'text');
+    const files = data.document.getArray('files').toJSON();
+    const newTextAnnotations = textAnnotations.map((annotation) => {
+      const {name} = annotation;
+      const valueByFile = reduce(files.map((file) => ({ [file.source]: file[name] })), (result, obj) => assign(result, obj), {});
+
+      return {
+        ...annotation,
+        values: valueByFile
+      };
+    });
+    project.annotations.list = [...newTextAnnotations, ...vectorialAnnotations];
+    app.db.updateProject(project);
+  };
+
+  const hocuspocusServer = HocuspocusServer.configure({
+    port: 8081,
+    debounce: 3000,
+    onStoreDocument(data) {
+      storeDocument(data);
+    },
+    onDisconnect(data) {
+      storeDocument(data);
+    }
+  }
+  );
+
+  hocuspocusServer.listen();
+
+
   /* setup GUI routes */
   routes(app);
 
 
   // catch 404 and forward to error handler
-  app.use(function (req, res, next) {
+  app.use(function (req) {
     console.log('ERROR: File not found', req.url);
     // var err = new Error('Not Found'); //, req);
     // err.status = 404;

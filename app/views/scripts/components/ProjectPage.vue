@@ -9,8 +9,9 @@
         <TextAnnotations
           :extract-keys="extractTextKeys"
           :link-prefix="linkPrefix"
-          :files="files"
+          :files="store.files"
           :selected="selectedFileIndex"
+          @value-change="valueChange"
           @select-file="selectFile"
       />
       <VolumeAnnotations
@@ -40,9 +41,9 @@
   
   <script setup>
   import { forEach, get, set } from "lodash";
-  import { initSyncedStore, waitForSync } from "../store/synced";
   import useVisualization from "../store/visualization";
-  import { enableVueBindings } from "@syncedstore/core";
+  import { HocuspocusProvider } from "@hocuspocus/provider";
+  import { syncedStore, getYjsDoc, enableVueBindings } from "@syncedstore/core";
   import Tools from "./Tools.vue";
   import {
     Editor,
@@ -53,12 +54,20 @@
   } from "nwl-components";
   import * as Vue from "vue";
   
-  const { store, webrtcProvider, doc } = initSyncedStore(projectInfo.shortname);
-  const { baseURL } = Vue.inject('config');
-  
   // make SyncedStore use Vuejs internally
   enableVueBindings(Vue);
-  
+
+  const store = syncedStore({ files: [], fragment: "xml" });
+  const doc = getYjsDoc(store);
+
+  const crdtProvider = new HocuspocusProvider({
+    url: "ws://0.0.0.0:8081", // FIXME
+    name: projectInfo.shortname,
+    document: doc
+  });
+
+  const { baseURL } = Vue.inject('config');
+    
   const props = defineProps({
     project: {
       type: Object,
@@ -71,12 +80,7 @@
   });
   
   const linkPrefix = `${baseURL}/project/${projectInfo.shortname}?source=`
-  const files = Vue.ref(projectInfo.files.list);
   const selectedFileIndex = projectInfo.files.list.findIndex(file => file.source === props.selectedFile);
-  doc.getArray("files").observe(() => {
-    files.value.splice(0, files.value.length);
-    files.value.push(...store.files);
-  });
 
   const textAnnotations = projectInfo.annotations.list.filter(anno => anno.type !== 'vectorial');
   const volumeAnnotations = projectInfo.annotations.list.filter(anno => anno.type === 'vectorial');
@@ -102,6 +106,10 @@
     const keys = new Map();
     keys.set("Name", "name");
     keys.set("File", "source");
+    forEach(textAnnotations, (annotation) => {
+      if (annotation.display)
+        keys.set(annotation.name, `${annotation.name}`);
+    });
     return keys;
   };
   
@@ -113,19 +121,14 @@
     return keys;
   };
   
-  const syncMicrodraw = () => {
-    console.log('sync microdraw')
-  }
-  
   const valueChange = (content, index, selector) => {
     const sel =
       typeof selector === "string" ? [index, selector] : [index, ...selector];
-    set(store.files, sel, content);
-    syncMicrodraw();
+      set(store.files, sel, content);
   };
 
   const selectFile = async (file) => {
-    window.location = `${linkPrefix}${file.source}`
+    // No-op. We'd rather let user click on a link.
   }
   
   const setupKeyDownListeners = () => {
@@ -137,7 +140,7 @@
             return;
           }
           if (selectedTr.previousElementSibling) {
-            selectedTr.previousElementSibling.click();
+            selectedTr.previousElementSibling.querySelector('a[href]').click();
           }
           break;
         case "ArrowDown":
@@ -145,7 +148,7 @@
             return;
           }
           if (selectedTr.nextElementSibling) {
-            selectedTr.nextElementSibling.click();
+            selectedTr.nextElementSibling.querySelector('a[href]').click();
           }
           break;
         default:
@@ -153,11 +156,7 @@
       }
     });
   };
-  
-  const delay = (ms) => {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  };
-  
+    
   const handleLayoutChange = () => {
     Microdraw.resizeAnnotationOverlay();
   };
@@ -187,7 +186,18 @@
   
   Vue.onMounted(async () => {
     setupKeyDownListeners();
-    await waitForSync(webrtcProvider);
+    crdtProvider.on('synced', () => {
+      console.log('on synced');
+      if (store.files.length === 0) {
+        store.files.push(...projectInfo.files.list);
+        forEach(textAnnotations, (annotation) => {
+          forEach(annotation.values, (value, source) => {
+            const file = store.files.find(file => file.source === source);
+            if (file) file[annotation.name] = value;
+          });
+        });
+      }
+    });
     await initVisualization();
     window.addEventListener('resize', handleResize);
   });

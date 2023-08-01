@@ -15,7 +15,9 @@
     "dev-pages": "webpack --mode development --config webpack.pages.config.js && cp app/views/scripts/dist/*-page.js app/public/js/pages/"
   },
   "dependencies": {
-    "@syncedstore/core": "^0.4.1",
+    "@hocuspocus/provider": "^2.2.3",
+    "@hocuspocus/server": "^2.2.3",
+    "@syncedstore/core": "^0.4.3",
     "bcrypt": "^3.0.8",
     "body-parser": "^1.18.3",
     "cross-env": "^7.0.3",
