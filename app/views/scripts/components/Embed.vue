@@ -63,6 +63,16 @@
     Microdraw.resizeAnnotationOverlay();
   };
 
+  const toggleFullScreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else if (document.exitFullscreen) {
+      document.exitFullscreen();
+    }
+  }
+
+  Vue.watch(fullscreen, toggleFullScreen);
+
   const _findSelectedRegion = () => {
     const {currentImage, region} = Microdraw;
     const {Regions: regions} = Microdraw.ImageInfo[currentImage];
