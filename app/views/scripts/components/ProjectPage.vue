@@ -52,6 +52,7 @@
     TextAnnotations,
     VolumeAnnotations
   } from "nwl-components";
+  import config from '../../../../cfg.json';
   import * as Vue from "vue";
   
   // make SyncedStore use Vuejs internally
@@ -61,7 +62,7 @@
   const doc = getYjsDoc(store);
 
   const crdtProvider = new HocuspocusProvider({
-    url: "ws://0.0.0.0:8081", // FIXME
+    url: `ws://${config.crdt_backend_host}:${config.crdt_backend_port}`,
     name: projectInfo.shortname,
     document: doc
   });

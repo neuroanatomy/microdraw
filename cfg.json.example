@@ -1,4 +1,6 @@
 {
+    "crdt_backend_host": "localhost",
+    "crdt_backend_port": "8081",
     "secure": false,
     "ssl_key": "./key.pem",
     "ssl_cert": "./cert.pem",
