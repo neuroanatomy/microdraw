@@ -3,13 +3,14 @@ const path = require('path');
 const CleanWebpackPlugin = require('clean-webpack-plugin');
 const { VueLoaderPlugin } = require('vue-loader');
 
-module.exports = (env, argv) => ({
+module.exports = () => ({
   entry: {
     'project-page': './app/views/scripts/src/project-page.js',
     'project-new-page': './app/views/scripts/src/project-new-page.js',
     'project-settings-page':
       './app/views/scripts/src/project-settings-page.js',
-    'user-page': './app/views/scripts/src/user-page.js'
+    'user-page': './app/views/scripts/src/user-page.js',
+    'embed-page': './app/views/scripts/src/embed-page.js'
   },
   devtool: 'eval-source-map',
   plugins: [

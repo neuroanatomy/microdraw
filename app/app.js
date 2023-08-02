@@ -187,8 +187,7 @@ const start = async function () {
     onDisconnect(data) {
       storeDocument(data);
     }
-  }
-  );
+  });
 
   hocuspocusServer.listen();
 

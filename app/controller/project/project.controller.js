@@ -1,5 +1,7 @@
 /* eslint-disable radix */
 /* eslint-disable no-plusplus */
+/* eslint-disable max-statements */
+/* eslint-disable max-lines */
 // const async = require('async');
 // const dateFormat = require('dateformat');
 // const checkAccess = require('../checkAccess/checkAccess.js');
@@ -9,9 +11,9 @@ const { AccessControlService, AccessLevel } = require('neuroweblab');
 const validator = function (req, res, next) {
   next();
 };
-
 const project = async function (req, res) {
   const requestedProject = req.params.projectName;
+  const embedProject = req.route.path.endsWith('embed');
   let loggedUser = "anyone";
   if(req.isAuthenticated()) {
     loggedUser = req.user.username;
@@ -35,7 +37,7 @@ const project = async function (req, res) {
         projectInfo: JSON.stringify(json),
         loggedUser: JSON.stringify(req.user || null)
       };
-      res.render('project', context);
+      res.render(embedProject ? 'embed' : 'project', context);
     } else {
       res.status(404).send('Project Not Found');
     }
@@ -176,7 +178,7 @@ const projectNew = function (req, res) {
 
 const apiProject = async function (req, res) {
   console.log("GET project", req.params);
-  const json = await req.appConfig.db.queryProject({shortname: req.params.projectName, backup: {$exists: false}});
+  let json = await req.appConfig.db.queryProject({shortname: req.params.projectName, backup: {$exists: false}});
   if (_.isNil(json)) {
     res.status(404).json({error: 'Project not found'});
 
@@ -252,7 +254,7 @@ const postProject = async function (req, res) {
   const oldProject = await req.appConfig.db.queryProject({shortname: newProject.shortname});
 
   let ignoredChanges = [];
-  if (oldProject != null) {
+  if (oldProject !== null || typeof oldProject !== 'undefined') {
     if (!AccessControlService.hasFilesAccess(AccessLevel.EDIT, oldProject, loggedUser)) {
       res.status(403).json({ error: 'error', message: 'User does not have edit rights' });
 
@@ -296,8 +298,8 @@ const deleteProject = async function (req, res) {
   } else {
     const {projectName} = req.params;
 
-    const project = await req.appConfig.db.queryProject({shortname: projectName});
-    if (!AccessControlService.hasFilesAccess(AccessLevel.REMOVE, project, loggedUser)) {
+    const projectToDelete = await req.appConfig.db.queryProject({shortname: projectName});
+    if (!AccessControlService.hasFilesAccess(AccessLevel.REMOVE, projectToDelete, loggedUser)) {
       console.log('WARNING: user does not have remove rights');
       res.status(403).json({ success: false, message: 'The user is not allowed to delete this project' });
 

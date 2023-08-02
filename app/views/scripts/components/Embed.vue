@@ -1,0 +1,111 @@
+<template>
+  <main>
+    <OntologySelector
+      :ontology="ontology"
+      :open="displayOntology"
+      @on-close="displayOntology = false"
+      @label-click="handleOntologyLabelClick"
+    />
+    <Editor :title="title" :class="{reduced: !displayChat && !displayScript}" toolsMinHeight="300px">
+      <template v-slot:tools>
+        <Tools />
+      </template>
+      <template v-slot:content>
+        <div id="microdraw" style="width: 100%; height: 100%"></div>
+      </template>
+    </Editor>
+    <select @change="onFileSelect" class="fileSelector" v-model="selectedFile">
+      <option v-for="file in files" :key="file.source" :value="file.source">
+        {{ file.name || file.source }}
+      </option>
+    </select>
+  </main>
+</template>
+  
+<script setup>
+  import useVisualization from "../store/visualization";
+  import Tools from "./Tools.vue";
+  import {
+    Editor,
+    OntologySelector,
+  } from "nwl-components";
+  import * as Vue from "vue";
+
+  const files = projectInfo.files.list;
+  const { baseURL } = Vue.inject('config');
+    
+  const props = defineProps({
+    project: {
+      type: Object,
+      required: true,
+    },
+    selectedFile: {
+      type: String,
+      required: true,
+    },
+  });
+    
+  const {
+    title,
+    displayChat,
+    displayScript,
+    displayOntology,
+    currentLabel,
+    ontology,
+    currentSlice,
+    currentFile,
+    totalSlices,
+    fullscreen,
+    init: initVisualization,
+  } = useVisualization();
+  
+  const handleResize = () => {
+    Microdraw.resizeAnnotationOverlay();
+  };
+
+  const _findSelectedRegion = () => {
+    const {currentImage, region} = Microdraw;
+    const {Regions: regions} = Microdraw.ImageInfo[currentImage];
+    return regions.findIndex(reg => reg.uid === region.uid);
+  };
+
+  const handleOntologyLabelClick = (index) => {
+    Microdraw.currentLabelIndex = index;
+    displayOntology.value = false;
+    currentLabel.value = index;
+    const regionIndex = _findSelectedRegion();
+    if(regionIndex != null) {
+      const { region } = Microdraw;
+      if (region != null) {
+        Microdraw.changeRegionName(region, Microdraw.ontology.labels[index].name);
+      }
+    }
+  }
+
+const onFileSelect = (event) => {
+  console.log(projectInfo.files.list)
+  const file = projectInfo.files.list.find((f) => f.source === event.target.value);
+  window.location = `${baseURL}/project/${projectInfo.shortname}/embed/?source=${file.source}`;
+};
+  
+  Vue.onMounted(async () => {
+    await initVisualization();
+    window.addEventListener('resize', handleResize);
+  });
+  </script>
+  <style>
+  .area {
+    width: 100vw;
+    height: 100vh;
+  }
+  .fileSelector {
+    position: absolute;
+    left: 10px;
+    bottom: 35px;
+    z-index: 100;
+    color: black;
+    background-color: white;
+    border: 1px solid black;
+    padding: 5px;
+  }
+  </style>

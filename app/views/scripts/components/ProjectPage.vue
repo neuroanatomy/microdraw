@@ -187,7 +187,6 @@
   Vue.onMounted(async () => {
     setupKeyDownListeners();
     crdtProvider.on('synced', () => {
-      console.log('on synced');
       if (store.files.length === 0) {
         store.files.push(...projectInfo.files.list);
         forEach(textAnnotations, (annotation) => {
