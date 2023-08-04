@@ -32,6 +32,13 @@ const project = async function (req, res) {
 
         return;
       }
+      if (embedProject) {
+        const refererURL = new URL(req.headers.referer);
+        const disallowedDomains = req.user.authorizedHostsForEmbedding.split('\n') || [];
+        if (disallowedDomains.include(refererURL.host)) {
+          return res.status(403).send('Not authorized to embed this project');
+        }
+      }
       const context = {
         projectShortname: json.shortname,
         projectInfo: JSON.stringify(json),

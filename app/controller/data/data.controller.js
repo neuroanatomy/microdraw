@@ -8,7 +8,7 @@ const data = function (req, res) {
     title: 'MicroDraw::Data',
     loginMethods : req.appConfig.loginMethods || [],
     params: JSON.stringify(req.query),
-    user : req.user
+    loggedUser: JSON.stringify(req.user || null)
   });
 };
 

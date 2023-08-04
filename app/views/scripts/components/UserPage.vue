@@ -28,25 +28,25 @@
                   <td>{{project.files.list.length}}</td>
                   <td>{{project.collaborators.list.length}}</td>
                   <td>
-                    <a :href="`/user/${project.owner}`"> {{project.owner}} </a>
+                    <a :href="`/user/${project.owner}`"> {{project.owner}}</a>
                   </td>
                   <td>{{new Date(project.created).toLocaleDateString()}}</td>
                 </tr>
               </tbody>
             </Table>
           </Tab>
-          <Tab title="Settings">
-            <form class="embed-preferences">
+          <Tab title="Settings" v-if="displaySettings">
+            <form class="embed-preferences" action="/user/savePreferences" method="POST">
               <h3>Embed</h3>
               <p>Limit embedding of my contents to the following hosts (1 item by line):</p>
-              <textarea placeholder="google.com" name="allowedHosts"></textarea>
+              <textarea placeholder="example.com" name="authorizedHosts">{{ user.authorizedHostsForEmbedding ?? '' }}</textarea>
               <div class="action-buttons">
                 <button className="push-button" type="submit">Save</button>
             </div>
             </form>
             <h3>Account</h3>
             <dialog ref="removeAccountDialog" class="removeAccountDialog">
-              <form action="#" method="POST">
+              <form action="/user/delete" method="POST">
                 <p>
                   Are you sure you want to delete your account?
                 </p>
@@ -63,7 +63,7 @@
     </UserPage>
   </template>
   <script setup>
-  import { ref, onMounted } from "vue";
+  import { ref, onMounted, computed } from "vue";
   import { UserPage, Tabs, Tab, Table } from "nwl-components";
   const projects = ref([]);
   const removeAccountDialog = ref(null);
@@ -78,6 +78,8 @@
         projects.value.push(...res.list);
     }
   };
+
+  const displaySettings = computed(() => loggedUser && props.user.username === loggedUser.username);
  
   onMounted(() => {
     fetchProjects();
@@ -140,5 +142,7 @@
 .embed-preferences textarea {
   height: 100px;
   width: 100%;
+  margin-bottom: 10px;
+  color: black;
 }
 </style>

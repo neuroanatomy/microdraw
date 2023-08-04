@@ -10,7 +10,8 @@ module.exports = () => ({
     'project-settings-page':
       './app/views/scripts/src/project-settings-page.js',
     'user-page': './app/views/scripts/src/user-page.js',
-    'embed-page': './app/views/scripts/src/embed-page.js'
+    'embed-page': './app/views/scripts/src/embed-page.js',
+    'data-page': './app/views/scripts/src/data-page.js'
   },
   devtool: 'eval-source-map',
   plugins: [
