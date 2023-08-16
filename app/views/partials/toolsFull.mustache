@@ -122,10 +122,14 @@
 </div>
 
 <!-- Labels -->
-<div id="labelset">
-  <div style="z-index:23;text-align:right">
-      <img id="labels-close" class="button" alt="close" src="/img/times-circle.svg"/>
-  </div>
+<div id="labelset-panel">
+    <div id="labelset-header">
+        <img
+            id="labels-close" class="button" alt="close" src="/img/times-circle.svg"
+            style="float:right;pointer-events:auto;"/><br />
+        <b>Labels</b>
+    </div>
+
 
   <ul>
       <li>
@@ -141,13 +145,24 @@
               <span class="label-name">Label Name</span>
           </div>
       </li>
+      <li>
+        <b>Opacity</b><br/>
+        <input
+            id="labels-opacity"
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value="1"
+            oninput="Microdraw.dom.querySelector('#paperjs-container').style.opacity=this.value"/>
+    </li>
   </ul>
 </div>
 <!-- End Labels -->
 
 <!-- Layers -->
 <div id="layers-panel">
-    <div id="header">
+    <div id="layers-header">
         <img
         id="layers-close" class="button" alt="close" src="/img/times-circle.svg"
         onclick="Microdraw.tools.layers._detachLayersContainer()"

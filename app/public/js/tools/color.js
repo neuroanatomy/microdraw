@@ -19,11 +19,11 @@ var ToolColor = { color : (function() {
     },
 
     _detachLabelsetContainer: () => {
-      const obj = dom.querySelector("#labelset");
+      const obj = dom.querySelector("#labelset-panel");
       obj.style.display = "none";
     },
     _attachLabelsetContainer: () => {
-      const obj = dom.querySelector("#labelset");
+      const obj = dom.querySelector("#labelset-panel");
       dom.querySelector("body").appendChild(obj);
       obj.style.display = "block";
       obj.querySelector("span#labels-name").textContent = Microdraw.ontology.name;
@@ -32,7 +32,7 @@ var ToolColor = { color : (function() {
     },
 
     _attachLabel: (l, i) => {
-      const obj = dom.querySelector("#labelset");
+      const obj = dom.querySelector("#labelset-panel");
       const la = obj.querySelector("#label-template").cloneNode(true);
       la.setAttribute("data-index", i);
       la.querySelector(".label-color").style["background-color"] = `rgb(${l.color[0]},${l.color[1]},${l.color[2]})`;
