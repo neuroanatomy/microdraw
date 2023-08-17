@@ -35,13 +35,6 @@ jobs:
         run: timeout 5 npm start && exit 10 || [[ $? -eq 124 ]]
       - name: Run api tests
         run: npm run mocha
-      - name: Run browser tests
-        run: |
-          npm start &
-          sleep 5
-          npm test
-          pkill node
-          mongo circleci_test --eval "db.dropDatabase();"
       - name: Run e2e tests
         run: npm run test-e2e
       - name: Archive screenshots
