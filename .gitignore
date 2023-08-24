@@ -32,3 +32,4 @@ whitelist.json
 .eslintcache
 app/public/js/pages/*.js
 app/views/scripts/dist
+diff
