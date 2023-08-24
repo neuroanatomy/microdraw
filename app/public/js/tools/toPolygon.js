@@ -1,8 +1,7 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
 /* global paper */
 
-var ToolToPolygon = {toPolygon: (function() {
+window.ToolToPolygon = {toPolygon: (function() {
   const tool = {
 
     /**
@@ -14,6 +13,7 @@ var ToolToPolygon = {toPolygon: (function() {
       console.log("> bezierToPolygon");
       if (Microdraw.region !== null) {
         if (Microdraw.region.path.hasHandles()) {
+          // eslint-disable-next-line no-alert
           if (confirm('Convert bezier curve into polygon?')) {
             var undoInfo = Microdraw.getUndo();
             Microdraw.region.path.clearHandles();

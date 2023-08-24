@@ -1,8 +1,6 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
-/* global paper */
 
-const ToolNext = { next : (function () {
+window.ToolNext = { next : (function () {
   const tool = {
 
     /**

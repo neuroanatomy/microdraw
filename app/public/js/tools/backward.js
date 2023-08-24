@@ -1,8 +1,7 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
 /* global paper */
 
-var ToolBackward = {backward: (function() {
+window.ToolBackward = {backward: (function() {
   var tool = {
 
     /**
@@ -80,7 +79,7 @@ var ToolBackward = {backward: (function() {
      * @param {string} prevTool The previous tool to which the selection goes back
      * @returns {void}
      */
-    click : function click(prevTool) {
+    click : function click() {
       if(!tool._isPaperRegionsOrderOk()) {
         console.log("ERROR: region order is incorrect");
 

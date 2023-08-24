@@ -1,8 +1,6 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
-/* global paper */
 
-var ToolFullscreen = { fullscreen : (function() {
+window.ToolFullscreen = { fullscreen : (function() {
   var tool = {
     _prevStyle: {},
 

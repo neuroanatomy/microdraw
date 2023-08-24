@@ -1,1 +1,2 @@
-/public/**/*.min.js
+/app/public/**/*.min.js
+/app/public/lib/

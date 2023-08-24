@@ -1,8 +1,6 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
-/* global paper */
 
-var ToolSimplify = { simplify : (function() {
+window.ToolSimplify = { simplify : (function() {
   const tool = {
 
     /**
@@ -11,7 +9,7 @@ var ToolSimplify = { simplify : (function() {
          * @param {string} prevTool The previous tool to which the selection goes back
          * @returns {void}
          */
-    click : function click(prevTool) {
+    click : function click() {
       Microdraw.simplify(Microdraw.region);
       Microdraw.backToSelect();
     }

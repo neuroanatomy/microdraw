@@ -1,9 +1,7 @@
-/* eslint-disable max-statements */
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
 /* global paper */
 
-var ToolDrawLine = {
+window.ToolDrawLine = {
   drawLine: (function () {
     var tool = {
 
@@ -31,7 +29,7 @@ var ToolDrawLine = {
              * @param {object} dpoint The movement of the point
              * @return {void}
             */
-      mouseDrag: function mouseDrag(point, dpoint) {
+      mouseDrag: function mouseDrag(point) {
         Microdraw.region.path.add(point);
       },
 
@@ -39,6 +37,7 @@ var ToolDrawLine = {
              * @function mouseUp
              * @returns {void}
              */
+      // eslint-disable-next-line max-statements
       mouseUp: function mouseUp() {
 
         // this handler may get called for multiple times in one drawing session
@@ -101,7 +100,7 @@ var ToolDrawLine = {
              * @param {string} prevTool The previous tool to which the selection goes back
              * @returns {void}
              */
-      click: function click(prevTool) {
+      click: function click() {
         Microdraw.navEnabled = false;
       }
     };

@@ -1,7 +1,6 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
 
-var ToolColor = { color : (function() {
+window.ToolColor = { color : (function() {
   const {dom} = Microdraw;
   var tool = {
     _findSelectedRegion: function () {

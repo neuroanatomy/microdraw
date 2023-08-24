@@ -1,8 +1,7 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
 /* global paper */
 
-var ToolToBezier = {toBezier: (function() {
+window.ToolToBezier = {toBezier: (function() {
   const tool = {
 
     /**

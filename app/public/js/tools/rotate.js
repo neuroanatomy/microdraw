@@ -1,8 +1,6 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
-/* global paper */
 
-var ToolRotate = { rotate : (function() {
+window.ToolRotate = { rotate : (function() {
   const tool = {
 
     /**
@@ -36,7 +34,7 @@ var ToolRotate = { rotate : (function() {
          * @param {string} prevTool The previous tool to which the selection goes back
          * @returns {void}
          */
-    click : function click(prevTool) {
+    click : function click() {
       Microdraw.navEnabled = false;
       Microdraw.handle = null;
     }

@@ -1,5 +1,4 @@
-/* eslint-disable no-unused-vars */
-/* global Microdraw, Vue */
+/* global Microdraw */
 
 window.ToolLayers = { layers : (function() {
   const {dom} = Microdraw;
@@ -26,7 +25,7 @@ window.ToolLayers = { layers : (function() {
       let dzi = null;
 
       try {
-        const _ = new URL(url);
+        // const _ = new URL(url);
         const response0 = await fetch(url, { method: 'HEAD' });
         if (response0.ok) {
           const response = await fetch(url);
@@ -53,7 +52,7 @@ window.ToolLayers = { layers : (function() {
 
       // get layer data before deleting
       const url = div.querySelectorAll("span")[0].innerText;
-      const name = div.querySelectorAll("span")[1].innerText;
+      // const name = div.querySelectorAll("span")[1].innerText;
 
       // delete layer from UI
       div.remove();
@@ -156,6 +155,7 @@ window.ToolLayers = { layers : (function() {
         Microdraw.viewer.world.getItemAt(index + 1).setOpacity(opacity);
       }
     },
+    // eslint-disable-next-line max-statements
     updateLayers: () => {
       // return if there's no layers
       if (tool.layers.length === 0) {
@@ -176,7 +176,7 @@ window.ToolLayers = { layers : (function() {
       const [a0, a1, l0, l1] = [0, totalImages - 1, firstSlice, lastSlice];
       // ia = (il) => {a0=6;a1=58;l0=94;l1=12;m=(l0-l1)/(a0-a1);n=l0-a0*m;return (il-n)/m};
       const il = (ia) => {
-        m=(l0-l1)/(a0-a1); n=l0-a0*m;
+        const m=(l0-l1)/(a0-a1); const n=l0-a0*m;
 
         return ia*m+n;
       };
@@ -253,7 +253,7 @@ window.ToolLayers = { layers : (function() {
       });
     },
 
-    _attachLayer: (l, i) => {
+    _attachLayer: () => {
       const obj = dom.querySelector("#layers-panel");
       obj.style.display = "block";
     },
