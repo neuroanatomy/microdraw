@@ -26,7 +26,7 @@ let page;
 
 describe('Editing tools: draw in multiple pages', () => {
   before(async () => {
-    browser = await puppeteer.launch({headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    browser = await puppeteer.launch({headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   });
   it('opens data page', async () => {
     page = await browser.newPage();
@@ -40,18 +40,8 @@ describe('Editing tools: draw in multiple pages', () => {
       { waitUntil: 'networkidle0' }
     );
 
-    // const diff1 = await U.comparePageScreenshots(
-    //   page,
-    //   'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
-    //   'multiple.01.page.png'
-    // );
-    // const diff2 = await U.comparePageScreenshots(
-    //   page2,
-    //   'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
-    //   'multiple.02.page2.png'
-    // );
-    // assert(diff1<U.pct5, `${diff1} pixels were different in page 1`);
-    // assert(diff2<U.pct5, `${diff2} pixels were different in page 2`);
+    const filename = "multiple.01.page1.png";
+    await page.screenshot({path: U.newPath + filename});
   }).timeout(0);
 
   // eslint-disable-next-line max-statements
@@ -65,6 +55,11 @@ describe('Editing tools: draw in multiple pages', () => {
     await shadowclick(UI.SAVE, page);
     await U.delay(1000);
 
+    const filename = "multiple.02.page1-square.png";
+    await page.screenshot({path: U.newPath + filename});
+    // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
+    // assert(diff<U.pct5, `${diff} pixels were different`);
+
     const res = await page.evaluate(() => ({
       sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -72,21 +67,22 @@ describe('Editing tools: draw in multiple pages', () => {
       pathSegments: Microdraw.ImageInfo[0].Regions[0].path.segments.length
     }));
     // console.log(res);
+
     assert(res.sliceIndex === 0, 'Slice index is not 0');
     assert(res.regionsExists === true, 'No Regions object');
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
     assert(res.pathSegments === 4, `Path has ${res.pathSegments} segments instead of 4`);
 
-    // const filename = "multiple.04.page2-square.png";
-    // await page2.screenshot({path: U.newPath + filename});
-    // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    // assert(diff<U.pct5, `${diff} pixels were different`);
   }).timeout(0);
 
   // eslint-disable-next-line max-statements
   it('moves to the 2nd page and draws and saves a triangle', async () => {
     await shadowclick(UI.NEXT, page);
     await U.waitUntilHTMLRendered(page);
+
+    let filename = "multiple.03.page2.png";
+    await page.screenshot({path: U.newPath + filename});
+
     await shadowclick(UI.DRAWPOLYGON, page);
     await page.mouse.click(300, 100);
     await page.mouse.click(400, 100);
@@ -95,6 +91,11 @@ describe('Editing tools: draw in multiple pages', () => {
     await shadowclick(UI.SAVE, page);
     await U.delay(1000);
 
+    filename = "multiple.04.page-triangle.png";
+    await page.screenshot({path: U.newPath + filename});
+    // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
+    // assert(diff<U.pct5, `${diff} pixels were different`);
+
     const res = await page.evaluate(() => ({
       sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
       regionsExists: typeof (Microdraw.ImageInfo[1].Regions) !== 'undefined',
@@ -102,15 +103,12 @@ describe('Editing tools: draw in multiple pages', () => {
       pathSegments: Microdraw.ImageInfo[1].Regions[0].path.segments.length
     }));
     // console.log(res);
+
     assert(res.sliceIndex === 1, 'Slice index is not 1');
     assert(res.regionsExists === true, 'No Regions object');
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
     assert(res.pathSegments === 3, `Path has ${res.pathSegments} segments instead of 3`);
 
-    // const filename = "multiple.03.page-triangle.png";
-    // await page.screenshot({path: U.newPath + filename});
-    // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    // assert(diff<U.pct5, `${diff} pixels were different`);
   }).timeout(0);
 
   it('square is still present after reloading the 1st page', async () => {
@@ -119,12 +117,16 @@ describe('Editing tools: draw in multiple pages', () => {
       { waitUntil: 'networkidle0' }
     );
 
+    const filename = "multiple.05.page1-reload.png";
+    await page.screenshot({path: U.newPath + filename});
+
     const res = await page.evaluate(() => ({
       sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
       regionsLength: Microdraw.ImageInfo[0].Regions.length,
       pathSegments: Microdraw.ImageInfo[0].Regions[0].path.segments.length
     }));
+
     // console.log(res);
     assert(res.sliceIndex === 0, 'Slice index is not 0');
     assert(res.regionsExists === true, 'No Regions object');
@@ -132,6 +134,7 @@ describe('Editing tools: draw in multiple pages', () => {
     assert(res.pathSegments === 4, `Path has ${res.pathSegments} segments instead of 4`);
   }).timeout(0);
 
+  // eslint-disable-next-line max-statements
   it('triangle is still present after reloading 2nd page', async () => {
     await page.reload();
     await U.waitUntilHTMLRendered(page);
@@ -144,6 +147,10 @@ describe('Editing tools: draw in multiple pages', () => {
       regionsLength: Microdraw.ImageInfo[1].Regions.length,
       pathSegments: Microdraw.ImageInfo[1].Regions[0].path.segments.length
     }));
+
+    const filename = "multiple.06.page2-reload.png";
+    await page.screenshot({path: U.newPath + filename});
+
     // console.log(res);
     assert(res.sliceIndex === 1, 'Slice index is not 1');
     assert(res.regionsExists === true, 'No Regions object');
@@ -168,6 +175,7 @@ describe('Editing tools: draw in multiple pages', () => {
 
     // cleanup 2nd page
     await shadowclick(UI.NEXT, page);
+    await U.waitUntilHTMLRendered(page);
     await shadowclick(UI.SELECT, page);
     await page.mouse.click(350, 150);
     await shadowclick(UI.DELETE, page);
@@ -178,6 +186,11 @@ describe('Editing tools: draw in multiple pages', () => {
 
     // check 1st page is clean
     await shadowclick(UI.PREVIOUS, page);
+    await U.waitUntilHTMLRendered(page);
+
+    let filename = "multiple.07.page1-cleanup.png";
+    await page.screenshot({path: U.newPath + filename});
+
     const res1 = await page.evaluate(() => ({
       sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -190,12 +203,17 @@ describe('Editing tools: draw in multiple pages', () => {
 
     // check 2nd page is clean
     await shadowclick(UI.NEXT, page);
+    await U.waitUntilHTMLRendered(page);
     const res2 = await page.evaluate(() => ({
       sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
       regionsExists: typeof (Microdraw.ImageInfo[1].Regions) !== 'undefined',
       regionsLength: Microdraw.ImageInfo[1].Regions.length
     }));
     // console.log(res2);
+
+    filename = "multiple.08.page2-cleanup.png";
+    await page.screenshot({path: U.newPath + filename});
+
     assert(res2.sliceIndex === 1, 'Slice index is not 1');
     assert(res2.regionsExists === true, 'No Regions object in page 2');
     assert(res2.regionsLength === 0, `Regions.length is ${res2.regionsLength} instead of 0 in page 2`);

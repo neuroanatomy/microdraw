@@ -24,7 +24,7 @@ const shadowclick = async function(sel) {
 
 describe('View pages and data', () => {
   before(async () => {
-    browser = await puppeteer.launch({headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    browser = await puppeteer.launch({headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   });
 
   it('shows the landing page', async () => {

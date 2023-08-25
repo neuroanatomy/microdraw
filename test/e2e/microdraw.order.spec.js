@@ -1,3 +1,5 @@
+/* global Microdraw */
+
 'use strict';
 const UI = require('../UI');
 const U = require('../mocha.test.util');
@@ -24,7 +26,7 @@ const shadowclick = async function (sel) {
 
 describe('Editing tools: order', () => {
   it('opens a data page', async () => {
-    browser = await puppeteer.launch({headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'], dumpio: false});
+    browser = await puppeteer.launch({headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'], dumpio: false});
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
     await page.goto('http://localhost:3000/data?source=/test_data/cat.json&slice=0',

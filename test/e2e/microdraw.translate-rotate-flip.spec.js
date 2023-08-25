@@ -1,3 +1,5 @@
+/* global Microdraw */
+
 'use strict';
 const UI = require('../UI');
 const U = require('../mocha.test.util');
@@ -24,7 +26,7 @@ const shadowclick= async function (sel) {
 
 describe('Editing tools: Translate, rotate, flip', () => {
   before(async () => {
-    browser = await puppeteer.launch({headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    browser = await puppeteer.launch({headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   });
   it('opens a data page', async () => {
     page = await browser.newPage();
