@@ -36,6 +36,8 @@ describe('Editing tools: Copy and paste', () => {
       { waitUntil: 'networkidle0' }
     );
     await U.waitUntilHTMLRendered(page);
+    const filename = 'copyPaste.01.cat.png';
+    await page.screenshot({path: U.newPath + filename});
     // const diff = await U.comparePageScreenshots(
     //   page,
     //   'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
@@ -44,6 +46,7 @@ describe('Editing tools: Copy and paste', () => {
     // assert(diff<1000, `${diff} pixels were different`);
   }).timeout(0);
 
+  // eslint-disable-next-line max-statements
   it('draws a square', async () => {
     // select the polygon tool
     await shadowclick(UI.DRAWPOLYGON);
@@ -53,6 +56,10 @@ describe('Editing tools: Copy and paste', () => {
     await page.mouse.click(500, 500);
     await page.mouse.click(400, 500);
     await page.mouse.click(400, 400);
+
+    await U.waitUntilHTMLRendered(page);
+    const filename = "copyPaste.02.cat-square.png";
+    await page.screenshot({path: U.newPath + filename});
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -64,8 +71,6 @@ describe('Editing tools: Copy and paste', () => {
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
     assert(res.pathSegments === 4, `Path has ${res.pathSegments} segments instead of 4`);
 
-    // const filename = "copyPaste.02.cat-square.png";
-    // await page.screenshot({path: U.newPath + filename});
     // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
@@ -86,6 +91,10 @@ describe('Editing tools: Copy and paste', () => {
 
     await shadowclick(UI.PASTE);
 
+    await U.waitUntilHTMLRendered(page);
+    const filename = "copyPaste.03.cat-paste.png";
+    await page.screenshot({path: U.newPath + filename});
+
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
       regionsLength: Microdraw.ImageInfo[0].Regions.length,
@@ -98,8 +107,6 @@ describe('Editing tools: Copy and paste', () => {
     assert(res.path1Segments === 4, `1st path has ${res.path1Segments} segments instead of 4`);
     assert(res.path2Segments === 4, `2nd path ${res.path2Segments} segments instead of 4`);
 
-    // const filename = "copyPaste.03.cat-paste.png";
-    // await page.screenshot({path: U.newPath + filename});
     // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
   }).timeout(0);

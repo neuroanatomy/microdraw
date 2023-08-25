@@ -34,6 +34,8 @@ describe('Editing tools: draw polygons and curves', () => {
       { waitUntil: 'networkidle0' }
     );
     await U.waitUntilHTMLRendered(page);
+    const filename = 'draw.01.cat.png';
+    await page.screenshot({path: U.newPath + filename});
     // const diff = await U.comparePageScreenshots(
     //   page,
     //   'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
@@ -42,6 +44,7 @@ describe('Editing tools: draw polygons and curves', () => {
     // assert(diff<U.pct5, `${diff} pixels were different`);
   }).timeout(0);
 
+  // eslint-disable-next-line max-statements
   it('draws a triangle', async () => {
     // select the polygon tool
     await shadowclick(UI.DRAWPOLYGON);
@@ -50,6 +53,9 @@ describe('Editing tools: draw polygons and curves', () => {
     await page.mouse.click(400, 100);
     await page.mouse.click(350, 200);
     await page.mouse.click(300, 100);
+
+    const filename = "draw.02.cat-triangle.png";
+    await page.screenshot({path: U.newPath + filename});
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -60,11 +66,6 @@ describe('Editing tools: draw polygons and curves', () => {
     assert(res.regionsExists === true, 'No Regions object');
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
     assert(res.pathSegments === 3, `Path has ${res.pathSegments} segments instead of 3`);
-
-    // const filename = "draw.02.cat-triangle.png";
-    // await page.screenshot({path: U.newPath + filename});
-    // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    // assert(diff<1000, `${diff} pixels were different`);
   }).timeout(0);
 
   it('does not keep the unsaved triangle upon reload', async () => {
@@ -72,6 +73,9 @@ describe('Editing tools: draw polygons and curves', () => {
       'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
       { waitUntil: 'networkidle0' }
     );
+
+    const filename = 'draw.03.cat-empty-reload.png';
+    await page.screenshot({path: U.newPath + filename});
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -105,6 +109,9 @@ describe('Editing tools: draw polygons and curves', () => {
       { waitUntil: 'networkidle0' }
     );
 
+    const filename = 'draw.04.cat-triangle-reload.png';
+    await page.screenshot({path: U.newPath + filename});
+
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
       regionsLength: Microdraw.ImageInfo[0].Regions.length,
@@ -123,6 +130,7 @@ describe('Editing tools: draw polygons and curves', () => {
     // assert(diff<U.pct5, `${diff} pixels were different`);
   }).timeout(0);
 
+  // eslint-disable-next-line max-statements
   it('selects, deletes and saves the triangle', async () => {
     await shadowclick(UI.SELECT); // select tool
     await shadowclick(UI.CANVAS); // select triangle
@@ -133,6 +141,9 @@ describe('Editing tools: draw polygons and curves', () => {
       'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
       { waitUntil: 'networkidle0' }
     );
+
+    const filename = 'draw.05.cat-empty-reload.png';
+    await page.screenshot({path: U.newPath + filename});
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -170,6 +181,9 @@ describe('Editing tools: draw polygons and curves', () => {
     await page.mouse.up();
     await U.waitUntilHTMLRendered(page);
 
+    const filename = "draw.06.cat-draw-circle.png";
+    await page.screenshot({path: U.newPath + filename});
+
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
       regionsLength: Microdraw.ImageInfo[0].Regions.length,
@@ -181,8 +195,6 @@ describe('Editing tools: draw polygons and curves', () => {
     // "Draw" simplifies on mouse up, so the original 72 vertices become 11
     assert(res.pathSegments === 11, `Path has ${res.pathSegments} segments instead of 11`);
 
-    // const filename = "draw.06.cat-draw-circle.png";
-    // await page.screenshot({path: U.newPath + filename});
     // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
@@ -199,6 +211,9 @@ describe('Editing tools: draw polygons and curves', () => {
     await page.mouse.click(x, y);
     await U.waitUntilHTMLRendered(page);
 
+    const filename = "draw.07.cat-draw-addPoint.png";
+    await page.screenshot({path: U.newPath + filename});
+
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
       regionsLength: Microdraw.ImageInfo[0].Regions.length,
@@ -209,8 +224,6 @@ describe('Editing tools: draw polygons and curves', () => {
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 0`);
     assert(res.pathSegments === 12, `Path has ${res.pathSegments} segments instead of 12`);
 
-    // const filename = "draw.07.cat-draw-addPoint.png";
-    // await page.screenshot({path: U.newPath + filename});
     // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     // assert(diff<U.pct1, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
@@ -227,6 +240,9 @@ describe('Editing tools: draw polygons and curves', () => {
     await page.mouse.click(x, y);
     await U.waitUntilHTMLRendered(page);
 
+    const filename = "draw.08.cat-draw-deletePoint.png";
+    await page.screenshot({path: U.newPath + filename});
+
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
       regionsLength: Microdraw.ImageInfo[0].Regions.length,
@@ -237,8 +253,6 @@ describe('Editing tools: draw polygons and curves', () => {
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 0`);
     assert(res.pathSegments === 11, `Path has ${res.pathSegments} segments instead of 11`);
 
-    // const filename = "draw.08.cat-draw-deletePoint.png";
-    // await page.screenshot({path: U.newPath + filename});
     // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     // assert(diff<U.pct1, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
