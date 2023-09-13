@@ -3,34 +3,43 @@ const path = require('path');
 const { PNG } = require('pngjs');
 const jpeg = require('jpeg-js');
 const pixelmatch = require('pixelmatch');
-const { createHttpTerminator } = require('http-terminator');
+// const { createHttpTerminator } = require('http-terminator');
 const microdrawApp = require('../app/app');
 
-let db, httpTerminator, server, ws;
+let appServer, db, wsServer;
 const serverURL = "http://127.0.0.1:3000";
 
 const initResources = async () => {
-  const { server: appServer, app, wsServer } = await microdrawApp.start();
+  let app;
+  ({ server: appServer, app, wsServer } = await microdrawApp.start());
 
-  server = appServer;
   db = app.db.mongoDB();
-  ws = wsServer;
-  httpTerminator = createHttpTerminator({ server });
 };
+
+const closeServer = (server) =>
+  new Promise((resolve, reject) => {
+    server.close((err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
 
 const closeResources = async () => {
   if (db) {
     db.close();
   }
-  if (ws) {
-    ws.close();
+  if (wsServer) {
+    await closeServer(wsServer);
   }
-  if (httpTerminator) {
-    await httpTerminator.terminate();
+  if (appServer) {
+    await closeServer(appServer);
   }
 };
 
-const getServer = () => server;
+const getServer = () => appServer;
 
 const newPath = './test/e2e/screenshots/';
 const refPath = './test/reference-screenshots/';
