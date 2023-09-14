@@ -77,6 +77,7 @@ describe('Editing tools: Copy and paste', () => {
 
   // eslint-disable-next-line max-statements
   it('move the first square and paste a second one', async () => {
+    // move feature is currently disabled, the square will stay in place
     await shadowclick(UI.SELECT);
     await page.mouse.click(405, 405);
     await shadowclick(UI.COPY);

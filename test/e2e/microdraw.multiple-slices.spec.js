@@ -142,7 +142,7 @@ describe('Editing tools: draw in multiple slices', () => {
       pathSegments: Microdraw.ImageInfo[1].Regions[0].path.segments.length
     }));
 
-    const filename = "multiple-slice.06.slice2-reload.png";
+    const filename = "multiple-slices.06.slice2-reload.png";
     await page.screenshot({path: U.newPath + filename});
 
     // console.log(res);
