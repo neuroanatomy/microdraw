@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node ./bin/www",
     "debug": "node --inspect-brk ./bin/www",
-    "lint": "eslint",
+    "lint": "eslint --ext .js,.vue .",
     "test": "cross-env MONGODB_TEST='127.0.0.1:27017/circleci_test' node test.js",
     "mocha": "cross-env MONGODB_TEST='127.0.0.1:27017/circleci_test' mocha test/mocha.test.js",
     "mocha-brk": "cross-env MONGODB_TEST='127.0.0.1:27017/circleci_test' mocha test/mocha.test.js --inspect-brk --timeout=10000000",
@@ -18,12 +18,12 @@
     "@hocuspocus/provider": "^2.2.3",
     "@hocuspocus/server": "^2.2.3",
     "@syncedstore/core": "^0.4.3",
-    "bcrypt": "^3.0.8",
     "body-parser": "^1.18.3",
     "cross-env": "^7.0.3",
     "dateformat": "^3.0.2",
     "debug": "^4.1.1",
     "dompurify": "^2.2.6",
+    "eslint-config-naat": "github:neuroanatomy/eslint-config-naat",
     "express": "^4.16.3",
     "jsdom": "^16.4.0",
     "monk": "^7.1.1",
@@ -47,6 +47,8 @@
     "clean-webpack-plugin": "^0.1.19",
     "css-loader": "^6.6.0",
     "eslint": "^8.9.0",
+    "eslint-plugin-import": "^2.28.1",
+    "eslint-plugin-vue": "^9.17.0",
     "html-webpack-plugin": "^5.5.0",
     "http-terminator": "^3.0.4",
     "husky": "^7.0.0",
@@ -66,7 +68,7 @@
     "webpack-cli": "^4.9.2"
   },
   "lint-staged": {
-    "*.js": "eslint --cache --fix"
+    "*.{js,vue}": "eslint --cache --fix"
   },
   "author": "Roberto Toro <rto@braincatalogue.org> (https://neuroanatomy.github.io)",
   "license": "GPL-3.0",
