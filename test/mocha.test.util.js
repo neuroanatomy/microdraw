@@ -1,17 +1,19 @@
 const fs = require('fs');
 const path = require('path');
-const { PNG } = require('pngjs');
+
 const jpeg = require('jpeg-js');
 const pixelmatch = require('pixelmatch');
+const { PNG } = require('pngjs');
+
 // const { createHttpTerminator } = require('http-terminator');
 const microdrawApp = require('../app/app');
 
-let appServer, db, wsServer;
-const serverURL = "http://127.0.0.1:3000";
+let appServer, db, hocuspocusServer, wsServer;
+const serverURL = 'http://127.0.0.1:3000';
 
 const initResources = async () => {
   let app;
-  ({ server: appServer, app, wsServer } = await microdrawApp.start());
+  ({ server: appServer, app, wsServer, hocuspocusServer } = await microdrawApp.start());
 
   db = app.db.mongoDB();
 };
@@ -30,6 +32,9 @@ const closeServer = (server) =>
 const closeResources = async () => {
   if (db) {
     db.close();
+  }
+  if (hocuspocusServer) {
+    await closeServer(hocuspocusServer.httpServer);
   }
   if (wsServer) {
     await closeServer(wsServer);
@@ -95,14 +100,14 @@ const compareImages = async function (pathImg1, pathImg2) {
   const data1 = await fs.promises.readFile(pathImg1);
   const data2 = await fs.promises.readFile(pathImg2);
   let img1, img2;
-  if (pathImg1.split(".").pop() === "png") {
+  if (pathImg1.split('.').pop() === 'png') {
     img1 = PNG.sync.read(data1);
-  } else if (pathImg1.split(".").pop() === "jpg") {
+  } else if (pathImg1.split('.').pop() === 'jpg') {
     img1 = jpeg.decode(data1);
   }
-  if (pathImg2.split(".").pop() === "png") {
+  if (pathImg2.split('.').pop() === 'png') {
     img2 = PNG.sync.read(data2);
-  } else if (pathImg2.split(".").pop() === "jpg") {
+  } else if (pathImg2.split('.').pop() === 'jpg') {
     img2 = jpeg.decode(data2);
   }
   const pixdiff = pixelmatch(img1.data, img2.data, null, img1.width, img1.height);
@@ -129,8 +134,8 @@ const getMockfsConfig = (dirname, filename, content) => {
 };
 
 const testingCredentials = {
-  username: "testing-user",
-  password: "baz"
+  username: 'testing-user',
+  password: 'baz'
 };
 
 const insertUser = function (user) {
@@ -174,34 +179,34 @@ const parseCookies = (str) => str
   }, []);
 
 const privateProjectTest = {
-  "name": "Test project",
-  "shortname": "testproject",
-  "url": "",
-  "created": "2022-02-03T14:59:49.786Z",
-  "owner": "foo",
-  "collaborators": {
-    "list": [
+  'name': 'Test project',
+  'shortname': 'testproject',
+  'url': '',
+  'created': '2022-02-03T14:59:49.786Z',
+  'owner': 'foo',
+  'collaborators': {
+    'list': [
       {
-        "username": "anyone",
-        "access": {
-          "collaborators": "none",
-          "annotations": "none",
-          "files": "none"
+        'username': 'anyone',
+        'access': {
+          'collaborators': 'none',
+          'annotations': 'none',
+          'files': 'none'
         },
-        "name": "Any User"
+        'name': 'Any User'
       }
     ]
   },
-  "files": {
-    "list": [{ source: "https://microdraw.pasteur.fr/test_data/cat.json", name: "Cat" }]
+  'files': {
+    'list': [{ source: 'https://microdraw.pasteur.fr/test_data/cat.json', name: 'Cat' }]
   },
-  "annotations": {
-    "list": [
+  'annotations': {
+    'list': [
       {
-        "type": "vectorial",
-        "values": "Set I",
-        "display": true,
-        "name": "layer"
+        'type': 'vectorial',
+        'values': 'Set I',
+        'display': true,
+        'name': 'layer'
       }
     ]
   }
@@ -209,40 +214,40 @@ const privateProjectTest = {
 
 const createProjectWithPermission = function (name, accessProp) {
   const access = Object.assign({}, {
-    collaborators: "none",
-    annotations: "none",
-    files: "none"
+    collaborators: 'none',
+    annotations: 'none',
+    files: 'none'
   }, accessProp);
 
   const project = {
-    "name": name,
-    "shortname": name,
-    "url": "http://foo.bar",
-    "created": "2022-02-03T14:59:49.786Z",
-    "owner": "foo",
-    "collaborators": {
-      "list": [
+    'name': name,
+    'shortname': name,
+    'url': 'http://foo.bar',
+    'created': '2022-02-03T14:59:49.786Z',
+    'owner': 'foo',
+    'collaborators': {
+      'list': [
         {
-          "username": "anyone",
-          "access": {
-            "collaborators": "none",
-            "annotations": "none",
-            "files": "none"
+          'username': 'anyone',
+          'access': {
+            'collaborators': 'none',
+            'annotations': 'none',
+            'files': 'none'
           },
-          "name": "Any User"
+          'name': 'Any User'
         }
       ]
     },
-    "files": {
-      "list": [{ source: "https://microdraw.pasteur.fr/test_data/cat.json", name: "cat" }]
+    'files': {
+      'list': [{ source: 'https://microdraw.pasteur.fr/test_data/cat.json', name: 'cat' }]
     },
-    "annotations": {
-      "list": [
+    'annotations': {
+      'list': [
         {
-          "type": "vectorial",
-          "values": "Set I",
-          "display": true,
-          "name": "layer"
+          'type': 'vectorial',
+          'values': 'Set I',
+          'display': true,
+          'name': 'layer'
         }
       ]
     }

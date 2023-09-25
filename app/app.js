@@ -219,7 +219,7 @@ const start = async function () {
     res.render('error');
   });
 
-  return { app, server, wsServer };
+  return { app, server, wsServer, hocuspocusServer };
 };
 
 module.exports = { start };
