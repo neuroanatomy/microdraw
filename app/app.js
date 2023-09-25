@@ -1,18 +1,20 @@
 'use strict';
 
 const fs = require('fs');
-const express = require('express');
-const path = require('path');
-const bodyParser = require('body-parser');
-//const favicon = require('serve-favicon');
-const debug = require('debug')('microdraw:server');
-const https = require('https');
 const http = require('http');
+const https = require('https');
+const path = require('path');
+
+const { Server: HocuspocusServer } = require('@hocuspocus/server');
+const bodyParser = require('body-parser');
+const debug = require('debug')('microdraw:server');
+const express = require('express');
+//const favicon = require('serve-favicon');
+const { reduce, assign } = require('lodash');
 const morgan = require('morgan');
 const nwl = require('neuroweblab');
-const { reduce, assign } = require('lodash');
+
 const microdrawWebsocketServer = require('./controller/microdrawWebsocketServer/microdrawWebsocketServer.js');
-const { Server: HocuspocusServer } = require('@hocuspocus/server');
 const routes = require('./routes/routes');
 let port;
 let server;
@@ -51,8 +53,8 @@ const onError = function (error) {
 
 // Event listener for HTTP server "listening" event.
 const onListening = function () {
-  var addr = server.address();
-  var bind = typeof addr === 'string'
+  const addr = server.address();
+  const bind = typeof addr === 'string'
     ? 'pipe ' + addr
     : 'port ' + addr.port;
   debug('Listening on ' + bind);
@@ -60,9 +62,10 @@ const onListening = function () {
 
 // eslint-disable-next-line max-statements
 const start = async function () {
+  const Config = JSON.parse(await fs.promises.readFile('./cfg.json'));
   const app = express();
 
-  port = normalizePort(process.env.PORT || '3000');
+  port = normalizePort(process.env.PORT || Config.app_port || '3000');
   app.set('port', port);
 
   // Create HTTP server.
@@ -73,7 +76,6 @@ const start = async function () {
   server.on('error', onError);
   server.on('listening', onListening);
 
-  const Config = JSON.parse(await fs.promises.readFile('./cfg.json'));
   microdrawWebsocketServer.dataDirectory = path.join(__dirname, '/public');
 
   if (Config.secure) {
@@ -89,11 +91,11 @@ const start = async function () {
     microdrawWebsocketServer.server = http.createServer(app);
   }
 
-  const wsServer = microdrawWebsocketServer.server.listen(8080, () => {
+  const wsServer = microdrawWebsocketServer.server.listen(Config.ws_port, () => {
     if (Config.secure) {
-      console.log('Listening wss on port 8080');
+      console.log(`Listening wss on port ${Config.ws_port}`);
     } else {
-      console.log('Listening ws on port 8080');
+      console.log(`Listening ws on port ${Config.ws_port}`);
     }
     microdrawWebsocketServer.initSocketConnection();
   });
@@ -149,11 +151,11 @@ const start = async function () {
   await nwl.init({
     app,
     MONGO_DB: process.env.MONGODB_TEST || process.env.MONGODB || '127.0.0.1:27017/microdraw',
-    dirname: path.join(__dirname, "/auth/"),
-    usernameField: "username",
-    usersCollection: "users",
-    projectsCollection: "projects",
-    annotationsCollection: "annotations"
+    dirname: path.join(__dirname, '/auth/'),
+    usernameField: 'username',
+    usersCollection: 'users',
+    projectsCollection: 'projects',
+    annotationsCollection: 'annotations'
   });
   global.authTokenMiddleware = nwl.authTokenMiddleware;
 
