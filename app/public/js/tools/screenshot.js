@@ -1,6 +1,5 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
-var ToolScreenshot = {screenshot: (function() {
+window.ToolScreenshot = {screenshot: (function() {
   const tool = {
 
     /*

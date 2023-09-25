@@ -1,9 +1,7 @@
-/* eslint-disable no-unused-vars */
-/* eslint-disable max-statements */
 /* global Microdraw */
 /* global paper */
 
-var ToolAddPoint = { addPoint : (function() {
+window.ToolAddPoint = { addPoint : (function() {
   const _findRegion = function (item) {
     let re;
     for( let i = 0; i < Microdraw.ImageInfo[Microdraw.currentImage].Regions.length; i += 1 ) {
@@ -22,6 +20,7 @@ var ToolAddPoint = { addPoint : (function() {
      * @param {object} point The point where you clicked (x,y)
      * @returns {void}
      */
+    // eslint-disable-next-line max-statements
     mouseDown : function mouseDown(point) {
       var hitResult = paper.project.hitTest(point, {
         tolerance : Microdraw.tolerance/paper.view.zoom,
@@ -30,7 +29,7 @@ var ToolAddPoint = { addPoint : (function() {
         fill : true,
         handles : true
       });
-      let prevRegion;
+      // let prevRegion;
       Microdraw.newRegionFlag = false;
 
       if( hitResult ) {
@@ -39,7 +38,7 @@ var ToolAddPoint = { addPoint : (function() {
         // select path
         if( Microdraw.region && Microdraw.region !== re ) {
           Microdraw.region.path.selected = false;
-          prevRegion = Microdraw.region;
+          // prevRegion = Microdraw.region;
         }
         Microdraw.selectRegion(re);
 
@@ -61,7 +60,7 @@ var ToolAddPoint = { addPoint : (function() {
      * @param {string} prevTool The previous tool to which the selection goes back
      * @returns {void}
      */
-    click : function click(prevTool) {
+    click : function click() {
       Microdraw.navEnabled = false;
       Microdraw.handle = null;
     }

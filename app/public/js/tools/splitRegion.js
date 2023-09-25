@@ -1,8 +1,7 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
 /* global paper */
 
-const ToolSplitRegion = {splitRegion: (function() {
+window.ToolSplitRegion = {splitRegion: (function() {
   const tool = {
 
     _findHitItem: function (point) {
@@ -79,7 +78,6 @@ const ToolSplitRegion = {splitRegion: (function() {
       i.e. newRegion is what was region and prevRegion color should go to the other part */
       const prevRegion = tool._selectPathToSplit(hitItem);
       if(!prevRegion) {
-
         return;
       }
 
@@ -117,7 +115,7 @@ const ToolSplitRegion = {splitRegion: (function() {
          * @returns {void}
          */
     // eslint-disable-next-line no-empty-function
-    click: function click(prevTool) {
+    click: function click() {
     }
   };
 

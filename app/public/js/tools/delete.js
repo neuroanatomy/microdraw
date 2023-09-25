@@ -1,8 +1,6 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
-/* global paper */
 
-var ToolDelete = { delete : (function() {
+window.ToolDelete = { delete : (function() {
   var tool = {
 
     /**

@@ -197,16 +197,17 @@ const start = async function () {
   routes(app);
 
 
-  // catch 404 and forward to error handler
-  app.use(function (req) {
-    console.log('ERROR: File not found', req.url);
-    // var err = new Error('Not Found'); //, req);
-    // err.status = 404;
-    // next(err);
-  });
+  // // catch 404 and forward to error handler
+  // app.use(function (req, res, next) {
+  //   console.log('ERROR: File not found', req.url);
+  //   // var err = new Error('Not Found'); //, req);
+  //   // err.status = 404;
+  //   // next(err);
+  // });
 
   // error handler
-  app.use(function (err, req, res) {
+  // eslint-disable-next-line no-unused-vars
+  app.use(function (err, req, res, next) {
     // set locals, only providing error in development
     res.locals.message = err.message;
     res.locals.error = req.app.get('env') === 'development' ? err : {};

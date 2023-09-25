@@ -1,9 +1,7 @@
-/* eslint-disable max-statements */
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
 /* global paper */
 
-var ToolSubtractRegion = { subtractRegion : (function() {
+window.ToolSubtractRegion = { subtractRegion : (function() {
   var tool = {
 
     /**
@@ -11,6 +9,7 @@ var ToolSubtractRegion = { subtractRegion : (function() {
          * @param {object} point The point where you clicked (x,y)
          * @returns {void}
          */
+    // eslint-disable-next-line max-statements
     mouseDown : function mouseDown(point) {
       var prevRegion = null;
       var hitResult = paper.project.hitTest(point, {
@@ -56,7 +55,7 @@ var ToolSubtractRegion = { subtractRegion : (function() {
          * @param {string} prevTool The previous tool to which the selection goes back
          * @returns {void}
          */
-    click : function click(prevTool) {
+    click : function click() {
       Microdraw.navEnabled = false;
       Microdraw.handle = null;
     }

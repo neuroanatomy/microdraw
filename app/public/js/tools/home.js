@@ -1,8 +1,6 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
-/* global paper */
 
-var ToolHome = { home : (function() {
+window.ToolHome = { home : (function() {
   var tool = {
 
     /**

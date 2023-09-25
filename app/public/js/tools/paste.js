@@ -1,8 +1,6 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
-/* global paper */
 
-var ToolPaste = { paste : (function() {
+window.ToolPaste = { paste : (function() {
   const tool = {
 
     /**
@@ -11,7 +9,7 @@ var ToolPaste = { paste : (function() {
          * @param {string} prevTool The previous tool to which the selection goes back
          * @returns {void}
          */
-    click : function click(prevTool) {
+    click : function click() {
       Microdraw.cmdPaste();
       Microdraw.backToSelect();
     }

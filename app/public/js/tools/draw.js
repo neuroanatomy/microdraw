@@ -1,7 +1,7 @@
 /* global Microdraw */
 /* global paper */
 
-var ToolDraw = { draw: (function () {
+window.ToolDraw = { draw: (function () {
   var tool = {
 
     /**
@@ -44,7 +44,7 @@ var ToolDraw = { draw: (function () {
          * @param {object} dpoint The movement of the point
          * @return {void}
         */
-    mouseDrag: function mouseDrag(point, dpoint) {
+    mouseDrag: function mouseDrag(point) {
       Microdraw.region.path.add(point);
     },
 
@@ -91,7 +91,7 @@ var ToolDraw = { draw: (function () {
         * @param {string} prevTool The previous tool to which the selection goes back
         * @returns {void}
         */
-    click: function click(prevTool) {
+    click: function click() {
       Microdraw.navEnabled = false;
     }
   };

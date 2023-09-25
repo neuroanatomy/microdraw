@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw, paper */
 
 /** Command to decompose a CompoundPath into independent paths.
@@ -10,7 +9,7 @@
  *  CompoundPath
  * @returns {void}
  */
-const decompose = (sliceIndex, regionIndex) => {
+window.decompose = (sliceIndex, regionIndex) => {
   const orig = Microdraw.ImageInfo[sliceIndex].Regions[regionIndex];
   orig.path.remove();
   orig.path.children.forEach((r) => {

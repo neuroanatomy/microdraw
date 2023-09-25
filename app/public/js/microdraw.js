@@ -433,11 +433,13 @@ const Microdraw = (function () {
 
       if( arg.path ) {
         reg.path = arg.path;
-        reg.path.strokeWidth = arg.path.strokeWidth ? arg.path.strokeWidth : me.config.defaultStrokeWidth;
-        reg.path.strokeColor = arg.path.strokeColor ? arg.path.strokeColor : me.config.defaultStrokeColor;
-        reg.path.strokeScaling = false;
         reg.path.fillColor = arg.path.fillColor ? arg.path.fillColor :'rgba(' + color.red + ',' + color.green + ',' + color.blue + ',' + me.config.defaultFillAlpha + ')';
         reg.path.selected = false;
+        if (arg.name !== "textAnnotation") {
+          reg.path.strokeWidth = arg.path.strokeWidth ? arg.path.strokeWidth : me.config.defaultStrokeWidth;
+          reg.path.strokeColor = arg.path.strokeColor ? arg.path.strokeColor : me.config.defaultStrokeColor;
+          reg.path.strokeScaling = false;
+        }
       }
 
       if( typeof imageNumber === "undefined" ) {
@@ -1169,7 +1171,7 @@ const Microdraw = (function () {
     loadImage: function (imageNumber) {
       if( me.debug>1 ) { console.log("> loadImage(" + imageNumber + ")"); }
 
-      // when load a new image, deselect any currently selecting regions
+      // when loading a new image, deselect any currently selected regions
       // n.b. this needs to be called before me.currentImage is set
       me.selectRegion(null);
 
@@ -1186,7 +1188,11 @@ const Microdraw = (function () {
         }
       }));
 
-      me.viewer.open(me.ImageInfo[me.currentImage].source);
+      // open the image in the viewer
+      me.viewerOpenImage(me.ImageInfo[me.currentImage]);
+
+      // update layers if there's any
+      me.tools.layers.updateLayers();
     },
 
     /**
@@ -1259,6 +1265,12 @@ const Microdraw = (function () {
         }
         case 'CompoundPath': {
           path = new paper.CompoundPath();
+          path.importJSON(json);
+          path.remove();
+          break;
+        }
+        case 'PointText': {
+          path = new paper.PointText();
           path.importJSON(json);
           path.remove();
           break;
@@ -1419,6 +1431,28 @@ const Microdraw = (function () {
       return result;
     },
 
+    handleImageOpened: (e) => {
+      const {source} = me.ImageInfo[me.currentImage];
+      if (source !== e.source) { return; }
+
+      let {x, y, rotation} = me.ImageInfo[me.currentImage];
+
+      x = x || 0;
+      y = y || 0;
+      rotation = rotation || 0;
+
+      if (x || y) {
+        me.viewer.world.getItemAt(0).setPosition({x, y}, "immediately");
+      }
+
+      if (rotation) {
+        me.viewer.world.getItemAt(0).setRotation(rotation, "immediately");
+      }
+    },
+    viewerOpenImage: (image) => {
+      me.viewer.open(image.source);
+    },
+
     /**
        * @returns {void} Returns a promise that is fulfilled when the user is loged in
        */
@@ -1433,7 +1467,7 @@ const Microdraw = (function () {
       paper.project.activeLayer.removeChildren();
 
       // load new users data
-      me.viewer.open(me.ImageInfo[me.currentImage].source);
+      me.viewerOpenImage(me.ImageInfo[me.currentImage]);
     },
 
     /**
@@ -1703,7 +1737,7 @@ const Microdraw = (function () {
         me.loadScript("https://cdn.jsdelivr.net/gh/r03ert0/Openseadragon-screenshot@v0.0.1/openseadragonScreenshot.js"),
         me.loadScript("/lib/FileSaver.js/FileSaver.min.js"),
         me.loadScript("/js/neurolex-ontology.js"),
-        me.loadScript("https://cdn.jsdelivr.net/gh/r03ert0/muijs@v0.1.2/mui.js"),
+        me.loadScript("https://cdn.jsdelivr.net/gh/r03ert0/muijs@v0.1.3/mui.js"),
         me.loadScript("https://unpkg.com/codeflask/build/codeflask.min.js"),
         me.loadScript("https://cdn.jsdelivr.net/gh/r03ert0/consolita.js@0.2.1/consolita.js"),
         /* global Consolita */
@@ -1835,6 +1869,21 @@ const Microdraw = (function () {
       // Configure currently selected tool
       me.selectedTool = "navigate";
 
+      document.body.dataset.toolbardisplay = "left";
+      me.dom.querySelector("#tools-minimized").style.display = "none";
+      me.dom.querySelector("#tools-minimized").addEventListener("click", () => { me.changeToolbarDisplay("maximize"); });
+      MUI.push(me.dom.querySelector(".push#display-minimize"), () => { me.changeToolbarDisplay("minimize"); });
+      MUI.push(me.dom.querySelector(".push#display-left"), () => { me.changeToolbarDisplay("left"); });
+      MUI.push(me.dom.querySelector(".push#display-right"), () => { me.changeToolbarDisplay("right"); });
+
+      MUI.chose3state(me.dom.querySelector("#text.mui-chose"), me.toggleTextInput);
+
+      Consolita.init(me.dom.querySelector("#logScript"), me.dom);
+
+      $(window).resize(function() {
+        me.resizeAnnotationOverlay();
+      });
+
       // Load regions label set
       const res = await fetch("/js/10regions.json");
       const labels = await res.json();
@@ -1935,11 +1984,13 @@ const Microdraw = (function () {
         navigatorPosition: "BOTTOM_RIGHT",
         homeButton:"homee",
         maxZoomPixelRatio:10,
-        preserveViewport: true
+        preserveViewport: true,
+        // debugMode: true,
+        imageSmoothingEnabled: false
       });
 
       // open the currentImage
-      me.viewer.open(me.ImageInfo[me.currentImage].source);
+      me.viewerOpenImage(me.ImageInfo[me.currentImage]);
 
       // add the scalebar
       me.viewer.scalebar({
@@ -1982,6 +2033,10 @@ const Microdraw = (function () {
       me.viewer.addHandler("page", function (data) {
         console.log("page", data.page, me.params.tileSources[data.page]);
       });
+
+      // event listener for tile opened
+      me.viewer.addHandler("open", me.handleImageOpened);
+
       me.viewer.addViewerInputHook({hooks: [
         {tracker: 'viewer', handler: 'clickHandler', hookHandler: me.clickHandler},
         {tracker: 'viewer', handler: 'pressHandler', hookHandler: me.pressHandler},
@@ -2009,6 +2064,10 @@ const Microdraw = (function () {
 
       me.params = me.deparam();
 
+      if (me.params.displayTools === 'false') {
+        me.dom.querySelector('#menuBar').style.display='none';
+      }
+
       if( me.config.useDatabase ) {
         me.section = me.currentImage;
         me.source = me.params.source;
@@ -2028,6 +2087,8 @@ const Microdraw = (function () {
 
   return me;
 }());
+
+window.Microdraw = Microdraw;
 
 /*
   // Log microdraw

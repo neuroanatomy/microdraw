@@ -1,10 +1,8 @@
 /* eslint-disable max-lines */
-/* eslint-disable no-unused-vars */
-/* eslint-disable no-plusplus */
 /* global Microdraw */
 /* global paper */
 
-var ToolFindContours = {findContours: (function() {
+window.ToolFindContours = {findContours: (function() {
   const {dom} = Microdraw;
   const me = {
     threshold: 200,
@@ -311,7 +309,7 @@ var ToolFindContours = {findContours: (function() {
         if(grey[b*W+a] > 0) {
           if(tmp[b*W+a] === 2) {
             while(grey[b*W+a] > 0) {
-              a++;
+              a+=1;
             }
           } else {
             [x0, y0, x, y] = [a, b, a, b];
@@ -345,9 +343,10 @@ var ToolFindContours = {findContours: (function() {
           [a0, b0] = [a, b];
         }
 
-        if(a++===W-1) {
+        a+=1;
+        if(a===W) {
           a=0;
-          b++;
+          b+=1;
         }
       } while(b<H-1);
 

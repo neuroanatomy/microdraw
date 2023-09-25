@@ -1,9 +1,8 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
 /* global paper */
 
 
-var ToolUndo = {undo: (function() {
+window.ToolUndo = {undo: (function() {
   const tool = {
 
     /**

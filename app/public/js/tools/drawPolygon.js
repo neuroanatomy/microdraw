@@ -1,9 +1,7 @@
-/* eslint-disable max-statements */
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
 /* global paper */
 
-var ToolDrawPolygon = {drawPolygon: (function() {
+window.ToolDrawPolygon = {drawPolygon: (function() {
 
   /* can be changed/loaded via config  */
   let drawingPolygonFlag = false;
@@ -46,6 +44,7 @@ var ToolDrawPolygon = {drawPolygon: (function() {
      * @param {object} point The point where you click (x,y)
      * @returns {void}
      */
+    // eslint-disable-next-line max-statements
     mouseDown: function mouseDown(point) {
       // mouseUndo.callback is expected to be a function
       Microdraw.mouseUndo.callback = ((currentFlag) => () => {
@@ -92,6 +91,7 @@ var ToolDrawPolygon = {drawPolygon: (function() {
      * @function mouseUp
      * @returns {void}
      */
+    // eslint-disable-next-line max-statements
     mouseUp: function mouseUp() {
       if( Microdraw.newRegionFlag === true ) {
         Microdraw.region.path.closed = true;
@@ -130,7 +130,7 @@ var ToolDrawPolygon = {drawPolygon: (function() {
      * @param {string} prevTool The previous tool to which the selection goes back
      * @returns {void}
      */
-    click: function click(prevTool) {
+    click: function click() {
       Microdraw.navEnabled = false;
     }
   };

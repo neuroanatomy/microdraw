@@ -1,3 +1,5 @@
+/* global Microdraw */
+
 'use strict';
 const UI = require('../UI');
 const U = require('../mocha.test.util');
@@ -24,12 +26,15 @@ const shadowclick = async function (sel) {
 
 describe('Editing tools: order', () => {
   it('opens a data page', async () => {
-    browser = await puppeteer.launch({headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'], dumpio: false});
+    browser = await puppeteer.launch({headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'], dumpio: false});
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
     await page.goto('http://localhost:3000/data?source=/test_data/cat.json&slice=0',
       { waitUntil: 'networkidle0' });
     await U.waitUntilHTMLRendered(page);
+
+    const filename = 'order.01.cat.png';
+    await page.screenshot({path: U.newPath + filename});
 
   //   const diff = await U.comparePageScreenshots(
   //     page,
@@ -57,6 +62,10 @@ describe('Editing tools: order', () => {
     await shadowclick(UI.SELECT);
     await page.mouse.click(500, 100);
 
+    await U.waitUntilHTMLRendered(page);
+    const filename = "order.02.triangles.png";
+    await page.screenshot({path: U.newPath + filename});
+
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
       regionsLength: Microdraw.ImageInfo[0].Regions.length,
@@ -68,9 +77,6 @@ describe('Editing tools: order', () => {
     assert(res.regionsLength === 4, `Regions.length is ${res.regionsLength} instead of 4`);
     assert(res.firstRegionX < res.lastRegionX, `X-coord of 1st region is not smaller than that of the last region`);
 
-    // await U.waitUntilHTMLRendered(page);
-    // const filename = "order.02.triangles.png";
-    // await page.screenshot({path: U.newPath + filename});
     // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     // assert(diff<1000, `${diff} pixels were different`);
   }).timeout(0);
@@ -88,6 +94,10 @@ describe('Editing tools: order', () => {
     await shadowclick(UI.SELECT);
     await page.mouse.click(500, 100);
 
+    await U.waitUntilHTMLRendered(page);
+    const filename = "order.03.invert.png";
+    await page.screenshot({path: U.newPath + filename});
+
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
       regionsLength: Microdraw.ImageInfo[0].Regions.length,
@@ -99,9 +109,6 @@ describe('Editing tools: order', () => {
     assert(res.regionsLength === 4, `Regions.length is ${res.regionsLength} instead of 4`);
     assert(res.lastRegionX < res.firstRegionX, `X-coord of last region is not smaller than that of the 1st region`);
 
-    // await U.waitUntilHTMLRendered(page);
-    // const filename = "order.03.invert.png";
-    // await page.screenshot({path: U.newPath + filename});
     // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
@@ -119,6 +126,10 @@ describe('Editing tools: order', () => {
     await shadowclick(UI.SELECT);
     await page.mouse.click(500, 100);
 
+    await U.waitUntilHTMLRendered(page);
+    const filename = "order.04.invert-again.png";
+    await page.screenshot({path: U.newPath + filename});
+
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
       regionsLength: Microdraw.ImageInfo[0].Regions.length,
@@ -130,9 +141,6 @@ describe('Editing tools: order', () => {
     assert(res.regionsLength === 4, `Regions.length is ${res.regionsLength} instead of 4`);
     assert(res.firstRegionX < res.lastRegionX, `X-coord of 1st region is not smaller than that of the last region`);
 
-    // await U.waitUntilHTMLRendered(page);
-    // const filename = "order.04.invert-again.png";
-    // await page.screenshot({path: U.newPath + filename});
     // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
   }).timeout(0);

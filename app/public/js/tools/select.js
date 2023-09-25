@@ -1,9 +1,8 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
 /* global paper */
 
 
-var ToolSelect = {select: (function() {
+window.ToolSelect = {select: (function() {
   const tool = {
 
     /**
@@ -12,7 +11,7 @@ var ToolSelect = {select: (function() {
          * @param {object} dpoint The movement of the point
          * @return {void}
         */
-    mouseDrag: function mouseDrag(point, dpoint) {
+    mouseDrag: function mouseDrag() {
       // event.stopHandlers = true;
       for( var reg of Microdraw.ImageInfo[Microdraw.currentImage].Regions ) {
         if( reg.path.selected ) {
@@ -33,11 +32,13 @@ var ToolSelect = {select: (function() {
       } else if( hitResult.type === 'segment' ) {
         Microdraw.handle = hitResult.segment.point;
         Microdraw.handle.point = point;
+      } else if( hitResult.type === 'fill' ) {
+        Microdraw.tools.textAnnotation.updateTextAnnotationPanel(hitResult.item);
       }
     },
 
     _handleHit: function (hitResult, point) {
-      let prevRegion = null;
+      // let prevRegion = null;
       let re;
 
       for( let i = 0; i < Microdraw.ImageInfo[Microdraw.currentImage].Regions.length; i += 1 ) {
@@ -49,7 +50,7 @@ var ToolSelect = {select: (function() {
       // select path
       if( Microdraw.region && Microdraw.region !== re ) {
         Microdraw.region.path.selected = false;
-        prevRegion = Microdraw.region;
+        // prevRegion = Microdraw.region;
       }
       Microdraw.selectRegion(re);
 
@@ -95,7 +96,7 @@ var ToolSelect = {select: (function() {
          * @param {string} prevTool The previous tool to which the selection goes back
          * @returns {void}
          */
-    click: function click(prevTool) {
+    click: function click() {
       Microdraw.navEnabled = false;
       Microdraw.handle = null;
     }

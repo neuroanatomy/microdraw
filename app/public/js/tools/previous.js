@@ -1,8 +1,6 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
-/* global paper */
 
-const ToolPrevious = { previous : (function () {
+window.ToolPrevious = { previous : (function () {
   const tool = {
 
     /**
@@ -15,7 +13,7 @@ const ToolPrevious = { previous : (function () {
       Microdraw.loadPreviousImage();
       Microdraw.backToPreviousTool(prevTool);
     }
-  }
-    
+  };
+
   return tool;
 }())};
