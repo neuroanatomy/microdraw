@@ -6,9 +6,9 @@
 
 let wshostname;
 if(Microdraw.secure) {
-  wshostname = "wss://" + Microdraw.wshostname;
+  wshostname = 'wss://' + Microdraw.wshostname;
 } else {
-  wshostname = "ws://" + Microdraw.wshostname;
+  wshostname = 'ws://' + Microdraw.wshostname;
 }
 const ws = new window.WebSocket(wshostname);
 
@@ -32,22 +32,22 @@ const _decodeRandomUuidToNickname = (n) => {
   */
 const receiveChatMessage = (data) => {
   let theUsername;
-  if (data.username !== "Anonymous") {
+  if (data.username !== 'Anonymous') {
     theUsername = data.username;
   } else if (typeof data.randomUuid === 'number') {
     theUsername = _decodeRandomUuidToNickname(data.randomUuid);
   } else {
     theUsername = data.uid;
   }
-  const msg = "<b>" + theUsername + ":</b> " + data.msg + "<br />";
+  const msg = '<b>' + theUsername + ':</b> ' + data.msg + '<br />';
   Microdraw.appendChatMessage(msg);
 };
 
 const _getUserName = () => {
   let username = document.querySelector('header #menu .login a').innerText;
 
-  if (typeof username === "undefined" || username === "Log in with GitHub") {
-    username = "Anonymous";
+  if (typeof username === 'undefined' || username === 'Log in with GitHub') {
+    username = 'Anonymous';
   }
 
   return username;
@@ -64,7 +64,7 @@ const _displayOwnMessage = (msg) => {
 
 Microdraw.sendChatMessage = (msg) => {
   const obj = {
-    type: "chat",
+    type: 'chat',
     msg,
     randomUuid,
     username: _getUserName()
@@ -76,12 +76,12 @@ Microdraw.sendChatMessage = (msg) => {
     ws.send(JSON.stringify(obj));
     _displayOwnMessage(obj.msg);
   } catch (ex) {
-    console.log("ERROR: Unable to sendChatMessage", ex);
+    console.log('ERROR: Unable to sendChatMessage', ex);
   }
 };
 
 const receiveFunctions = {
-  "chat": receiveChatMessage
+  'chat': receiveChatMessage
 };
 
 /**
@@ -89,25 +89,18 @@ const receiveFunctions = {
 * @returns {void}
 */
 const receiveSocketMessage = (msg) => {
-  var data = JSON.parse(msg.data);
+  const data = JSON.parse(msg.data);
   receiveFunctions[data.type](data);
 };
 
 ws.onopen = () => {
-  console.log("open");
+  console.log('open');
 
-  const {dom} = Microdraw;
-  dom.querySelector("#msg").onkeypress = (e) => {
-    if (e.keyCode === 13) {
-      sendChatMessage();
-    }
-  };
-
-  Microdraw.setNotification("Chat");
+  Microdraw.setNotification('Chat');
 
   const obj = {
-    type: "chat",
-    msg: "entered",
+    type: 'chat',
+    msg: 'entered',
     randomUuid,
     username: _getUserName()
   };
@@ -117,5 +110,5 @@ ws.onopen = () => {
 ws.onmessage = receiveSocketMessage;
 
 ws.onerror = () => {
-  console.log("error");
+  console.log('error');
 };
