@@ -1,5 +1,7 @@
 const url = require('url');
+
 const request = require('request');
+// const { createRelativePositionFromTypeIndex } = require('yjs');
 
 module.exports = (app) => {
   app.get('/getTile', function (req, res) {
@@ -8,8 +10,12 @@ module.exports = (app) => {
     if( !source ) {
       return res.status(404).send('source must be defined');
     }
-
-    request(req.query.source, {}).pipe(res);
+    request(req.query.source, {})
+      .on('error', function(err) {
+        console.error('Error:', err.message);
+        res.status(404).send(`Cannot fetch ${source}`);
+      })
+      .pipe(res);
   });
 
   // eslint-disable-next-line max-statements
@@ -67,7 +73,7 @@ module.exports = (app) => {
         res.status(200).send(JSON.stringify(json));
       })
       .catch((e) => {
-        console.log("13");
+        console.log('13');
         console.log('Error at /getJson', e);
         res.status(404).send(e);
       });

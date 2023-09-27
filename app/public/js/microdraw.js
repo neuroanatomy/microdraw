@@ -7,7 +7,30 @@
 /*global OpenSeadragon*/
 /* exported Microdraw */
 
+
 const Microdraw = (function () {
+  const jsonpFetch = function (url) {
+    return new Promise((resolve, reject) => {
+      // We have to use callback name "f" as https://scalablebrainatlas.incf.org always returns this callback
+      const callbackName = 'f';
+      const script = document.createElement('script');
+      script.src = url + (url.indexOf('?') === -1 ? '?' : '&') + 'callback=' + callbackName;
+      script.async = true;
+
+      window[callbackName] = (data) => {
+        resolve(data);
+        document.body.removeChild(script);
+      };
+
+      script.onerror = (error) => {
+        reject(error);
+        document.body.removeChild(script);
+      };
+
+      document.body.appendChild(script);
+    });
+  };
+
   const me = {
     debug: 1,
     hostname: window.location.origin,
@@ -1635,84 +1658,43 @@ const Microdraw = (function () {
        * @desc Load source json (from server)
        * @returns {promise} returns a promise, resolving as a microdraw compatible object
        */
-    loadSourceJson : function () {
+    loadSourceJson : async function () {
       if( me.debug ) { console.log('> loadSourceJson'); }
 
-      return new Promise((resolve, reject) => {
+      // decide between json (local) and jsonp (cross-origin)
+      const ext = me.params.source.split('.').pop();
+      if( ext === 'jsonp' ) {
+        if( me.debug ) { console.log('Reading cross-origin jsonp file'); }
 
-        fetch('/getJson?source='+me.params.source)
-          .then((data) => data.json())
-          .then((json) => {
-            resolve(json);
-          })
-          .catch( (err2) => {
-            reject(err2);
-          });
+        return jsonpFetch(me.params.source);
+      }
+      // consider the file to be a standard json
+      try {
+        // determine if request will be blocked by CORS policy
+        if ((new URL(me.params.source)).origin !== window.origin) {
+          throw new Error('request origin does not match page origin');
+        }
+        if( me.debug ) { console.log('Reading local json file'); }
+        const response = await fetch(me.params.source, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        if (!response.ok) {
+          throw new Error(`Request failed with status: ${response.status}`);
+        }
 
-        // FIXME
+        return response.json();
+      } catch (err) {
+        console.warn('> loadSourceJson : direct fetching of source failed ... ', err, 'attempting to fetch via microdraw server');
 
+        const response = await fetch('/getJson?source='+me.params.source);
+        if (!response.ok) {
+          throw new Error(`Request failed with status: ${response.status}`);
+        }
 
-        // const directFetch = new Promise((rs, rj) => {
-        //   // decide between json (local) and jsonp (cross-origin)
-        //   let ext = me.params.source.split(".");
-        //   ext = ext[ext.length - 1];
-        //   if( ext === "jsonp" ) {
-        //     if( me.debug ) { console.log("Reading cross-origin jsonp file"); }
-        //     $.ajax({
-        //       type: 'GET',
-        //       url: me.params.source + "?callback=?",
-        //       jsonpCallback: 'f',
-        //       dataType: 'jsonp',
-        //       contentType: "application/json",
-        //       success: function(obj) {
-        //         rs(obj);
-        //       },
-        //       error: function(err) {
-        //         rj(err);
-        //       }
-        //     });
-        //   } else
-        //   if( ext === "json" ) {
-        //     if( me.debug ) { console.log("Reading local json file"); }
-        //     $.ajax({
-        //       type: 'GET',
-        //       url: me.params.source,
-        //       dataType: "json",
-        //       contentType: "application/json",
-        //       success: function(obj) {
-        //         rs(obj);
-        //       },
-        //       error: function(err) {
-        //         rj(err);
-        //       }
-        //     });
-        //   } else {
-        //     fetch(me.params.source)
-        //       .then((data) => data.json())
-        //       .then((json) => {
-        //         rs(json);
-        //       })
-        //       .catch((e) => rj(e));
-        //   }
-        // });
-
-        // directFetch
-        //   .then( function (json) {
-        //     resolve(json);
-        //   })
-        //   .catch( (err) => {
-        //     console.warn('> loadSourceJson : direct fetching of source failed ... ', err, 'attempting to fetch via microdraw server');
-
-        //     fetch('/getJson?source='+me.params.source)
-        //       .then((data) => data.json())
-        //       .then((json) => {
-        //         resolve(json);
-        //       })
-        //       .catch( (err2) => {
-        //         reject(err2);
-        //       });
-        //   });
-      });
+        return response.json();
+      }
     },
 
     /**
