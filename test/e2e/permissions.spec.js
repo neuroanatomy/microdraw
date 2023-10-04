@@ -476,7 +476,7 @@ describe('TESTING PERMISSIONS', function () {
       let browser, page;
 
       before(async function() {
-        browser = await puppeteer.launch({ headless: true, ignoreHTTPSErrors: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+        browser = await puppeteer.launch({ headless: "new", ignoreHTTPSErrors: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
         page = await browser.newPage();
         await page.setCookie(...cookies);
       });

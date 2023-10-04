@@ -1,8 +1,7 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
 /* global paper */
 
-var ToolFlipRegion = {flipRegion: (function() {
+window.ToolFlipRegion = {flipRegion: (function() {
   var tool = {
 
     /**

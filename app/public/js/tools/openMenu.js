@@ -1,8 +1,6 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
-/* global paper */
 
-var ToolOpenMenu = { openMenu : (function() {
+window.ToolOpenMenu = { openMenu : (function() {
   const tool = {
 
     /**

@@ -1,8 +1,6 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
-/* global paper */
 
-var ToolZoomIn = { zoomIn : (function() {
+window.ToolZoomIn = { zoomIn : (function() {
   const tool = {
 
     /**

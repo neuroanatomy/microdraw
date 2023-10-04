@@ -1,15 +1,14 @@
-/* eslint-disable max-statements */
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
 /* global paper */
 
-var ToolDeletePoint = { deletePoint : (function() {
+window.ToolDeletePoint = { deletePoint : (function() {
   var tool = {
 
     /**
      * @param {object} point The point where you clicked (x,y)
      * @returns {void}
      */
+    // eslint-disable-next-line max-statements
     mouseDown : function mouseDown(point) {
       var hitResult = paper.project.hitTest(point, {
         tolerance : Microdraw.tolerance/paper.view.zoom,
@@ -18,7 +17,7 @@ var ToolDeletePoint = { deletePoint : (function() {
         fill : true,
         handles : true
       });
-      let prevRegion;
+      // let prevRegion;
       Microdraw.newRegionFlag = false;
 
       if( hitResult ) {
@@ -33,7 +32,7 @@ var ToolDeletePoint = { deletePoint : (function() {
         // select path
         if( Microdraw.region && Microdraw.region !== re ) {
           Microdraw.region.path.selected = false;
-          prevRegion = Microdraw.region;
+          // prevRegion = Microdraw.region;
         }
         Microdraw.selectRegion(re);
 
@@ -54,7 +53,7 @@ var ToolDeletePoint = { deletePoint : (function() {
          * @param {string} prevTool The previous tool to which the selection goes back
          * @returns {void}
          */
-    click : function click(prevTool) {
+    click : function click() {
       Microdraw.navEnabled = false;
       Microdraw.handle = null;
     }

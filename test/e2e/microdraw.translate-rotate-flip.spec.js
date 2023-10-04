@@ -1,3 +1,5 @@
+/* global Microdraw */
+
 'use strict';
 const UI = require('../UI');
 const U = require('../mocha.test.util');
@@ -24,7 +26,7 @@ const shadowclick= async function (sel) {
 
 describe('Editing tools: Translate, rotate, flip', () => {
   before(async () => {
-    browser = await puppeteer.launch({headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    browser = await puppeteer.launch({headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   });
   it('opens a data page', async () => {
     page = await browser.newPage();
@@ -33,6 +35,8 @@ describe('Editing tools: Translate, rotate, flip', () => {
       { waitUntil: 'networkidle0' });
     await U.waitUntilHTMLRendered(page);
 
+    const filename = 'transform.01.cat.png';
+    await page.screenshot({path: U.newPath + filename});
     // const diff = await U.comparePageScreenshots(
     //   page,
     //   'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
@@ -52,6 +56,10 @@ describe('Editing tools: Translate, rotate, flip', () => {
     await page.mouse.click(400, 500);
     await page.mouse.click(400, 400);
 
+    await U.waitUntilHTMLRendered(page);
+    const filename = "transform.02.cat-square.png";
+    await page.screenshot({path: U.newPath + filename});
+
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
       regionsLength: Microdraw.ImageInfo[0].Regions.length,
@@ -62,9 +70,6 @@ describe('Editing tools: Translate, rotate, flip', () => {
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
     assert(res.pathSegments === 4, `Path has ${res.pathSegments} segments instead of 4`);
 
-    // await U.waitUntilHTMLRendered(page);
-    // const filename = "transform.02.cat-square.png";
-    // await page.screenshot({path: U.newPath + filename});
     // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
@@ -89,6 +94,9 @@ describe('Editing tools: Translate, rotate, flip', () => {
     await page.mouse.move(255, 255, {steps: 10});
     await page.mouse.up();
 
+    const filename = "transform.03.cat-translate.png";
+    await page.screenshot({path: U.newPath + filename});
+
     const res2 = await page.evaluate(() => ({
       regionX: Microdraw.ImageInfo[0].Regions[0].path.segments[0].point.x
     }));
@@ -96,8 +104,6 @@ describe('Editing tools: Translate, rotate, flip', () => {
 
     assert(res1.regionX < res2.regionX, `X-coord is not larger after translation`);
 
-    // const filename = "transform.03.cat-translate.png";
-    // await page.screenshot({path: U.newPath + filename});
     // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
@@ -115,15 +121,16 @@ describe('Editing tools: Translate, rotate, flip', () => {
     await page.mouse.move(450, 300, {steps: 10});
     await page.mouse.up();
 
+    await U.waitUntilHTMLRendered(page);
+    const filename = "transform.04.cat-rotate.png";
+    await page.screenshot({path: U.newPath + filename});
+
     const res = await page.evaluate(() => ({
       regionTransformationExists: typeof (Microdraw.ImageInfo[0].Regions[0].origin) !== 'undefined'
     }));
 
     assert(res.regionTransformationExists === true, 'No transformation matrix exists');
 
-    // await U.waitUntilHTMLRendered(page);
-    // const filename = "transform.04.cat-rotate.png";
-    // await page.screenshot({path: U.newPath + filename});
     // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
@@ -137,6 +144,9 @@ describe('Editing tools: Translate, rotate, flip', () => {
 
     await shadowclick(UI.FLIPREGION);
 
+    const filename = "transform.05.cat-flip.png";
+    await page.screenshot({path: U.newPath + filename});
+
     const res2 = await page.evaluate(() => ({
       regionX: Microdraw.ImageInfo[0].Regions[0].path.segments[0].point.x
     }));
@@ -144,8 +154,6 @@ describe('Editing tools: Translate, rotate, flip', () => {
 
     assert(res2.regionX < res1.regionX, "X-coord of region is not smaller after flip");
 
-    // const filename = "transform.05.cat-flip.png";
-    // await page.screenshot({path: U.newPath + filename});
     // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
   }).timeout(0);

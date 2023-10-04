@@ -1,14 +1,12 @@
-/* eslint-disable max-statements */
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
 /* global paper */
 
-// eslint-disable-next-line no-implicit-globals
-var ToolTextAnnotation = {textAnnotation: (function() {
+window.ToolTextAnnotation = {textAnnotation: (function() {
   const {dom} = Microdraw;
 
   const tool = {
-    addTextAnnotation: (event) => {
+    // eslint-disable-next-line max-statements
+    addTextAnnotation: () => {
       // deselect previously selected region
       if( Microdraw.region ) { Microdraw.region.path.selected = false; }
 
@@ -48,7 +46,8 @@ var ToolTextAnnotation = {textAnnotation: (function() {
       return "#" + hex.join("");
     },
 
-    updateTextAnnotation: (event) => {
+    // eslint-disable-next-line max-statements
+    updateTextAnnotation: () => {
       const textEl = dom.querySelector('#add-text-annotation > input[type="text"]');
       const colorEl = dom.querySelector('#add-text-annotation > input[type="color"]');
       const fontSizeEl = dom.querySelector('#add-text-annotation > input[type="number"]');
@@ -64,6 +63,7 @@ var ToolTextAnnotation = {textAnnotation: (function() {
       obj.style.display = "none";
     },
 
+    // eslint-disable-next-line max-statements
     updateTextAnnotationPanel: (item) => {
       const {content, fontSize} = item;
       const fillColor = item.fillColor.toCSS();
@@ -113,7 +113,7 @@ var ToolTextAnnotation = {textAnnotation: (function() {
      * @param {string} prevTool The previous tool to which the selection goes back
      * @returns {void}
      */
-    click: function click(prevTool) {
+    click: function click() {
       Microdraw.navEnabled = false;
     }
   };

@@ -1,8 +1,6 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
-/* global paper */
 
-var ToolCopy = { copy : (function() {
+window.ToolCopy = { copy : (function() {
   var tool = {
 
     /**
@@ -10,7 +8,7 @@ var ToolCopy = { copy : (function() {
      * @param {string} prevTool The previous tool to which the selection goes back
      * @returns {void}
      */
-    click : function click(prevTool) {
+    click : function click() {
       Microdraw.cmdCopy();
       Microdraw.backToSelect();
     }

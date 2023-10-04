@@ -24,7 +24,7 @@ const shadowclick = async function (sel) {
 
 describe('Editing tools: convert polygons to bézier and vice-versa', () => {
   it('opens a data page', async () => {
-    browser = await puppeteer.launch({headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'], dumpio: false});
+    browser = await puppeteer.launch({headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'], dumpio: false});
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
     const diff = await U.comparePageScreenshots(

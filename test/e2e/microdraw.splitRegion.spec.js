@@ -24,7 +24,7 @@ const shadowclick = async function (sel) {
 
 describe('Editing tools: split regions', () => {
   it('opens a data page', async () => {
-    browser = await puppeteer.launch({headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    browser = await puppeteer.launch({headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
     const diff = await U.comparePageScreenshots(

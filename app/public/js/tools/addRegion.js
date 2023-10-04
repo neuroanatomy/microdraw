@@ -1,10 +1,9 @@
-/* eslint-disable no-plusplus */
-/* eslint-disable max-statements */
 /* global Microdraw */
 /* global paper */
 
-var ToolAddRegion = { addRegion : (function() {
+window.ToolAddRegion = { addRegion : (function() {
   var tool = {
+    // eslint-disable-next-line max-statements
     _splitPath: (pathA, pathB) => {
       const arr = [new paper.Path()];
       for(let i=0; i<pathA.curves.length; i++) {
@@ -45,6 +44,7 @@ var ToolAddRegion = { addRegion : (function() {
       return false;
     },
 
+    // eslint-disable-next-line max-statements
     _uniteAllowSelfIntersection: (pathA, pathB) => {
       const tmpPathA = pathA.clone();
       const tmpPathB = pathB.clone();
@@ -131,6 +131,7 @@ var ToolAddRegion = { addRegion : (function() {
       Microdraw.backToSelect();
     },
 
+    // eslint-disable-next-line max-statements
     _unite: function (hitResult) {
       const hitRegion = tool._findHitRegion(hitResult);
       const prevRegion = tool._findPreviousRegion();

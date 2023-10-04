@@ -1,8 +1,7 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
 /* global paper */
 
-var ToolBack = {back: (function() {
+window.ToolBack = {back: (function() {
   var tool = {
 
     /**
@@ -71,7 +70,7 @@ var ToolBack = {back: (function() {
      * @param {string} prevTool The previous tool to which the selection goes back
      * @returns {void}
      */
-    click : function click(prevTool) {
+    click : function click() {
       if(!tool._isRegionSelected()) {
         console.log("ERROR: no region selected");
 

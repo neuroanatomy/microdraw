@@ -1,9 +1,8 @@
-/* eslint-disable no-unused-vars */
 /* global Microdraw */
 /* global paper */
 
 
-var ToolRedo = {redo: (function() {
+window.ToolRedo = {redo: (function() {
   const tool = {
 
     /**

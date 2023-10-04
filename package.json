@@ -51,7 +51,7 @@
     "nock": "^10.0.6",
     "pixelmatch": "^5.2.1",
     "pngjs": "^6.0.0",
-    "puppeteer": "^13.3.2",
+    "puppeteer": "^21.1.0",
     "sinon": "^7.3.1",
     "style-loader": "^3.3.1",
     "webpack": "^5.69.1",
