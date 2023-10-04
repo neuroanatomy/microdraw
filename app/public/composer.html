@@ -221,7 +221,7 @@
             }
 
             for (const [index, layer] of this.layers.entries()) {
-                const url = `http://localhost:3000/data?source=${layer.url}&slice=0&displayTools=false`;
+                const url = `/data?source=${layer.url}&slice=0&displayTools=false`;
                 addMicrodrawLayer(
                     url,
                     layer.type,
