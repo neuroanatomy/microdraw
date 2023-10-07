@@ -1,4 +1,6 @@
 {
+    "hostname": "http://localhost:3000",
+    "wshostname": "ws://localhost:8080",
     "app_port": 3000,
     "ws_port": 8080,
     "crdt_backend_host": "localhost",
