@@ -37,9 +37,7 @@ module.exports = (app) => {
     });
   });
 
-  app.use('/data', (req, res, next) => {
-    next();
-  }, require('../controller/data/'));
+  app.use('/data', require('../controller/data/'));
 
   app.use('/user', require('../controller/user/'));
 
