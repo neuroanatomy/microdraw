@@ -1,3 +1,5 @@
+/*
+// not following 301 redirects, we should rather use a higher level alternative like fetch
 const http = require('http');
 
 const getHttpImg = function (req, res) {
@@ -19,10 +21,10 @@ const getHttpImg = function (req, res) {
     res.sendStatus(500);
   });
 };
+*/
 
-exports.getHttpImg = getHttpImg;
+// exports.getHttpImg = getHttpImg;
 
-/*
 const request = require('request');
 
 const getHttpImg = function (req, res) {
@@ -37,4 +39,3 @@ const getHttpImg = function (req, res) {
 };
 
 exports.getHttpImg = getHttpImg;
-*/
