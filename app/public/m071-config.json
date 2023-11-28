@@ -1,0 +1,23 @@
+{
+    "name": "Macaque 071",
+    "description": "High resolution macaque data, obtained by Erika Raven, McGill University, Montreal, Canada.",
+    "anatomyLayers": [
+        {
+            "name": "Nissl",
+            "url": "https://bigbrain-ftp.loris.ca/bigbrain-ftp/BigBrainRelease.2015/MicroDraw/Macaque_CellBody_071/41759_N_071.json",
+            "opacity": 100.0
+        },
+        {
+            "name": "Myelin",
+            "url": "https://bigbrain-ftp.loris.ca/bigbrain-ftp/BigBrainRelease.2015/MicroDraw/Macaque_Myelin_071/41759_M_071.json",
+            "opacity": 50.0
+        }
+    ],
+    "annotationLayers": [
+        {
+            "name": "Insula",
+            "url": "https://bigbrain-ftp.loris.ca/bigbrain-ftp/BigBrainRelease.2015/MicroDraw/Macaque_Annotations_071/41759_labels_071_spectral.json",
+            "opacity": 80.0
+        }
+    ]
+}

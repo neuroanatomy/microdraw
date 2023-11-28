@@ -22,14 +22,29 @@ app.use(bodyParser.urlencoded({ extended: true }));
 let authenticatedUser = null;
 
 const USER_ANONYMOUSE = {
-  username: 'anyone'
+  username: 'anyone',
+  access : {
+    collaborators : 'view',
+    annotations : 'view',
+    files : 'view'
+  }
 };
 
 const USER_BOB = {
-  username: 'bob'
+  username: 'bob',
+  access : {
+    collaborators : 'view',
+    annotations : 'edit',
+    files : 'view'
+  }
 };
 const USER_ALICE = {
-  username: 'alice'
+  username: 'alice',
+  access : {
+    collaborators : 'view',
+    annotations : 'view',
+    files : 'view'
+  }
 };
 // const USER_CINDY = {
 //   username: 'cindy'

@@ -2,6 +2,7 @@
 const express = require('express');
 const router = new express.Router();
 const multer = require('multer');
+const { AccessControlService } = require('neuroweblab');
 
 const fs = require('fs');
 
@@ -42,10 +43,9 @@ router.get('/', async function (req, res) {
                     && result.collaborators.list.map((u) => u.username) || [];
     console.log(`project owner: ${owner}, users: ${users}`);
 
-    // check if user is among the allowed project's users
-    const userIndex = [...users, owner].indexOf(username);
-    if(userIndex<0) {
-      res.status(403).send(`User ${username} not part of project ${project}`);
+    // check if user has view permission
+    if(!AccessControlService.canViewAnnotations(result, username)) {
+      res.status(403).send(`User ${username} does not have permission to view annotations on project ${project}`);
 
       return;
     }
@@ -154,10 +154,10 @@ const saveFromGUI = async function (req, res) {
         && result.collaborators.list.map((u) => u.username);
     console.log(`project owner: ${owner}, users: ${users}`);
 
-    // check if user is among the allowed project's users
-    const userIndex = [...users, owner].indexOf(username);
-    if(userIndex<0) {
-      res.status(403).send(`User ${username} not part of project ${project}`);
+    // check if user has edit permission
+    if(!AccessControlService.canEditAnnotations(result, username)) {
+      res.status(403).send(`User ${username} does not have permission to edit annotations on project ${project}`);
+
 
       return;
     }

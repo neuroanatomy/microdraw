@@ -54,7 +54,7 @@ window.ToolSave = { save: (function() {
     });
 
     if (!res.ok) {
-      throw await res.json();
+      throw await res.text();
     }
 
     // update hash
