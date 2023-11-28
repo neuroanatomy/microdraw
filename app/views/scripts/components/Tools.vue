@@ -3,12 +3,19 @@
     <RangeSlider
       :max="totalSlices"
       v-model="currentSlice"
-      @update:modelValue="sliceChange"
+      @update:model-value="sliceChange"
     />
   </Row>
   <Row>
-    <Button @click="toggleFullscreen()" title="Full screen">
-      <img class="icon" alt="Full screen" src="/img/fullscreen.svg" />
+    <Button
+      @click="toggleFullscreen()"
+      title="Full screen"
+    >
+      <img
+        class="icon"
+        alt="Full screen"
+        src="/img/fullscreen.svg"
+      >
     </Button>
     <ButtonsGroup>
       <Button
@@ -16,24 +23,56 @@
         title="Chat"
         :class="{ pressed: displayChat }"
       >
-        <img class="icon" alt="Chat" src="/img/chat.svg" />
+        <img
+          class="icon"
+          alt="Chat"
+          src="/img/chat.svg"
+        >
       </Button>
       <Button
         @click="toggleScript()"
         title="Script"
         :class="{ pressed: displayScript }"
       >
-        <img class="icon" alt="Script" src="/img/scroll.svg" />
+        <img
+          class="icon"
+          alt="Script"
+          src="/img/scroll.svg"
+        >
       </Button>
     </ButtonsGroup>
-    <Button id="home" @click="selectTool($event)" title="Home">
-      <img class="icon" alt="Home" src="/img/home.svg" />
+    <Button
+      id="home"
+      @click="selectTool($event)"
+      title="Home"
+    >
+      <img
+        class="icon"
+        alt="Home"
+        src="/img/home.svg"
+      >
     </Button>
-    <Button id="zoomIn" @click="selectTool($event)" title="Zoom In">
-      <img class="icon" alt="Zoom In" src="/img/zoomIn.svg" />
+    <Button
+      id="zoomIn"
+      @click="selectTool($event)"
+      title="Zoom In"
+    >
+      <img
+        class="icon"
+        alt="Zoom In"
+        src="/img/zoomIn.svg"
+      >
     </Button>
-    <Button id="zoomOut" @click="selectTool($event)" title="Zoom Out">
-      <img class="icon" alt="Zoom Out" src="/img/zoomOut.svg" />
+    <Button
+      id="zoomOut"
+      @click="selectTool($event)"
+      title="Zoom Out"
+    >
+      <img
+        class="icon"
+        alt="Zoom Out"
+        src="/img/zoomOut.svg"
+      >
     </Button>
   </Row>
   <ButtonsGroup class="clickTools">
@@ -43,7 +82,11 @@
       @click="selectTool($event)"
       title="Navigate"
     >
-      <img class="icon" alt="Navigate" src="/img/navigate.svg" />
+      <img
+        class="icon"
+        alt="Navigate"
+        src="/img/navigate.svg"
+      >
     </Button>
     <Button
       :class="{ pressed: currentTool === 'select' }"
@@ -51,7 +94,11 @@
       @click="selectTool($event)"
       title="Select"
     >
-      <img class="icon" alt="Select" src="/img/select.svg" />
+      <img
+        class="icon"
+        alt="Select"
+        src="/img/select.svg"
+      >
     </Button>
     <Button
       :class="{ pressed: currentTool === 'draw' }"
@@ -59,7 +106,11 @@
       @click="selectTool($event)"
       title="Draw"
     >
-      <img class="icon" alt="Draw" src="/img/draw.svg" />
+      <img
+        class="icon"
+        alt="Draw"
+        src="/img/draw.svg"
+      >
     </Button>
     <Button
       :class="{ pressed: currentTool === 'drawPolygon' }"
@@ -67,7 +118,11 @@
       @click="selectTool($event)"
       title="Draw Polygon"
     >
-      <img class="icon" alt="Draw Polygon" src="/img/drawPolygon.svg" />
+      <img
+        class="icon"
+        alt="Draw Polygon"
+        src="/img/drawPolygon.svg"
+      >
     </Button>
     <Button
       :class="{ pressed: currentTool === 'drawLine' }"
@@ -75,7 +130,11 @@
       @click="selectTool($event)"
       title="Draw Line"
     >
-      <img class="icon" alt="Draw Line" src="/img/drawLine.svg" />
+      <img
+        class="icon"
+        alt="Draw Line"
+        src="/img/drawLine.svg"
+      >
     </Button>
     <Button
       :class="{ pressed: currentTool === 'addPoint' }"
@@ -83,7 +142,11 @@
       @click="selectTool($event)"
       title="Add point"
     >
-      <img class="icon" alt="Add point" src="/img/addPoint.svg" />
+      <img
+        class="icon"
+        alt="Add point"
+        src="/img/addPoint.svg"
+      >
     </Button>
     <Button
       :class="{ pressed: currentTool === 'deletePoint' }"
@@ -91,7 +154,11 @@
       @click="selectTool($event)"
       title="Delete point"
     >
-      <img class="icon" alt="Delete Point" src="/img/deletePoint.svg" />
+      <img
+        class="icon"
+        alt="Delete Point"
+        src="/img/deletePoint.svg"
+      >
     </Button>
     <Button
       :class="{ pressed: currentTool === 'addRegion' }"
@@ -99,7 +166,11 @@
       @click="selectTool($event)"
       title="Add region"
     >
-      <img class="icon" alt="Add region" src="/img/addRegion.svg" />
+      <img
+        class="icon"
+        alt="Add region"
+        src="/img/addRegion.svg"
+      >
     </Button>
     <Button
       :class="{ pressed: currentTool === 'subtractRegion' }"
@@ -107,7 +178,11 @@
       @click="selectTool($event)"
       title="Subtract region"
     >
-      <img class="icon" alt="Subtract region" src="/img/subtractRegion.svg" />
+      <img
+        class="icon"
+        alt="Subtract region"
+        src="/img/subtractRegion.svg"
+      >
     </Button>
     <Button
       :class="{ pressed: currentTool === 'splitRegion' }"
@@ -115,7 +190,11 @@
       @click="selectTool($event)"
       title="Split region"
     >
-      <img class="icon" alt="Split region" src="/img/splitRegion.svg" />
+      <img
+        class="icon"
+        alt="Split region"
+        src="/img/splitRegion.svg"
+      >
     </Button>
     <Button
       :class="{ pressed: currentTool === 'rotate' }"
@@ -123,7 +202,11 @@
       @click="selectTool($event)"
       title="Rotate"
     >
-      <img class="icon" alt="Rotate" src="/img/rotate.svg" />
+      <img
+        class="icon"
+        alt="Rotate"
+        src="/img/rotate.svg"
+      >
     </Button>
     <Button
       :class="{ pressed: currentTool === 'flipRegion' }"
@@ -131,72 +214,196 @@
       @click="selectTool($event)"
       title="Flip region"
     >
-      <img class="icon" alt="Flip region" src="/img/flipRegion.svg" />
+      <img
+        class="icon"
+        alt="Flip region"
+        src="/img/flipRegion.svg"
+      >
     </Button>
   </ButtonsGroup>
   <Row>
     <Button
-        style="padding: 1px"
-        @click="toggleOntology()"
-        v-if="
-          ontology != null &&
+      style="padding: 1px"
+      @click="toggleOntology()"
+      v-if="
+        ontology != null &&
           ontology.labels != null &&
           ontology.labels[currentLabel] != null
-        "
+      "
+    >
+      <div
+        class="color"
+        :style="`background-color: rgb(${ontology.labels[currentLabel].color[0]}, ${ontology.labels[currentLabel].color[1]}, ${ontology.labels[currentLabel].color[2]})`"
+      />
+    </Button>
+    <Button
+      id="back"
+      @click="selectTool($event)"
+      title="Back"
+    >
+      <img
+        class="icon"
+        alt="Back"
+        src="/img/back.svg"
       >
-        <div
-          class="color"
-          :style="`background-color: rgb(${ontology.labels[currentLabel].color[0]}, ${ontology.labels[currentLabel].color[1]}, ${ontology.labels[currentLabel].color[2]})`"
-        ></div>
-      </Button>
-    <Button id="back" @click="selectTool($event)" title="Back">
-      <img class="icon" alt="Back" src="/img/back.svg" />
     </Button>
-    <Button id="backward" @click="selectTool($event)" title="Backward">
-      <img class="icon" alt="Backward" src="/img/backward.svg" />
+    <Button
+      id="backward"
+      @click="selectTool($event)"
+      title="Backward"
+    >
+      <img
+        class="icon"
+        alt="Backward"
+        src="/img/backward.svg"
+      >
     </Button>
-    <Button id="foreward" @click="selectTool($event)" title="Foreward">
-      <img class="icon" alt="Foreward" src="/img/foreward.svg" />
+    <Button
+      id="foreward"
+      @click="selectTool($event)"
+      title="Foreward"
+    >
+      <img
+        class="icon"
+        alt="Foreward"
+        src="/img/foreward.svg"
+      >
     </Button>
-    <Button id="front" @click="selectTool($event)" title="Front">
-      <img class="icon" alt="Front" src="/img/front.svg" />
+    <Button
+      id="front"
+      @click="selectTool($event)"
+      title="Front"
+    >
+      <img
+        class="icon"
+        alt="Front"
+        src="/img/front.svg"
+      >
     </Button>
   </Row>
   <Row>
-    <Button id="simplify" @click="selectTool($event)" title="Simplify">
-      <img class="icon" alt="Simplify" src="/img/simplify.svg" />
+    <Button
+      id="simplify"
+      @click="selectTool($event)"
+      title="Simplify"
+    >
+      <img
+        class="icon"
+        alt="Simplify"
+        src="/img/simplify.svg"
+      >
     </Button>
-    <Button id="toPolygon" @click="selectTool($event)" title="To Polygon">
-      <img class="icon" alt="To Polygon" src="/img/toPolygon.svg" />
+    <Button
+      id="toPolygon"
+      @click="selectTool($event)"
+      title="To Polygon"
+    >
+      <img
+        class="icon"
+        alt="To Polygon"
+        src="/img/toPolygon.svg"
+      >
     </Button>
-    <Button id="toBezier" @click="selectTool($event)" title="To Bezier">
-      <img class="icon" alt="To Bezier" src="/img/toBezier.svg" />
+    <Button
+      id="toBezier"
+      @click="selectTool($event)"
+      title="To Bezier"
+    >
+      <img
+        class="icon"
+        alt="To Bezier"
+        src="/img/toBezier.svg"
+      >
     </Button>
-    <Button id="copy" @click="selectTool($event)" title="Copy">
-      <img class="icon" alt="Copy" src="/img/copy.svg" />
+    <Button
+      id="copy"
+      @click="selectTool($event)"
+      title="Copy"
+    >
+      <img
+        class="icon"
+        alt="Copy"
+        src="/img/copy.svg"
+      >
     </Button>
-    <Button id="paste" @click="selectTool($event)" title="Paste">
-      <img class="icon" alt="Copy" src="/img/paste.svg" />
+    <Button
+      id="paste"
+      @click="selectTool($event)"
+      title="Paste"
+    >
+      <img
+        class="icon"
+        alt="Copy"
+        src="/img/paste.svg"
+      >
     </Button>
   </Row>
   <Row>
-    <Button id="save" @click="selectTool($event)" title="Save">
-      <img class="icon" alt="Save" src="/img/save.svg" />
+    <Button
+      id="save"
+      @click="selectTool($event)"
+      title="Save"
+    >
+      <img
+        class="icon"
+        alt="Save"
+        src="/img/save.svg"
+      >
     </Button>
-    <Button id="screenshot" @click="selectTool($event)" title="Screenshot">
-      <img class="icon" alt="Screenshot" src="/img/screenshot.svg" />
+    <Button
+      id="screenshot"
+      @click="selectTool($event)"
+      title="Screenshot"
+    >
+      <img
+        class="icon"
+        alt="Screenshot"
+        src="/img/screenshot.svg"
+      >
     </Button>
-    <Button id="doDelete" @click="selectTool($event)" title="Delete">
-      <img class="icon" alt="Delete" src="/img/delete.svg" />
+    <Button
+      id="doDelete"
+      @click="selectTool($event)"
+      title="Delete"
+    >
+      <img
+        class="icon"
+        alt="Delete"
+        src="/img/delete.svg"
+      >
     </Button>
-    <Button id="findContours" @click="selectTool($event)" title="Find Contours">
-      <img class="icon" alt="Find Contours" src="/img/findContours.svg" />
+    <Button
+      id="findContours"
+      @click="selectTool($event)"
+      title="Find Contours"
+    >
+      <img
+        class="icon"
+        alt="Find Contours"
+        src="/img/findContours.svg"
+      >
     </Button>
-    <Button id="undo" @click="selectTool($event)" title="Undo">
-      <img class="icon" alt="Undo" src="/img/undo.svg" />
+    <Button
+      id="undo"
+      @click="selectTool($event)"
+      title="Undo"
+    >
+      <img
+        class="icon"
+        alt="Undo"
+        src="/img/undo.svg"
+      >
     </Button>
-    <Button id="redo" @click="selectTool($event)" title="Redo">
-      <img class="icon" alt="Redo" src="/img/redo.svg" />
+    <Button
+      id="redo"
+      @click="selectTool($event)"
+      title="Redo"
+    >
+      <img
+        class="icon"
+        alt="Redo"
+        src="/img/redo.svg"
+      >
     </Button>
   </Row>
   <Row
@@ -206,7 +413,7 @@
     <div class="text">
       <Chat
         v-if="displayChat"
-        :receivedMessages="receivedMessages"
+        :received-messages="receivedMessages"
         :notification="notification"
         @send-message="sendChatMessage"
       />
@@ -221,11 +428,10 @@ import {
   Chat,
   RangeSlider,
   Row,
-  Col,
-  ScriptConsole,
-} from "nwl-components";
-import { ref, onMounted } from "vue";
-import useVisualization from "../store/visualization";
+  ScriptConsole
+} from 'nwl-components';
+
+import useVisualization from '../store/visualization';
 
 const {
   title,
@@ -248,7 +454,7 @@ const sliceChange = (slice) => {
   Microdraw.sliderOnChange(slice);
 };
 
-const toggleFullscreen = async () => {
+const toggleFullscreen = () => {
   fullscreen.value = !fullscreen.value;
   setTimeout(() => {
     Microdraw.resizeAnnotationOverlay();
@@ -274,8 +480,10 @@ const toggleOntology = () => {
 };
 
 const selectTool = (event) => {
-  currentTool.value = event.currentTarget.id;
-  Microdraw.toolSelection(event.currentTarget.id);
+  let tool = event.currentTarget.id;
+  if (tool === 'doDelete') { tool = 'delete'; }
+  currentTool.value = tool;
+  Microdraw.toolSelection(tool);
 };
 
 const sendChatMessage = (message) => {
@@ -322,5 +530,5 @@ button img.icon {
     height: calc(100% - 22px);
   }
   </style>
-  
-  
+
+

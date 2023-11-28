@@ -1,10 +1,13 @@
 /* global Microdraw */
 
 'use strict';
-const UI = require('../UI');
-const U = require('../mocha.test.util');
 const chai = require('chai');
-var {assert} = chai;
+const puppeteer = require('puppeteer');
+
+const U = require('../mocha.test.util');
+const UI = require('../UI');
+
+const {assert} = chai;
 
 // try {
 //   require('puppeteer');
@@ -12,12 +15,18 @@ var {assert} = chai;
 //   console.warn(`[microdraw]: dependency error: puppeteer needs to be installed manually. - npm i puppeteer`);
 //   process.exit(1);
 // }
-const puppeteer = require('puppeteer');
 
-const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
+const shadow = (sel) => `document.querySelector("#microdraw").shadowRoot.querySelector("${sel}")`;
+
+const selectTool = (tool) => `document.querySelector(".tools ${tool}")`;
 
 let browser;
 let page;
+
+const clickTool = async function (tool) {
+  const handle = await page.evaluateHandle(selectTool(tool));
+  await handle.click();
+};
 
 const shadowclick = async function (sel) {
   const handle = await page.evaluateHandle(shadow(sel));
@@ -26,7 +35,7 @@ const shadowclick = async function (sel) {
 
 describe('Editing tools: draw polygons and curves', () => {
   it('opens a data page', async () => {
-    browser = await puppeteer.launch({headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'], dumpio: false});
+    browser = await puppeteer.launch({headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox'], dumpio: false});
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
     await page.goto( // load test page
@@ -47,14 +56,14 @@ describe('Editing tools: draw polygons and curves', () => {
   // eslint-disable-next-line max-statements
   it('draws a triangle', async () => {
     // select the polygon tool
-    await shadowclick(UI.DRAWPOLYGON);
+    await clickTool(UI.DRAWPOLYGON);
     // draw a triangle
     await page.mouse.click(300, 100);
     await page.mouse.click(400, 100);
     await page.mouse.click(350, 200);
     await page.mouse.click(300, 100);
 
-    const filename = "draw.02.cat-triangle.png";
+    const filename = 'draw.02.cat-triangle.png';
     await page.screenshot({path: U.newPath + filename});
 
     const res = await page.evaluate(() => ({
@@ -96,14 +105,14 @@ describe('Editing tools: draw polygons and curves', () => {
   // eslint-disable-next-line max-statements
   it('draws and saves a triangle', async () => {
     // select the polygon tool
-    await shadowclick(UI.DRAWPOLYGON);
+    await clickTool(UI.DRAWPOLYGON);
     // draw a triangle
     await page.mouse.click(300, 100);
     await page.mouse.click(400, 100);
     await page.mouse.click(350, 200);
     await page.mouse.click(300, 100);
 
-    await shadowclick(UI.SAVE); // select the save tool
+    await clickTool(UI.SAVE); // select the save tool
     await page.goto( // reloads
       'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
       { waitUntil: 'networkidle0' }
@@ -132,11 +141,11 @@ describe('Editing tools: draw polygons and curves', () => {
 
   // eslint-disable-next-line max-statements
   it('selects, deletes and saves the triangle', async () => {
-    await shadowclick(UI.SELECT); // select tool
+    await clickTool(UI.SELECT); // select tool
     await shadowclick(UI.CANVAS); // select triangle
-    await page.mouse.click(350, 150);
-    await shadowclick(UI.DELETE); // delete tool
-    await shadowclick(UI.SAVE); // select the save tool
+    await page.mouse.click(350, 182);
+    await clickTool(UI.DELETE); // delete tool
+    await clickTool(UI.SAVE); // select the save tool
     await page.goto( // reload
       'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
       { waitUntil: 'networkidle0' }
@@ -164,7 +173,7 @@ describe('Editing tools: draw polygons and curves', () => {
   // eslint-disable-next-line max-statements
   it('draws a curve', async () => {
     // page.on('console', message => console.log(`${message.type().substr(0, 3).toUpperCase()} ${message.text()}`));
-    await shadowclick(UI.DRAW);
+    await clickTool(UI.DRAW);
 
     const o = [U.width*2/3, U.height/2];
     const r = U.width/4;
@@ -181,7 +190,7 @@ describe('Editing tools: draw polygons and curves', () => {
     await page.mouse.up();
     await U.waitUntilHTMLRendered(page);
 
-    const filename = "draw.06.cat-draw-circle.png";
+    const filename = 'draw.06.cat-draw-circle.png';
     await page.screenshot({path: U.newPath + filename});
 
     const res = await page.evaluate(() => ({
@@ -201,7 +210,7 @@ describe('Editing tools: draw polygons and curves', () => {
 
   // eslint-disable-next-line max-statements
   it('adds a point', async () => {
-    await shadowclick(UI.ADDPOINT);
+    await clickTool(UI.ADDPOINT);
 
     const o = [U.width*2/3, U.height/2];
     const r = U.width/4;
@@ -211,7 +220,7 @@ describe('Editing tools: draw polygons and curves', () => {
     await page.mouse.click(x, y);
     await U.waitUntilHTMLRendered(page);
 
-    const filename = "draw.07.cat-draw-addPoint.png";
+    const filename = 'draw.07.cat-draw-addPoint.png';
     await page.screenshot({path: U.newPath + filename});
 
     const res = await page.evaluate(() => ({
@@ -230,7 +239,7 @@ describe('Editing tools: draw polygons and curves', () => {
 
   // eslint-disable-next-line max-statements
   it('removes a point', async () => {
-    await shadowclick(UI.DELETEPOINT);
+    await clickTool(UI.DELETEPOINT);
 
     const o = [U.width*2/3, U.height/2];
     const r = U.width/4;
@@ -240,7 +249,7 @@ describe('Editing tools: draw polygons and curves', () => {
     await page.mouse.click(x, y);
     await U.waitUntilHTMLRendered(page);
 
-    const filename = "draw.08.cat-draw-deletePoint.png";
+    const filename = 'draw.08.cat-draw-deletePoint.png';
     await page.screenshot({path: U.newPath + filename});
 
     const res = await page.evaluate(() => ({

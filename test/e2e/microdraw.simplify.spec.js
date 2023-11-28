@@ -1,8 +1,11 @@
 'use strict';
-const UI = require('../UI');
-const U = require('../mocha.test.util');
 const chai = require('chai');
-var {assert} = chai;
+const puppeteer = require('puppeteer');
+
+const U = require('../mocha.test.util');
+const UI = require('../UI');
+
+const {assert} = chai;
 
 // try {
 //   require('puppeteer');
@@ -10,21 +13,21 @@ var {assert} = chai;
 //   console.warn(`[microdraw]: dependency error: puppeteer needs to be installed manually. - npm i puppeteer`);
 //   process.exit(1);
 // }
-const puppeteer = require('puppeteer');
 
-const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
 let browser;
 let page;
 
-const shadowclick = async function(sel) {
-  const handle = await page.evaluateHandle(shadow(sel));
+const selectTool = (tool) => `document.querySelector(".tools ${tool}")`;
+
+const clickTool = async function (tool) {
+  const handle = await page.evaluateHandle(selectTool(tool));
   await handle.click();
 };
 
 describe('Editing tools: simplify', () => {
   before(async () => {
-    browser = await puppeteer.launch({headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    browser = await puppeteer.launch({headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   });
   it('opens a data page', async () => {
     page = await browser.newPage();
@@ -40,7 +43,7 @@ describe('Editing tools: simplify', () => {
   // eslint-disable-next-line max-statements
   it('draws a star polygon', async () => {
     // select the polygon tool
-    await shadowclick(UI.DRAWPOLYGON);
+    await clickTool(UI.DRAWPOLYGON);
 
     const o = [U.width*2/3, U.height/2];
     const r = U.width/4;
@@ -53,27 +56,27 @@ describe('Editing tools: simplify', () => {
     }
     await U.waitUntilHTMLRendered(page);
 
-    const filename = "simplify.02.cat-star.png";
+    const filename = 'simplify.02.cat-star.png';
     await page.screenshot({path: U.newPath + filename});
     const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     assert(diff<U.pct5, `${diff} pixels were different`);
   }).timeout(0);
 
   it('simplify once', async () => {
-    await shadowclick(UI.SIMPLIFY);
+    await clickTool(UI.SIMPLIFY);
     await U.waitUntilHTMLRendered(page);
 
-    const filename = "simplify.03.cat-simplified.png";
+    const filename = 'simplify.03.cat-simplified.png';
     await page.screenshot({path: U.newPath + filename});
     const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     assert(diff<U.pct5, `${diff} pixels were different`);
   }).timeout(0);
 
   it('simplify again', async () => {
-    await shadowclick(UI.SIMPLIFY);
+    await clickTool(UI.SIMPLIFY);
     await U.waitUntilHTMLRendered(page);
 
-    const filename = "simplify.04.cat-simplified.png";
+    const filename = 'simplify.04.cat-simplified.png';
     await page.screenshot({path: U.newPath + filename});
     const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     assert(diff<U.pct5, `${diff} pixels were different`);
