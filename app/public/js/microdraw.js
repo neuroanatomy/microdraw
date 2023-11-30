@@ -1408,7 +1408,7 @@ const Microdraw = (function () {
           const data = await me.microdrawDBLoad();
           let slice;
           ({regions, slice} = me._addRegions(data));
-          if (slice !== Microdraw.currentImage) {
+          if (Number(slice) !== Number(Microdraw.currentImage)) {
             return;
           }
         }
