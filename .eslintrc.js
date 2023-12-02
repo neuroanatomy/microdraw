@@ -9,7 +9,11 @@ module.exports = {
   'rules': { 'vue/multi-word-component-names': 'off' },
   'overrides': [
     {
-      files: ['app/views/scripts/components/Tools.vue'],
+      files: [
+        'app/views/scripts/components/Tools.vue',
+        'app/views/scripts/components/Embed.vue',
+        'app/views/scripts/components/Data.vue'
+      ],
       rules: {
         'max-lines': 'off',
         'no-undef': 'off'

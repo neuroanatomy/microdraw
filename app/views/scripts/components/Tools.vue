@@ -406,10 +406,7 @@
       >
     </Button>
   </Row>
-  <Row
-    style="flex: 1; min-height: 40px"
-    v-if="displayChat || displayScript"
-  >
+  <Row v-if="displayChat || displayScript">
     <div class="text">
       <Chat
         v-if="displayChat"
