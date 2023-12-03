@@ -1,5 +1,5 @@
 <template>
-  <main>
+  <main class="editor">
     <OntologySelector
       :ontology="ontology"
       :open="displayOntology"
@@ -15,6 +15,11 @@
         <Tools />
       </template>
       <template #content>
+        <LayersManager
+          :open="displayLayers"
+          @on-close="displayLayers = false"
+        />
+
         <div
           id="microdraw"
           style="width: 100%; height: 100%"
@@ -46,6 +51,7 @@ import * as Vue from 'vue';
 
 import useVisualization from '../store/visualization';
 
+import LayersManager from './LayersManager.vue';
 import Tools from './Tools.vue';
 
 
@@ -70,6 +76,7 @@ const {
   displayChat,
   displayScript,
   displayOntology,
+  displayLayers,
   currentLabel,
   ontology,
   fullscreen,

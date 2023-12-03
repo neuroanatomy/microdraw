@@ -1214,7 +1214,7 @@ const Microdraw = (function () {
       me.viewerOpenImage(me.ImageInfo[me.currentImage]);
 
       // update layers if there's any
-      me.tools.layers.updateLayers();
+      window.dispatchEvent(new CustomEvent('updateMicrodrawLayers'));
     },
 
     /**

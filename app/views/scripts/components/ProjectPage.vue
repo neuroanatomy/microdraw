@@ -30,12 +30,16 @@
       <Editor
         :title="title"
         :class="{reduced: !displayChat && !displayScript}"
-        tools-min-height="300px"
+        tools-min-height="320px"
       >
         <template #tools>
           <Tools />
         </template>
         <template #content>
+          <LayersManager
+            :open="displayLayers"
+            @on-close="displayLayers = false"
+          />
           <div
             id="microdraw"
             style="width: 100%; height: 100%"
@@ -63,6 +67,7 @@ import * as Vue from 'vue';
 import config from '../../../../cfg.json';
 import useVisualization from '../store/visualization';
 
+import LayersManager from './LayersManager.vue';
 import Tools from './Tools.vue';
 
 // make SyncedStore use Vuejs internally
@@ -101,6 +106,7 @@ const {
   displayChat,
   displayScript,
   displayOntology,
+  displayLayers,
   currentLabel,
   ontology,
   fullscreen,

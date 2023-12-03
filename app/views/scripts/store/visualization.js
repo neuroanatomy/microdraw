@@ -13,6 +13,7 @@ const state = reactive({
   displayChat: true,
   displayScript: false,
   displayOntology: false,
+  displayLayers: false,
   ontology: null,
   currentLabel: 0,
   currentFile: null,
@@ -26,7 +27,7 @@ const loadScript = (path, testScriptPresent) => new Promise((resolve, reject) =>
   if(testScriptPresent && testScriptPresent()) {
     resolve();
   }
-  const s = document.createElement("script");
+  const s = document.createElement('script');
   s.src = path;
   s.onload=resolve;
   s.onerror=reject;
@@ -34,13 +35,13 @@ const loadScript = (path, testScriptPresent) => new Promise((resolve, reject) =>
 });
 
 const attachMicrodraw = async () => {
-  const res = await fetch("/microdraw");
+  const res = await fetch('/microdraw');
   const txt = await res.text();
   const parser = new DOMParser();
   const elem = parser.parseFromString(txt, 'text/html').documentElement;
-  const shadow = document.querySelector("#microdraw").attachShadow({mode: 'open'});
+  const shadow = document.querySelector('#microdraw').attachShadow({mode: 'open'});
   shadow.appendChild(elem);
-  await loadScript("/js/microdraw.js");
+  await loadScript('/js/microdraw.js');
   await Microdraw.init(shadow);
   state.ontology = Microdraw.ontology;
 };

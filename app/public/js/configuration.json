@@ -68,16 +68,6 @@
         "iconPath": "/img/draw.svg"
       },
       {
-        "name": "Layers",
-        "id": "layers",
-        "desc": "",
-        "exportedVar": [
-          "ToolLayers"
-        ],
-        "scriptPath": "/js/tools/layers.js",
-        "iconPath": "/img/layers.svg"
-      },
-      {
         "name": "DrawPolygon",
         "id": "drawPolygon",
         "desc": "",

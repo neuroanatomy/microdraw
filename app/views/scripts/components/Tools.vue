@@ -237,6 +237,17 @@
       />
     </Button>
     <Button
+      id="layers"
+      @click="toggleLayers()"
+      title="Layers"
+    >
+      <img
+        class="icon"
+        alt="Layers"
+        src="/img/layers.svg"
+      >
+    </Button>
+    <Button
       id="back"
       @click="selectTool($event)"
       title="Back"
@@ -406,7 +417,10 @@
       >
     </Button>
   </Row>
-  <Row v-if="displayChat || displayScript">
+  <Row
+    v-if="displayChat || displayScript"
+    class="textRow"
+  >
     <div class="text">
       <Chat
         v-if="displayChat"
@@ -442,7 +456,8 @@ const {
   fullscreen,
   displayChat,
   displayScript,
-  displayOntology
+  displayOntology,
+  displayLayers
 } = useVisualization();
 
 const sliceChange = (slice) => {
@@ -474,6 +489,10 @@ const toggleScript = () => {
 
 const toggleOntology = () => {
   displayOntology.value = !displayOntology.value;
+};
+
+const toggleLayers = () => {
+  displayLayers.value = !displayLayers.value;
 };
 
 const selectTool = (event) => {
@@ -515,6 +534,10 @@ button img.icon {
 }
 .text {
   width: 100%;
+}
+.textRow {
+  flex: 1;
+  min-height: 40px;
 }
 </style>
 <style>

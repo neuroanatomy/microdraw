@@ -12,7 +12,8 @@ module.exports = {
       files: [
         'app/views/scripts/components/Tools.vue',
         'app/views/scripts/components/Embed.vue',
-        'app/views/scripts/components/Data.vue'
+        'app/views/scripts/components/Data.vue',
+        'app/views/scripts/components/LayersManager.vue'
       ],
       rules: {
         'max-lines': 'off',
