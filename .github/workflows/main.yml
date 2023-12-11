@@ -19,7 +19,6 @@ jobs:
         with:
           mongodb-version: 4.2
       - run: npm install
-      - run: npm run build-pages
       - name: Instantiate github-keys.json
         run: |
           echo "{ \"clientID\": \"clientID\", \"clientSecret\": \"clientSecret\", \"callbackURL\": \"http://localhost:3000/auth/github/callback\"}" > app/auth/github-keys.json
@@ -31,6 +30,7 @@ jobs:
         run: echo {} > app/controller/microdrawWebsocketServer/blacklist.json
       - name: Instantiate whitelist
         run: echo "{}" > app/controller/microdrawWebsocketServer/whitelist.json
+      - run: npm run build-pages
       - name: Run the server during 5 seconds
         run: timeout 5 npm start && exit 10 || [[ $? -eq 124 ]]
       - name: Run api tests
