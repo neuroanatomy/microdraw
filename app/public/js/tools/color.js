@@ -21,13 +21,56 @@ window.ToolColor = { color : (function() {
       const obj = dom.querySelector("#labelset-panel");
       obj.style.display = "none";
     },
+    _handleStart: (obj) => {
+      const _start = (e) => {
+        if (e.target.id !== "labelset-header") { return; }
+        tool._isDragging = true;
+        const {top, left, width, height} = obj.getBoundingClientRect();
+
+        if (e.type === "touchstart") {
+          e = e.touches[0];
+        }
+
+        tool._offsetX = e.clientX - left - width/2;
+        tool._offsetY = e.clientY - top - (height)/2;
+        obj.classList.add('dragging');
+      };
+      obj.querySelector("#labelset-header").addEventListener('mousedown', _start);
+      obj.querySelector("#labelset-header").addEventListener('touchstart', _start);
+    },
+    _handleMove: (obj) => {
+      const _move = (e) => {
+        if (!tool._isDragging) { return; }
+        if (e.type === "touchmove") {
+          e = e.touches[0];
+        }
+        obj.style.left = (e.clientX - tool._offsetX) + 'px';
+        obj.style.top = (e.clientY - tool._offsetY) + 'px';
+      };
+      dom.addEventListener('mousemove', _move);
+      dom.addEventListener('touchmove', _move);
+    },
+    _handleEnd: (obj) => {
+      const _end = () => {
+        if (!tool._isDragging) { return; }
+        tool._isDragging = false;
+        obj.classList.remove('dragging');
+      };
+      dom.addEventListener('mouseup', _end);
+      dom.addEventListener('touchend', _end);
+    },
     _attachLabelsetContainer: () => {
       const obj = dom.querySelector("#labelset-panel");
       dom.querySelector("body").appendChild(obj);
       obj.style.display = "block";
+
       obj.querySelector("span#labels-name").textContent = Microdraw.ontology.name;
       obj.querySelector("#labels-close").onclick = tool._detachLabelsetContainer;
       obj.querySelector("#label-list").innerHTML = "";
+
+      tool._handleStart(obj);
+      tool._handleMove(obj);
+      tool._handleEnd(obj);
     },
 
     _attachLabel: (l, i) => {

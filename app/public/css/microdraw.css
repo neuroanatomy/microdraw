@@ -403,17 +403,19 @@ body[data-toolbarDisplay=right] #tools-minimized div {
   left: 50%;
   transform: translate( -50%, -50%);
   background-color: rgba(0, 0, 0, 0.8);
+  border: thin solid #777;
   padding: 10px;
   text-align: left;
   z-index: 21;
   font-size: 0.8rem;
+  resize: both;
 }
 #labelset-header {
     height: 36px;
     background-color: #666;
     padding: 0 5px 0 10px;
     margin: -10px -10px 5px -10px;
-    pointer-events: none;
+    /* pointer-events: none; */
 }
 .label-color {
   vertical-align: middle;
@@ -459,6 +461,7 @@ body[data-toolbarDisplay=right] #tools-minimized div {
     padding: 10px;
     z-index: 100;
     font-size: 0.8rem;
+    resize: both;
 }
 #layers-header {
     height: 36px;
@@ -508,6 +511,15 @@ b.layer-item {
     display: none;
     background-color: #333;
     padding: 10px;
+}
+#layer-position {
+    width: 22px;
+    height: 22px;
+    border: 0;
+    border-radius: 40px;
+    margin-left: 5px;
+    right: auto;
+    bottom: auto;
 }
 /*-----------------*/
 
