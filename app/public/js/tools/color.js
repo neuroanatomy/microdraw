@@ -24,6 +24,10 @@ window.ToolColor = { color : (function() {
     _handleStart: (obj) => {
       const _start = (e) => {
         if (e.target.id !== "labelset-header") { return; }
+
+        e.preventDefault();
+        e.stopPropagation();
+
         tool._isDragging = true;
         const {top, left, width, height} = obj.getBoundingClientRect();
 
@@ -35,12 +39,14 @@ window.ToolColor = { color : (function() {
         tool._offsetY = e.clientY - top - (height)/2;
         obj.classList.add('dragging');
       };
+
       obj.querySelector("#labelset-header").addEventListener('mousedown', _start);
       obj.querySelector("#labelset-header").addEventListener('touchstart', _start);
     },
     _handleMove: (obj) => {
       const _move = (e) => {
         if (!tool._isDragging) { return; }
+
         if (e.type === "touchmove") {
           e = e.touches[0];
         }
