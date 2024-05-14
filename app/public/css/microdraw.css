@@ -415,6 +415,7 @@ body[data-toolbarDisplay=right] #tools-minimized div {
     background-color: #666;
     padding: 0 5px 0 10px;
     margin: -10px -10px 5px -10px;
+    cursor:  pointer;
     /* pointer-events: none; */
 }
 .label-color {
@@ -453,11 +454,13 @@ body[data-toolbarDisplay=right] #tools-minimized div {
     position: fixed;
     width: 600px;
     height: 300px;
-    max-height: 300px;
+    /* max-height: 300px; */
+    overflow: scroll;
     top: 50%;
     left: 50%;
     transform: translate( -50%, -50%);
     background-color: rgba(0, 0, 0, 0.8);
+    border: thin solid #777;
     padding: 10px;
     z-index: 100;
     font-size: 0.8rem;
@@ -468,7 +471,8 @@ body[data-toolbarDisplay=right] #tools-minimized div {
     background-color: #666;
     padding: 0 5px 0 10px;
     margin: -10px -10px 5px -10px;
-    pointer-events: none;
+    cursor:  pointer;
+    /* pointer-events: none; */
 }
 #layers-list {
     height: 220px;

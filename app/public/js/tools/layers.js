@@ -14,7 +14,8 @@ window.ToolLayers = { layers : (function() {
         </li>
       <li><b class="layer-item">Position (%)</b>
         <input class="layer-value" value="0" onchange="Microdraw.tools.layers.changeX(event)" />
-        <input class="layer-value" value="0" onchange="Microdraw.tools.layers.changeY(event)" /></li>
+        <input class="layer-value" value="0" onchange="Microdraw.tools.layers.changeY(event)" />
+        <button id="layer-position" onclick="Microdraw.tools.layers.changePosition(event)"></button></li>
       <li><b class="layer-item">Rotation (deg):</b> <input class="layer-value" value="0" onchange="Microdraw.tools.layers.changeRotation(event)" /></li>
       <li><b class="layer-item"> First slice:</b> <input class="layer-value" value="0" min="0" max="layer.maxSlice" onchange="Microdraw.tools.layers.changeFirstSlice(event)" /> (0 - layer.maxSlice)</li>
       <li><b class="layer-item"> Last slice:</b> <input class="layer-value" value="layer.maxSlice" min="0" max="layer.maxSlice" onchange="Microdraw.tools.layers.changeLastSlice(event)" /> (0 - layer.maxSlice)</li>
@@ -227,30 +228,57 @@ window.ToolLayers = { layers : (function() {
     _isDragging: false,
     _offsetX: 0,
     _offsetY: 0,
+    _handleStart: (obj) => {
+      const _start = (e) => {
+        if (e.target.id !== "layers-header") { return; }
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        tool._isDragging = true;
+        const {top, left, width, height} = obj.getBoundingClientRect();
+
+        if (e.type === "touchstart") {
+          e = e.touches[0];
+        }
+
+        tool._offsetX = e.clientX - left - width/2;
+        tool._offsetY = e.clientY - top - (height)/2;
+        obj.classList.add('dragging');
+      };
+
+      obj.querySelector("#layers-header").addEventListener('mousedown', _start);
+      obj.querySelector("#layers-header").addEventListener('touchstart', _start);
+    },
+    _handleMove: (obj) => {
+      const _move = (e) => {
+        if (!tool._isDragging) { return; }
+
+        if (e.type === "touchmove") {
+          e = e.touches[0];
+        }
+        obj.style.left = (e.clientX - tool._offsetX) + 'px';
+        obj.style.top = (e.clientY - tool._offsetY) + 'px';
+      };
+      dom.addEventListener('mousemove', _move);
+      dom.addEventListener('touchmove', _move);
+    },
+    _handleEnd: (obj) => {
+      const _end = () => {
+        if (!tool._isDragging) { return; }
+        tool._isDragging = false;
+        obj.classList.remove('dragging');
+      };
+      dom.addEventListener('mouseup', _end);
+      dom.addEventListener('touchend', _end);
+    },
     _attachLayersContainer: () => {
       const obj = dom.querySelector("#layers-panel");
       obj.style.display = "block";
 
-      obj.addEventListener('mousedown', function(e) {
-        if (e.target.id !== "layers-panel") { return; }
-        tool._isDragging = true;
-        const {top, left, width, height} = obj.getBoundingClientRect();
-        tool._offsetX = e.clientX - left - width/2;
-        tool._offsetY = e.clientY - top - (height)/2;
-        obj.classList.add('dragging');
-      });
-
-      dom.addEventListener('mousemove', function(e) {
-        if (!tool._isDragging) { return; }
-        obj.style.left = (e.clientX - tool._offsetX) + 'px';
-        obj.style.top = (e.clientY - tool._offsetY) + 'px';
-      });
-
-      dom.addEventListener('mouseup', function() {
-        if (!tool._isDragging) { return; }
-        tool._isDragging = false;
-        obj.classList.remove('dragging');
-      });
+      tool._handleStart(obj);
+      tool._handleMove(obj);
+      tool._handleEnd(obj);
     },
 
     _attachLayer: () => {
