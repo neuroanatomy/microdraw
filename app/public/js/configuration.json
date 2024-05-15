@@ -8,6 +8,7 @@
   "presets": {
     "default": [
       { "name": "Select", "id": "select", "desc": "", "exportedVar": ["ToolSelect"], "scriptPath": "/js/tools/select.js", "iconPath": "/img/select.svg" },
+      { "name": "Move", "id": "move", "desc": "", "exportedVar": ["ToolMove"], "scriptPath": "/js/tools/move.js", "iconPath": "/img/move.svg" },
       { "name": "Back", "id": "back", "desc": "Move selection to the back", "exportedVar": ["ToolBack"], "scriptPath": "/js/tools/back.js", "iconPath": "/img/back.svg" },
       { "name": "Backward", "id": "backward", "desc": "Move selection one step back", "exportedVar": ["ToolBackward"], "scriptPath": "/js/tools/backward.js", "iconPath": "/img/backward.svg" },
       { "name": "Foreward", "id": "foreward", "desc": "Move selection on step front", "exportedVar": ["ToolForeward"], "scriptPath": "/js/tools/foreward.js", "iconPath": "/img/foreward.svg" },

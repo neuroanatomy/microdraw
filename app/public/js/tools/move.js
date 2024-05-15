@@ -2,7 +2,7 @@
 /* global paper */
 
 
-window.ToolSelect = {select: (function() {
+window.ToolMove = {move: (function() {
   const tool = {
 
     /**
@@ -14,13 +14,13 @@ window.ToolSelect = {select: (function() {
     mouseDrag: function mouseDrag(point, dpoint) {
 
       // event.stopHandlers = true;
-      // for( var reg of Microdraw.ImageInfo[Microdraw.currentImage].Regions ) {
-      //   if( reg.path.selected ) {
-      //     reg.path.position.x += dpoint.x;
-      //     reg.path.position.y += dpoint.y;
-      //     Microdraw.commitMouseUndo();
-      //   }
-      // }
+      for( var reg of Microdraw.ImageInfo[Microdraw.currentImage].Regions ) {
+        if( reg.path.selected ) {
+          reg.path.position.x += dpoint.x;
+          reg.path.position.y += dpoint.y;
+          Microdraw.commitMouseUndo();
+        }
+      }
     },
 
     _handleHitResultType: function (hitResult, point) {

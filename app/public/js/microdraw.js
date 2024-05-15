@@ -581,7 +581,11 @@ const Microdraw = (function () {
 
       if( !me.navEnabled ) {
         event.stopHandlers = true;
-        me.mouseDrag(event.originalEvent.layerX, event.originalEvent.layerY, event.delta.x, event.delta.y);
+        me.mouseDrag(
+          event.originalEvent.layerX,
+          event.originalEvent.layerY,
+          event.delta.x,
+          event.delta.y);
       }
     },
 
@@ -656,7 +660,9 @@ const Microdraw = (function () {
         me.handle.y += point.y-me.handle.point.y;
         me.handle.point = point;
         me.commitMouseUndo();
-      } else if (me.tools[me.selectedTool] && me.tools[me.selectedTool].mouseDrag) {
+      } else if (me.tools[me.selectedTool]
+          && me.tools[me.selectedTool].mouseDrag
+      ) {
         me.tools[me.selectedTool].mouseDrag(point, dpoint);
       }
       paper.view.draw();
