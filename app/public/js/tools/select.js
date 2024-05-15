@@ -34,7 +34,8 @@ window.ToolSelect = {select: (function() {
         Microdraw.handle = hitResult.segment.point;
         Microdraw.handle.point = point;
       } else if( hitResult.type === 'fill' ) {
-        if ({}.hasOwnProperty.call(hitResult.item, 'fontSize')) {
+        const {fontSize} = hitResult.item; // test if it is a text annotation
+        if (typeof fontSize !== 'undefined') {
           Microdraw.tools.textAnnotation.updateTextAnnotationPanel(hitResult.item);
         }
       }
