@@ -246,6 +246,13 @@ const Microdraw = (function () {
       return path;
     },
 
+    _textFromJSON: (json) => {
+      const text = new paper.PointText();
+      text.importJSON(json);
+
+      return text;
+    },
+
     _selectRegionInList: function (reg) {
       // Select region name in list
       [].forEach.call(me.dom.querySelectorAll("#regionList > .region-tag"), function(r) {
@@ -895,24 +902,46 @@ const Microdraw = (function () {
       me.region = null;
       for( let i = 0; i < undo.regions.length; i += 1 ) {
         const el = undo.regions[i];
-        const path = me._pathFromJSON(el.json);
-        // add to the correct project activeLayer, which may not be the current one
-        paper.project.activeLayer.addChild(path);
 
-        const reg = me.newRegion({
-          name: el.name,
-          uid: el.uid,
-          path: path
-        }, undo.imageNumber);
+        if (el.json[0] === 'Path' || el.json[0] === 'CompoundPath') {
+          const path = me._pathFromJSON(el.json);
+          // add to the correct project activeLayer, which may not be the current one
+          paper.project.activeLayer.addChild(path);
 
-        // here order matters: if fully selected is set after selected, partially selected paths will be incorrect
-        reg.path.fullySelected = el.fullySelected;
-        reg.path.selected = el.selected;
-        if( el.selected ) {
-          if( me.region === null ) {
-            me.region = reg;
-          } else {
-            console.log("WARNING: This should not happen. Are two regions selected?");
+          const reg = me.newRegion({
+            name: el.name,
+            uid: el.uid,
+            path: path
+          }, undo.imageNumber);
+
+          // here order matters: if fully selected is set after selected, partially selected paths will be incorrect
+          reg.path.fullySelected = el.fullySelected;
+          reg.path.selected = el.selected;
+          if( el.selected ) {
+            if( me.region === null ) {
+              me.region = reg;
+            } else {
+              console.log("WARNING: This should not happen. Are two regions selected?");
+            }
+          }
+        }
+
+        if (el.json[0] === "PointText") {
+          const text = me._textFromJSON(el.json);
+          paper.project.activeLayer.addChild(text);
+          const reg = me.newRegion({
+            name: "textAnnotation",
+            uid: el.uid,
+            path: text
+          }, undo.imageNumber);
+          reg.path.fullySelected = el.fullySelected;
+          reg.path.selected = el.selected;
+          if( el.selected ) {
+            if( me.region === null ) {
+              me.region = reg;
+            } else {
+              console.log("WARNING: This should not happen. Are two regions selected?");
+            }
           }
         }
       }

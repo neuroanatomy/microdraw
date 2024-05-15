@@ -27,11 +27,7 @@ window.ToolTextAnnotation = {textAnnotation: (function() {
         fontWeight: 'normal'
       });
 
-      // path.strokeWidth = Microdraw.config.defaultStrokeWidth;
       Microdraw.region = Microdraw.newRegion({path: text, name: 'textAnnotation'});
-      // Microdraw.region.path.fillColor.alpha = 0;
-      // Microdraw.region.path.selected = true;
-
       // Microdraw.commitMouseUndo();
 
       const obj = dom.querySelector("#text-annotation-panel");
