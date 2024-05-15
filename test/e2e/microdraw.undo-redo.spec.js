@@ -73,7 +73,7 @@ describe('Editing tools: undo and redo', () => {
     const filename = "undo.02.cat-triangle-square-circle.png";
     await page.screenshot({path: U.newPath + filename});
     const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    assert(diff<1000, `${diff} pixels were different`);
+    assert(diff<U.pct5, `${diff} pixels were different`);
   }).timeout(0);
 
   it('undo', async () => {
