@@ -1011,6 +1011,7 @@ const Microdraw = (function () {
           break;
         }
       }
+      me.region = null;
     },
 
     /**
@@ -1032,11 +1033,13 @@ const Microdraw = (function () {
         const color = me.regionColor(reg.name);
         reg.path.fillColor = 'rgba(' + color.red + ',' + color.green + ',' + color.blue + ',0.5)';
 
-        me.newRegion({
+        const region = me.newRegion({
           name: me.copyRegion.name,
           uid: me.regionUID(),
           path: reg.path
         });
+
+        Microdraw.region = region;
       }
       paper.view.draw();
     },
