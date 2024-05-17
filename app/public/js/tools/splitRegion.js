@@ -67,13 +67,20 @@ window.ToolSplitRegion = {splitRegion: (function() {
         (new paper.Path({insert: false})).importJSON(childj)
       ];
       const intersection = path1.intersect(path2);
-      const [path1Area, path2Area, intersectArea] = [path1.area, path2.area, intersection.area];
-      const [overlap1, overlap2] = [intersectArea/path1Area, intersectArea/path2Area];
+      const [path1Area, path2Area, intersect] = [path1.area, path2.area, intersection.area];
 
-      return [
-        Math.abs(1 - Math.abs(overlap1)) < tool._tol ? 1 : 0,
-        Math.abs(1 - Math.abs(overlap2)) < tool._tol ? 1 : 0
-      ];
+      if (intersect <= 0) {
+        return [0, 0];
+      }
+
+      if (path1Area > 0 && path2Area < 0 && path1Area > -path2Area) {
+        return [0, -1];
+      }
+      if (path2Area > 0 && path1Area < 0 && path2Area > -path1Area) {
+        return [-1, 0];
+      }
+
+      return [0, 0];
     },
 
     _overlaps: function (children) {
@@ -109,9 +116,9 @@ window.ToolSplitRegion = {splitRegion: (function() {
           let resultPath = new paper.Path({insert: false});
           resultPath.importJSON(children[i]);
 
-          // look for a columns with overlap 1: they're the holes
+          // look for a columns with overlap -1: they're the holes
           for (let j = 0; j < children.length; j++) {
-            if (overlap[j][i] === 1) {
+            if (overlap[j][i] === -1) {
               const hole = new paper.Path({insert: false});
               hole.importJSON(children[j]).reorient();
               resultPath = resultPath.subtract(hole);
