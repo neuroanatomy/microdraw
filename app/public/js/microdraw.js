@@ -36,10 +36,18 @@ const Microdraw = (function () {
     RedoStack: [],
     mouseUndo: null,             // tentative undo information.
     shortCuts: [],               // List of shortcuts
-    newRegionFlag: null,         // true when a region is being drawn
-    drawingPolygonFlag: false,   // true when drawing a polygon
-    annotationLoadingFlag: null, // true when an annotation is being loaded
-    config: {},                  // App configuration object
+
+    /** true when a region is being drawn */
+    newRegionFlag: null,
+
+    /** true when drawing a polygon */
+    drawingPolygonFlag: false,
+
+    /** true when an annotation is being loaded */
+    annotationLoadingFlag: null,
+
+    /** App configuration object */
+    config: {},
     isMac: navigator.platform.match(/Mac/i),
     isIOS: navigator.platform.match(/(iPhone|iPod|iPad)/i),
     tolerance: 4, // tolerance for hit test. This value is divided by paper.view.zoom to make it work across resolutions
@@ -224,9 +232,10 @@ const Microdraw = (function () {
     },
 
     /**
-       * Create a new path from a Paper json object
+       * Create a new path from a Paper json object. The path is
+       * automatically added to the active project.
        * @param {object} json Paper json object
-       * @returns {object} Paper path (which is automatically added to the active project)
+       * @returns {object} Paper path
        */
     _pathFromJSON: (json) => {
       let path;
@@ -1770,7 +1779,7 @@ const Microdraw = (function () {
     loadConfiguration: async () => {
       await Promise.all([
         me.loadScript("/lib/jquery-1.11.0.min.js"),
-        me.loadScript("/lib/paper-full-0.12.11.min.js"),
+        me.loadScript("/lib/paper-full-0.12.15.min.js"),
         me.loadScript("/lib/openseadragon/openseadragon.js"),
         me.loadScript("https://unpkg.com/hippy-hippo@0.0.1/dist/hippy-hippo-umd.js"),
         me.loadScript("/js/microdraw-ws.js")
