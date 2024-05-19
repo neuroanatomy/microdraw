@@ -1940,7 +1940,7 @@ const Microdraw = (function () {
       MUI.push(me.dom.querySelector("#sliderBlock #next"), () => { me.clickTool("next"); });
       MUI.slider(me.dom.querySelector("#sliderBlock #slice"), (x, ev) => {
         const newImageNumber = Math.round((me.imageOrder.length-1)*x/100);
-        if(ev.type === "mouseup") {
+        if(ev.type === "mouseup" || ev.type === "touchend") {
           me.sliderOnChange(newImageNumber);
         } else {
           const imageNumber = me.imageOrder[newImageNumber];
