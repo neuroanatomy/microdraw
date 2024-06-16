@@ -6,6 +6,16 @@ window.ToolLayers = { layers : (function() {
     layers: [],
     rowTemplate: `
     <ul class="layer-item">
+      <li><b><span style="width:70px">layer.name</span></b></li>
+      <li><b class="layer-item"> Opacity (%):</b>
+        <input class="layer-value" value="layer.opacity" onchange="Microdraw.tools.layers.changeOpacity(event)" />
+        <input type="range" value="layer.opacity" min="0" max="100" oninput="Microdraw.tools.layers.changeOpacity(event)" style="width:100px"/>
+        </li>
+      <li><button onclick="Microdraw.tools.layers.deleteLayer(event)">Delete</button></li>
+    </ul>
+    `,
+    rowTemplateFull: `
+    <ul class="layer-item">
       <li><span style="width:300px;overflow-wrap:anywhere">layer.url</span></li>
       <li><b class="layer-item">Name:</b> <span style="width:70px">layer.name</span></li>
       <li><b class="layer-item"> Opacity (%):</b>
@@ -68,6 +78,10 @@ window.ToolLayers = { layers : (function() {
     },
     changeOpacity: (e) => {
       const {value} = e.target;
+      // closest parent element of type table
+      const list = e.target.closest("#layers-list");
+      const rows = list.querySelectorAll(".layer");
+      const layerIndex = Array.from(rows).indexOf(e.target.closest(".layer"));
 
       if (e.target.type === "range") {
         e.target.parentElement.parentElement.querySelectorAll("input")[0].value = value;
@@ -75,8 +89,8 @@ window.ToolLayers = { layers : (function() {
         e.target.parentElement.parentElement.querySelectorAll("input")[1].value = value;
       }
 
-      tool.layers[0].opacity = value / 100;
-      Microdraw.viewer.world.getItemAt(1).setOpacity(value / 100);
+      tool.layers[layerIndex].opacity = value / 100;
+      Microdraw.viewer.world.getItemAt(layerIndex + 1).setOpacity(value / 100);
     },
     changeX: (e) => {
       let {value} = e.target;
@@ -156,6 +170,8 @@ window.ToolLayers = { layers : (function() {
         Microdraw.viewer.world.getItemAt(index + 1).setOpacity(opacity);
       }
     },
+
+    /** update viewer layers with the last layer added */
     // eslint-disable-next-line max-statements
     updateLayers: () => {
       // return if there's no layers
@@ -170,14 +186,15 @@ window.ToolLayers = { layers : (function() {
       const totalImages = Microdraw.imageOrder.length;
 
       // get 1st and last slice of layers[0]
-      const layerIndex = 0;
+      const layerIndex = tool.layers.length - 1;
       const {url, opacity, firstSlice, lastSlice, imageSources} = tool.layers[layerIndex];
 
       // get the sliceIndex in layers[0] corresponding to sliceIndex in the viewer
       const [a0, a1, l0, l1] = [0, totalImages - 1, firstSlice, lastSlice];
       // ia = (il) => {a0=6;a1=58;l0=94;l1=12;m=(l0-l1)/(a0-a1);n=l0-a0*m;return (il-n)/m};
       const il = (ia) => {
-        const m=(l0-l1)/(a0-a1); const n=l0-a0*m;
+        const m=(l0-l1)/(a0-a1);
+        const n=l0-a0*m;
 
         return ia*m+n;
       };

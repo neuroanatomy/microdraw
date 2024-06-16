@@ -452,7 +452,7 @@ body[data-toolbarDisplay=right] #tools-minimized div {
 #layers-panel {
     display: none;
     position: fixed;
-    width: 600px;
+    width: 400px;
     height: 300px;
     /* max-height: 300px; */
     overflow: scroll;
