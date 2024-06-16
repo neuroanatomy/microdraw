@@ -2154,11 +2154,13 @@ const Microdraw = (function () {
         for (const layer of layers) {
           let [source, name, opacity] = layer;
           opacity = parseFloat(opacity);
-          const dzi = await me.tools.layers.fetchDZI(source);
+          // eslint-disable-next-line no-await-in-loop, dot-notation
+          const dzi = await me.tools["layers"].fetchDZI(source);
           if (!dzi) {
             continue;
           }
-          me.tools.layers.addLayer(name, source, opacity * 100, dzi);
+          // eslint-disable-next-line dot-notation
+          me.tools["layers"].addLayer(name, source, opacity * 100, dzi);
         }
       }
 
