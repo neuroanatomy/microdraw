@@ -2031,7 +2031,7 @@ const Microdraw = (function () {
         * @returns {void}
         */
     // eslint-disable-next-line complexity
-    initOpenSeadragon: async (obj) => {
+    initOpenSeadragon: (obj) => {
       if( me.debug>1 ) { console.log("json file:", obj); }
 
       // for loading the bigbrain
