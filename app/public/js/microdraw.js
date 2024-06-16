@@ -1999,6 +1999,33 @@ const Microdraw = (function () {
       me.updateLabelDisplay();
     },
 
+    /** Configuration of the layers from the URL parameters.
+     * The function waits for the layers tool to be loaded before configuring the layers.
+     * @returns {void}
+     */
+    _configureLayersFromParams: () => {
+      const timer = setInterval(async () => {
+        if (me.tools.layers) {
+          console.log("layers tool loaded");
+          clearInterval(timer);
+          const layers = me.params.layers.split(";").map( (layer) => layer.split(",") );
+          for (const layer of layers) {
+            let [source, name, opacity] = layer;
+            opacity = parseFloat(opacity);
+            // eslint-disable-next-line no-await-in-loop, dot-notation
+            const dzi = await me.tools["layers"].fetchDZI(source);
+            if (!dzi) {
+              continue;
+            }
+            // eslint-disable-next-line dot-notation
+            me.tools["layers"].addLayer(name, source, opacity * 100, dzi);
+          }
+        } else {
+          console.log("layers tool not loaded yet");
+        }
+      }, 200);
+    },
+
     /**
         * @param {Object} obj DZI json configuration object
         * @returns {void}
@@ -2150,18 +2177,7 @@ const Microdraw = (function () {
 
       // initialise layers
       if( me.params.layers ) {
-        const layers = me.params.layers.split(";").map( (layer) => layer.split(",") );
-        for (const layer of layers) {
-          let [source, name, opacity] = layer;
-          opacity = parseFloat(opacity);
-          // eslint-disable-next-line no-await-in-loop, dot-notation
-          const dzi = await me.tools["layers"].fetchDZI(source);
-          if (!dzi) {
-            continue;
-          }
-          // eslint-disable-next-line dot-notation
-          me.tools["layers"].addLayer(name, source, opacity * 100, dzi);
-        }
+        me._configureLayersFromParams();
       }
 
       if( me.debug>1 ) { console.log("< initOpenSeadragon resolve: success"); }
