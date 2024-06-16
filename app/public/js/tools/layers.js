@@ -7,6 +7,7 @@ window.ToolLayers = { layers : (function() {
     rowTemplate: `
     <ul class="layer-item">
       <li><b><span style="width:70px">layer.name</span></b></li>
+      <li><span style="width:300px;overflow-wrap:anywhere">layer.url</span></li>
       <li><b class="layer-item"> Opacity (%):</b>
         <input class="layer-value" value="layer.opacity" onchange="Microdraw.tools.layers.changeOpacity(event)" />
         <input type="range" value="layer.opacity" min="0" max="100" oninput="Microdraw.tools.layers.changeOpacity(event)" style="width:100px"/>
@@ -155,7 +156,7 @@ window.ToolLayers = { layers : (function() {
         lastSlice: dzi.tileSources.length - 1
       });
 
-      tool.updateLayers();
+      tool.updateLastLayer();
     },
     _updateLayersFromTable: () => {
       // update layer slice
@@ -171,9 +172,46 @@ window.ToolLayers = { layers : (function() {
       }
     },
 
+    /** update viewer layers with all available layers added */
+    // eslint-disable-next-line max-statements
+    updateAllLayers: () => {
+      // return if there's no layers
+      if (tool.layers.length === 0) {
+        return;
+      }
+
+      // current slice index
+      const currentImage = Number(Microdraw.currentImage);
+
+      // total number of slices
+      const totalImages = Microdraw.imageOrder.length;
+
+      // get 1st and last slice of layers[0]
+      for (let layerIndex =0; layerIndex < tool.layers.length; layerIndex++) {
+        const {url, opacity, firstSlice, lastSlice, imageSources} = tool.layers[layerIndex];
+
+        // get the sliceIndex in layers[0] corresponding to sliceIndex in the viewer
+        const [a0, a1, l0, l1] = [0, totalImages - 1, firstSlice, lastSlice];
+        // ia = (il) => {a0=6;a1=58;l0=94;l1=12;m=(l0-l1)/(a0-a1);n=l0-a0*m;return (il-n)/m};
+        const il = (ia) => {
+          const m=(l0-l1)/(a0-a1);
+          const n=l0-a0*m;
+
+          return ia*m+n;
+        };
+        const tileIndex = Math.floor(il(currentImage));
+
+        // add layer to viewer
+        tool._addLayerToViewer(url, tileIndex, imageSources, opacity);
+      }
+
+      // update the layer
+      tool._updateLayersFromTable();
+    },
+
     /** update viewer layers with the last layer added */
     // eslint-disable-next-line max-statements
-    updateLayers: () => {
+    updateLastLayer: () => {
       // return if there's no layers
       if (tool.layers.length === 0) {
         return;
