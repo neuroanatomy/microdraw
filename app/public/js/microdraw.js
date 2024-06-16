@@ -2003,7 +2003,8 @@ const Microdraw = (function () {
         * @param {Object} obj DZI json configuration object
         * @returns {void}
         */
-    initOpenSeadragon: function (obj) {
+    // eslint-disable-next-line complexity
+    initOpenSeadragon: async (obj) => {
       if( me.debug>1 ) { console.log("json file:", obj); }
 
       // for loading the bigbrain
@@ -2147,6 +2148,20 @@ const Microdraw = (function () {
         {tracker: 'viewer', handler: 'scrollHandler', hookHandler: me.scrollHandler}
       ]});
 
+      // initialise layers
+      if( me.params.layers ) {
+        const layers = me.params.layers.split(";").map( (layer) => layer.split(",") );
+        for (const layer of layers) {
+          let [source, name, opacity] = layer;
+          opacity = parseFloat(opacity);
+          const dzi = await me.tools.layers.fetchDZI(source);
+          if (!dzi) {
+            continue;
+          }
+          me.tools.layers.addLayer(name, source, opacity * 100, dzi);
+        }
+      }
+
       if( me.debug>1 ) { console.log("< initOpenSeadragon resolve: success"); }
     },
 
@@ -2169,6 +2184,14 @@ const Microdraw = (function () {
       await me.loadConfiguration();
 
       me.params = me.deparam();
+
+      /* recognised parameters:
+         source: url to the dzi file
+         slice: initial slice to display
+         project: project name
+         displayTools: show or hide the tools
+         layers: initialise the list of layers
+      */
 
       if (me.params.displayTools === 'false') {
         me.dom.querySelector('#menuBar').style.display='none';
