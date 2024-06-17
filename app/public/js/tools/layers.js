@@ -7,7 +7,6 @@ window.ToolLayers = { layers : (function() {
     rowTemplate: `
     <ul class="layer-item">
       <li><b><span style="width:70px">layer.name</span></b></li>
-      <li><span style="width:300px;overflow-wrap:anywhere">layer.url</span></li>
       <li><b class="layer-item"> Opacity (%):</b>
         <input class="layer-value" value="layer.opacity" onchange="Microdraw.tools.layers.changeOpacity(event)" />
         <input type="range" value="layer.opacity" min="0" max="100" oninput="Microdraw.tools.layers.changeOpacity(event)" style="width:100px"/>
