@@ -101,6 +101,18 @@
       >
     </Button>
     <Button
+      :class="{ pressed: currentTool === 'move' }"
+      id="move"
+      @click="selectTool($event)"
+      title="Move"
+    >
+      <img
+        class="icon"
+        alt="Move"
+        src="/img/move.svg"
+      >
+    </Button>
+    <Button
       :class="{ pressed: currentTool === 'draw' }"
       id="draw"
       @click="selectTool($event)"

@@ -27,23 +27,19 @@ window.ToolTextAnnotation = {textAnnotation: (function() {
         fontWeight: 'normal'
       });
 
-      // path.strokeWidth = Microdraw.config.defaultStrokeWidth;
       Microdraw.region = Microdraw.newRegion({path: text, name: 'textAnnotation'});
-      // Microdraw.region.path.fillColor.alpha = 0;
-      // Microdraw.region.path.selected = true;
-
       // Microdraw.commitMouseUndo();
 
-      const obj = dom.querySelector("#text-annotation-panel");
-      obj.style.display = "none";
+      const obj = dom.querySelector('#text-annotation-panel');
+      obj.style.display = 'none';
     },
 
     _cssColorToHex: (color) => {
-      const rgb = color.replace("rgb(", "").replace(")", "")
-        .split(",");
-      const hex = rgb.map((s) => ("00" + Number(s).toString(16)).slice(-2));
+      const rgb = color.replace('rgb(', '').replace(')', '')
+        .split(',');
+      const hex = rgb.map((s) => ('00' + Number(s).toString(16)).slice(-2));
 
-      return "#" + hex.join("");
+      return '#' + hex.join('');
     },
 
     // eslint-disable-next-line max-statements
@@ -59,8 +55,8 @@ window.ToolTextAnnotation = {textAnnotation: (function() {
       tool.item.fillColor = fillColor;
       tool.item.fontSize = fontSize;
 
-      const obj = dom.querySelector("#text-annotation-panel");
-      obj.style.display = "none";
+      const obj = dom.querySelector('#text-annotation-panel');
+      obj.style.display = 'none';
     },
 
     // eslint-disable-next-line max-statements
@@ -74,9 +70,9 @@ window.ToolTextAnnotation = {textAnnotation: (function() {
       tool.item = item;
       tool.point = [x, y];
 
-      dom.querySelector("#text-annotation-panel").style.display = "block";
-      dom.querySelector("#add-text-annotation > div > button:nth-child(1)").style.display = "none";
-      dom.querySelector("#add-text-annotation > div > button:nth-child(2)").style.display = "inline-block";
+      dom.querySelector('#text-annotation-panel').style.display = 'block';
+      dom.querySelector('#add-text-annotation > div > button:nth-child(1)').style.display = 'none';
+      dom.querySelector('#add-text-annotation > div > button:nth-child(2)').style.display = 'inline-block';
 
       const textEl = dom.querySelector('#add-text-annotation > input[type="text"]');
       const colorEl = dom.querySelector('#add-text-annotation > input[type="color"]');
@@ -87,8 +83,8 @@ window.ToolTextAnnotation = {textAnnotation: (function() {
     },
 
     cancelTextAnnotation: () => {
-      const obj = dom.querySelector("#text-annotation-panel");
-      obj.style.display = "none";
+      const obj = dom.querySelector('#text-annotation-panel');
+      obj.style.display = 'none';
     },
 
     /**
@@ -102,9 +98,9 @@ window.ToolTextAnnotation = {textAnnotation: (function() {
       //   textAnnotationFlag = currentFlag;
       // })(textAnnotationFlag);
       tool.point = point;
-      dom.querySelector("#text-annotation-panel").style.display = "block";
-      dom.querySelector("#add-text-annotation > div > button:nth-child(1)").style.display = "inline-block";
-      dom.querySelector("#add-text-annotation > div > button:nth-child(2)").style.display = "none";
+      dom.querySelector('#text-annotation-panel').style.display = 'block';
+      dom.querySelector('#add-text-annotation > div > button:nth-child(1)').style.display = 'inline-block';
+      dom.querySelector('#add-text-annotation > div > button:nth-child(2)').style.display = 'none';
     },
 
     /**

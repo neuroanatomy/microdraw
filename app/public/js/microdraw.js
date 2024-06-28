@@ -3,8 +3,8 @@
 /*eslint max-statements: ["error", 80]*/
 /*eslint max-lines: ["error", 3000]*/
 /*eslint no-alert: "off"*/
-/* global paper */
-/*global OpenSeadragon*/
+/* global paper MUI */
+/* global OpenSeadragon */
 /* exported Microdraw */
 
 
@@ -59,10 +59,18 @@ const Microdraw = (function () {
     RedoStack: [],
     mouseUndo: null,             // tentative undo information.
     shortCuts: [],               // List of shortcuts
-    newRegionFlag: null,         // true when a region is being drawn
-    drawingPolygonFlag: false,   // true when drawing a polygon
-    annotationLoadingFlag: null, // true when an annotation is being loaded
-    config: {},                  // App configuration object
+
+    /** true when a region is being drawn */
+    newRegionFlag: null,
+
+    /** true when drawing a polygon */
+    drawingPolygonFlag: false,
+
+    /** true when an annotation is being loaded */
+    annotationLoadingFlag: null,
+
+    /** App configuration object */
+    config: {},
     isMac: navigator.platform.match(/Mac/i),
     isIOS: navigator.platform.match(/(iPhone|iPod|iPad)/i),
     tolerance: 4, // tolerance for hit test. This value is divided by paper.view.zoom to make it work across resolutions
@@ -251,9 +259,10 @@ const Microdraw = (function () {
     },
 
     /**
-       * Create a new path from a Paper json object
+       * Create a new path from a Paper json object. The path is
+       * automatically added to the active project.
        * @param {object} json Paper json object
-       * @returns {object} Paper path (which is automatically added to the active project)
+       * @returns {object} Paper path
        */
     _pathFromJSON: (json) => {
       let path;
@@ -271,6 +280,13 @@ const Microdraw = (function () {
       }
 
       return path;
+    },
+
+    _textFromJSON: (json) => {
+      const text = new paper.PointText();
+      text.importJSON(json);
+
+      return text;
     },
 
     _selectRegionInList: function (reg) {
@@ -612,7 +628,11 @@ const Microdraw = (function () {
 
       if( !me.navEnabled ) {
         event.stopHandlers = true;
-        me.mouseDrag(event.originalEvent.layerX, event.originalEvent.layerY, event.delta.x, event.delta.y);
+        me.mouseDrag(
+          event.originalEvent.layerX,
+          event.originalEvent.layerY,
+          event.delta.x,
+          event.delta.y);
       }
     },
 
@@ -687,7 +707,9 @@ const Microdraw = (function () {
         me.handle.y += point.y-me.handle.point.y;
         me.handle.point = point;
         me.commitMouseUndo();
-      } else if (me.tools[me.selectedTool] && me.tools[me.selectedTool].mouseDrag) {
+      } else if (me.tools[me.selectedTool]
+          && me.tools[me.selectedTool].mouseDrag
+      ) {
         me.tools[me.selectedTool].mouseDrag(point, dpoint);
       }
       paper.view.draw();
@@ -920,24 +942,46 @@ const Microdraw = (function () {
       me.region = null;
       for( let i = 0; i < undo.regions.length; i += 1 ) {
         const el = undo.regions[i];
-        const path = me._pathFromJSON(el.json);
-        // add to the correct project activeLayer, which may not be the current one
-        paper.project.activeLayer.addChild(path);
 
-        const reg = me.newRegion({
-          name: el.name,
-          uid: el.uid,
-          path: path
-        }, undo.imageNumber);
+        if (el.json[0] === 'Path' || el.json[0] === 'CompoundPath') {
+          const path = me._pathFromJSON(el.json);
+          // add to the correct project activeLayer, which may not be the current one
+          paper.project.activeLayer.addChild(path);
 
-        // here order matters: if fully selected is set after selected, partially selected paths will be incorrect
-        reg.path.fullySelected = el.fullySelected;
-        reg.path.selected = el.selected;
-        if( el.selected ) {
-          if( me.region === null ) {
-            me.region = reg;
-          } else {
-            console.log('WARNING: This should not happen. Are two regions selected?');
+          const reg = me.newRegion({
+            name: el.name,
+            uid: el.uid,
+            path: path
+          }, undo.imageNumber);
+
+          // here order matters: if fully selected is set after selected, partially selected paths will be incorrect
+          reg.path.fullySelected = el.fullySelected;
+          reg.path.selected = el.selected;
+          if( el.selected ) {
+            if( me.region === null ) {
+              me.region = reg;
+            } else {
+              console.log('WARNING: This should not happen. Are two regions selected?');
+            }
+          }
+        }
+
+        if (el.json[0] === 'PointText') {
+          const text = me._textFromJSON(el.json);
+          paper.project.activeLayer.addChild(text);
+          const reg = me.newRegion({
+            name: 'textAnnotation',
+            uid: el.uid,
+            path: text
+          }, undo.imageNumber);
+          reg.path.fullySelected = el.fullySelected;
+          reg.path.selected = el.selected;
+          if( el.selected ) {
+            if( me.region === null ) {
+              me.region = reg;
+            } else {
+              console.log('WARNING: This should not happen. Are two regions selected?');
+            }
           }
         }
       }
@@ -998,6 +1042,7 @@ const Microdraw = (function () {
           break;
         }
       }
+      me.region = null;
     },
 
     /**
@@ -1019,11 +1064,13 @@ const Microdraw = (function () {
         const color = me.regionColor(reg.name);
         reg.path.fillColor = 'rgba(' + color.red + ',' + color.green + ',' + color.blue + ',0.5)';
 
-        me.newRegion({
+        const region = me.newRegion({
           name: me.copyRegion.name,
           uid: me.regionUID(),
           path: reg.path
         });
+
+        Microdraw.region = region;
       }
       paper.view.draw();
     },
@@ -1704,7 +1751,7 @@ const Microdraw = (function () {
     loadConfiguration: async () => {
       await Promise.all([
         me.loadScript('/lib/jquery-1.11.0.min.js'),
-        me.loadScript('/lib/paper-full-0.12.11.min.js'),
+        me.loadScript('/lib/paper-full-0.12.15.min.js'),
         me.loadScript('/lib/openseadragon/openseadragon.js'),
         me.loadScript('https://unpkg.com/hippy-hippo@0.0.1/dist/hippy-hippo-umd.js'),
         me.loadScript('/js/microdraw-ws.js')
@@ -1829,6 +1876,32 @@ const Microdraw = (function () {
     initMicrodraw: async () => {
       if( me.debug>1 ) { console.log('> initMicrodraw promise'); }
 
+      // Enable click on toolbar buttons
+      Array.prototype.forEach.call(me.dom.querySelectorAll('#buttonsBlock div.mui.push'), (el) => {
+        el.addEventListener('click', me.toolSelection);
+      });
+      MUI.toggle(me.dom.querySelector('#fullscreen'), () => { me.clickTool('fullscreen'); });
+      MUI.push(me.dom.querySelector('#sliderBlock #previous'), () => { me.clickTool('previous'); });
+      MUI.push(me.dom.querySelector('#sliderBlock #next'), () => { me.clickTool('next'); });
+      MUI.slider(me.dom.querySelector('#sliderBlock #slice'), (x, ev) => {
+        const newImageNumber = Math.round((me.imageOrder.length-1)*x/100);
+        if(ev.type === 'mouseup' || ev.type === 'touchend') {
+          me.sliderOnChange(newImageNumber);
+        } else {
+          const imageNumber = me.imageOrder[newImageNumber];
+          me.dom.querySelector('#slice-number').innerHTML = `Slice ${imageNumber}`;
+        }
+      });
+      MUI.chose(me.dom.querySelector('#clickTool.mui-chose'), (title) => {
+        const el = me.dom.querySelector(`[title="${title}"]`);
+        const tool = el.id;
+        me.clickTool(tool);
+      });
+
+      // set annotation loading flag to false
+      me.annotationLoadingFlag = false;
+
+      // Initialize the control key handler and set shortcuts
       me.initShortCutHandler();
       me.shortCutHandler({pc:'^ z', mac:'cmd z'}, me.cmdUndo);
       me.shortCutHandler({pc:'shift ^ z', mac:'shift cmd z'}, me.cmdRedo);
@@ -1855,11 +1928,39 @@ const Microdraw = (function () {
       me.ontology = labels;
     },
 
+    /** Configuration of the layers from the URL parameters.
+     * The function waits for the layers tool to be loaded before configuring the layers.
+     * @returns {void}
+     */
+    _configureLayersFromParams: () => {
+      const timer = setInterval(async () => {
+        if (me.tools.layers) {
+          console.log('layers tool loaded');
+          clearInterval(timer);
+          const layers = me.params.layers.split(';').map( (layer) => layer.split(',') );
+          for (const layer of layers) {
+            const [source, name] = layer;
+            const opacity = parseFloat(layer.opacity);
+            // eslint-disable-next-line no-await-in-loop, dot-notation
+            const dzi = await me.tools['layers'].fetchDZI(source);
+            if (!dzi) {
+              continue;
+            }
+            // eslint-disable-next-line dot-notation
+            me.tools['layers'].addLayer(name, source, opacity * 100, dzi);
+          }
+        } else {
+          console.log('layers tool not loaded yet');
+        }
+      }, 200);
+    },
+
     /**
         * @param {Object} obj DZI json configuration object
         * @returns {void}
         */
-    initOpenSeadragon: function (obj) {
+    // eslint-disable-next-line complexity
+    initOpenSeadragon: (obj) => {
       if( me.debug>1 ) { console.log('json file:', obj); }
 
       // for loading the bigbrain
@@ -2011,6 +2112,11 @@ const Microdraw = (function () {
         {tracker: 'viewer', handler: 'scrollHandler', hookHandler: me.scrollHandler}
       ]});
 
+      // initialise layers
+      if( me.params.layers ) {
+        me._configureLayersFromParams();
+      }
+
       if( me.debug>1 ) { console.log('< initOpenSeadragon resolve: success'); }
     },
 
@@ -2028,6 +2134,14 @@ const Microdraw = (function () {
       await me.loadConfiguration();
 
       me.params = me.deparam();
+
+      /* recognised parameters:
+         source: url to the dzi file
+         slice: initial slice to display
+         project: project name
+         displayTools: show or hide the tools
+         layers: initialise the list of layers
+      */
 
       if (me.params.displayTools === 'false') {
         me.dom.querySelector('#menuBar').style.display='none';
