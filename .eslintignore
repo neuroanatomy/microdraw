@@ -1,2 +1,3 @@
 /app/public/**/*.min.js
 /app/public/lib/
+/app/public/js/pages/

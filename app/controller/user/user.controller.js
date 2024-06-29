@@ -8,18 +8,21 @@ const { AccessControlService } = require('neuroweblab');
 
 const validator = function (req, res, next) {
   // UserName can be an ip address (for anonymous users)
+  const username = req.params.userName;
 
-  /*
-    req.checkParams('userName', 'incorrect user name').isAlphanumeric();
-    var errors = req.validationErrors();
-    console.log(errors);
-    if (errors) {
-        res.send(errors).status(403).end();
-    } else {
-        return next();
-    }
-    */
-  next();
+  req.appConfig.db.queryUser({username})
+    .then((result) => {
+      if (!result) {
+        res.status(404);
+      }
+      if (result.disabled) {
+        res.status(404);
+
+        return res.render('disabledUser');
+      }
+      next();
+
+    });
 };
 
 const user = function (req, res) {
@@ -187,6 +190,37 @@ const api_userProjects = function (req, res) {
   });
 };
 
+const deleteProfile = async function(req, res) {
+  const loggedUser = req.user;
+  if (!loggedUser) {
+    res.status(401);
+  }
+  try {
+    const userInfo = await req.appConfig.db.queryUser({username: loggedUser.username});
+    await req.appConfig.db.updateUser({ ...userInfo, disabled: true });
+    res.redirect('/logout');
+  } catch(err) {
+    console.log(err);
+    res.status(500);
+  }
+};
+
+const savePreferences = async function(req, res) {
+  const loggedUser = req.user;
+  if (!loggedUser) {
+    res.status(401);
+  }
+  try {
+    const userInfo = await req.appConfig.db.queryUser({username: loggedUser.username});
+    await req.appConfig.db.updateUser({ ...userInfo, authorizedHostsForEmbedding: req.body.authorizedHosts });
+    res.redirect(`/user/${req.user.username}`);
+  } catch(err) {
+    console.log(err);
+    res.status(500);
+  }
+
+};
+
 module.exports = {
   validator,
   api_user,
@@ -194,5 +228,7 @@ module.exports = {
   api_userFiles,
   api_userAtlas,
   api_userProjects,
+  deleteProfile,
+  savePreferences,
   user
 };

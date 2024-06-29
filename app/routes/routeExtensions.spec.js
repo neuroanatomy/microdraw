@@ -1,13 +1,18 @@
 /* eslint-disable no-undef */
 const assert = require('assert');
+
 const chai = require('chai');
+const express = require('express');
 const nock = require('nock');
+const proxyquire = require('proxyquire');
 const request = require('request');
 const {expect} = chai;
-
-const express = require('express');
 const app = express();
-require('./routesExtensions')(app);
+
+// require('./routesExtensions')(app);
+proxyquire('./routesExtensions', {
+  '../../cfg.json': { hostname: 'http://localhost:10002' }
+})(app);
 
 const nockMockUrl = 'http://nock-mock-url.me:3000';
 const mockReplyJson1 = {
@@ -42,7 +47,7 @@ const mockReplyJson3Augmented = {
   ]
 };
 
-const imageData = `random data here`;
+const imageData = 'random data here';
 
 const nockProxy = nock(nockMockUrl).persist();
 nockProxy.get('/').reply(200);

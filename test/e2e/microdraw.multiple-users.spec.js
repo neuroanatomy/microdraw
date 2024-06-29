@@ -3,17 +3,19 @@
 /* global Microdraw */
 
 'use strict';
-const UI = require('../UI');
-const U = require('../mocha.test.util');
 const chai = require('chai');
-const {assert} = chai;
-
 const puppeteer = require('puppeteer');
 
-const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
+const U = require('../mocha.test.util');
+const UI = require('../UI');
 
-const shadowclick = async function (sel, testPage) {
-  const handle = await testPage.evaluateHandle(shadow(sel));
+const {assert} = chai;
+
+
+const selectTool = (tool) => `document.querySelector(".tools ${tool}")`;
+
+const clickTool = async function (tool, testPage) {
+  const handle = await testPage.evaluateHandle(selectTool(tool));
   await handle.click();
 };
 
@@ -24,7 +26,7 @@ let filename, res;
 // eslint-disable-next-line max-statements
 describe('Editing tools: multiple users drawing on the same dataset', () => {
   before(async () => {
-    browser = await puppeteer.launch({headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    browser = await puppeteer.launch({headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   });
 
   describe('simultaneously opening the same data set', () => {
@@ -36,11 +38,11 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
         { waitUntil: 'networkidle0' }
       );
 
-      filename = "multiple-users.01.page1-slice1.png";
+      filename = 'multiple-users.01.page1-slice1.png';
       await page1.screenshot({path: U.newPath + filename});
 
       res = await page1.evaluate(() => ({
-        sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
+        sliceIndex: Number(document.querySelector('.tools input[type=range]').value),
         regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
         regionsLength: Microdraw.ImageInfo[0].Regions.length
       }));
@@ -58,14 +60,14 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
         'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
         { waitUntil: 'networkidle0' }
       );
-      await shadowclick(UI.NEXT, page2);
+      await clickTool(UI.NEXT, page2);
       await U.waitUntilHTMLRendered(page2);
 
-      filename = "multiple-users.02.page2-slice2.png";
+      filename = 'multiple-users.02.page2-slice2.png';
       await page2.screenshot({path: U.newPath + filename});
 
       res = await page2.evaluate(() => ({
-        sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
+        sliceIndex: Number(document.querySelector('.tools input[type=range]').value),
         regionsExists: typeof (Microdraw.ImageInfo[1].Regions) !== 'undefined',
         regionsLength: Microdraw.ImageInfo[1].Regions.length
       }));
@@ -79,19 +81,19 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
   describe('simultaneously drawing on different slices', () => {
     it('draws triangle in slice 1, browser 1, and save', async () => {
       await page1.bringToFront();
-      await shadowclick(UI.DRAWPOLYGON, page1);
+      await clickTool(UI.DRAWPOLYGON, page1);
       await page1.mouse.click(300, 100);
       await page1.mouse.click(400, 100);
       await page1.mouse.click(350, 200);
       await page1.mouse.click(300, 100);
-      await shadowclick(UI.SAVE, page1);
+      await clickTool(UI.SAVE, page1);
       await U.waitUntilHTMLRendered(page1);
 
-      filename = "multiple-users.03.page1-slice1-triangle.png";
+      filename = 'multiple-users.03.page1-slice1-triangle.png';
       await page1.screenshot({path: U.newPath + filename});
 
       res = await page1.evaluate(() => ({
-        sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
+        sliceIndex: Number(document.querySelector('.tools input[type=range]').value),
         regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
         regionsLength: Microdraw.ImageInfo[0].Regions.length,
         pathSegments: Microdraw.ImageInfo[0].Regions[0].path.segments.length
@@ -107,20 +109,20 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
     // eslint-disable-next-line max-statements
     it('draw square in slice 2, browser 2, and save', async () => {
       await page2.bringToFront();
-      await shadowclick(UI.DRAWPOLYGON, page2);
+      await clickTool(UI.DRAWPOLYGON, page2);
       await page2.mouse.click(400, 100);
       await page2.mouse.click(500, 100);
       await page2.mouse.click(500, 200);
       await page2.mouse.click(400, 200);
       await page2.mouse.click(400, 100);
-      await shadowclick(UI.SAVE, page2);
+      await clickTool(UI.SAVE, page2);
       await U.waitUntilHTMLRendered(page2);
 
-      filename = "multiple-users.04.page2-slice2-square.png";
+      filename = 'multiple-users.04.page2-slice2-square.png';
       await page2.screenshot({path: U.newPath + filename});
 
       res = await page2.evaluate(() => ({
-        sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
+        sliceIndex: Number(document.querySelector('.tools input[type=range]').value),
         regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
         regionsLength: Microdraw.ImageInfo[1].Regions.length,
         pathSegments: Microdraw.ImageInfo[1].Regions[0].path.segments.length
@@ -133,14 +135,14 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
     });
 
     it('show triangle in slice 1 when browser 2 moves to slice 1', async () => {
-      await shadowclick(UI.PREVIOUS, page2);
+      await clickTool(UI.PREVIOUS, page2);
       await U.waitUntilHTMLRendered(page2);
 
-      filename = "multiple-users.05.page2-slice1-triangle.png";
+      filename = 'multiple-users.05.page2-slice1-triangle.png';
       await page2.screenshot({path: U.newPath + filename});
 
       res = await page2.evaluate(() => ({
-        sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
+        sliceIndex: Number(document.querySelector('.tools input[type=range]').value),
         regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
         regionsLength: Microdraw.ImageInfo[0].Regions.length,
         pathSegments: Microdraw.ImageInfo[0].Regions[0].path.segments.length
@@ -155,14 +157,14 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
 
     it('show square in slice 2 when browser 1 moves to slice 2', async () => {
       await page1.bringToFront();
-      await shadowclick(UI.NEXT, page1);
+      await clickTool(UI.NEXT, page1);
       await U.waitUntilHTMLRendered(page1);
 
-      filename = "multiple-users.06.page1-slice2-square.png";
+      filename = 'multiple-users.06.page1-slice2-square.png';
       await page1.screenshot({path: U.newPath + filename});
 
       res = await page1.evaluate(() => ({
-        sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
+        sliceIndex: Number(document.querySelector('.tools input[type=range]').value),
         regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
         regionsLength: Microdraw.ImageInfo[1].Regions.length,
         pathSegments: Microdraw.ImageInfo[1].Regions[0].path.segments.length
@@ -179,12 +181,12 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
   describe('simultaneously deleting', () => {
     // eslint-disable-next-line max-statements
     it('delete triangle in browser 1, disappears from both browsers', async () => {
-      await shadowclick(UI.PREVIOUS, page1);
+      await clickTool(UI.PREVIOUS, page1);
       await U.waitUntilHTMLRendered(page1);
-      await shadowclick(UI.SELECT, page1);
+      await clickTool(UI.SELECT, page1);
       await page1.mouse.click(350, 150);
-      await shadowclick(UI.DELETE, page1);
-      await shadowclick(UI.SAVE, page1);
+      await clickTool(UI.DELETE, page1);
+      await clickTool(UI.SAVE, page1);
       await U.delay(1000);
       await page1.reload();
       await U.waitUntilHTMLRendered(page1);
@@ -193,13 +195,13 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       await page2.reload();
       await U.waitUntilHTMLRendered(page2);
 
-      filename = "multiple-users.07.page1-slice1-cleanup.png";
+      filename = 'multiple-users.07.page1-slice1-cleanup.png';
       await page1.screenshot({path: U.newPath + filename});
-      filename = "multiple-users.08.page2-slice1-cleanup.png";
+      filename = 'multiple-users.08.page2-slice1-cleanup.png';
       await page2.screenshot({path: U.newPath + filename});
 
       res = await page1.evaluate(() => ({
-        sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
+        sliceIndex: Number(document.querySelector('.tools input[type=range]').value),
         regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
         regionsLength: Microdraw.ImageInfo[0].Regions.length
       }));
@@ -209,7 +211,7 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       assert(res.regionsLength === 0, `Regions.length is ${res.regionsLength} instead of 0`);
 
       res = await page2.evaluate(() => ({
-        sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
+        sliceIndex: Number(document.querySelector('.tools input[type=range]').value),
         regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
         regionsLength: Microdraw.ImageInfo[0].Regions.length
       }));
@@ -221,27 +223,27 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
 
     // eslint-disable-next-line max-statements
     it('delete square in browser 2, disappears from both browsers', async () => {
-      await shadowclick(UI.NEXT, page2);
+      await clickTool(UI.NEXT, page2);
       await U.waitUntilHTMLRendered(page2);
-      await shadowclick(UI.SELECT, page2);
+      await clickTool(UI.SELECT, page2);
       await page2.mouse.click(450, 150);
-      await shadowclick(UI.DELETE, page2);
-      await shadowclick(UI.SAVE, page2);
+      await clickTool(UI.DELETE, page2);
+      await clickTool(UI.SAVE, page2);
       await U.delay(1000);
       await page2.reload();
       await U.waitUntilHTMLRendered(page2);
 
       await page1.bringToFront();
-      await shadowclick(UI.NEXT, page1);
+      await clickTool(UI.NEXT, page1);
       await U.waitUntilHTMLRendered(page1);
 
-      filename = "multiple-users.09.page1-slice2-cleanup.png";
+      filename = 'multiple-users.09.page1-slice2-cleanup.png';
       await page1.screenshot({path: U.newPath + filename});
-      filename = "multiple-users.10.page2-slice2-cleanup.png";
+      filename = 'multiple-users.10.page2-slice2-cleanup.png';
       await page2.screenshot({path: U.newPath + filename});
 
       res = await page1.evaluate(() => ({
-        sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
+        sliceIndex: Number(document.querySelector('.tools input[type=range]').value),
         regionsExists: typeof (Microdraw.ImageInfo[1].Regions) !== 'undefined',
         regionsLength: Microdraw.ImageInfo[1].Regions.length
       }));
@@ -251,7 +253,7 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       assert(res.regionsLength === 0, `Regions.length is ${res.regionsLength} instead of 0`);
 
       res = await page2.evaluate(() => ({
-        sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
+        sliceIndex: Number(document.querySelector('.tools input[type=range]').value),
         regionsExists: typeof (Microdraw.ImageInfo[1].Regions) !== 'undefined',
         regionsLength: Microdraw.ImageInfo[1].Regions.length
       }));
@@ -278,19 +280,19 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
     // eslint-disable-next-line max-statements
     it('draw triangle in slice 1, browser 1, and save', async () => {
       await page1.bringToFront();
-      await shadowclick(UI.DRAWPOLYGON, page1);
+      await clickTool(UI.DRAWPOLYGON, page1);
       await page1.mouse.click(300, 100);
       await page1.mouse.click(400, 100);
       await page1.mouse.click(350, 200);
       await page1.mouse.click(300, 100);
-      await shadowclick(UI.SAVE, page1);
+      await clickTool(UI.SAVE, page1);
       await U.waitUntilHTMLRendered(page1);
 
-      filename = "multiple-users.11.page1-triangle.png";
+      filename = 'multiple-users.11.page1-triangle.png';
       await page1.screenshot({path: U.newPath + filename});
 
       res = await page1.evaluate(() => ({
-        sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
+        sliceIndex: Number(document.querySelector('.tools input[type=range]').value),
         regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
         regionsLength: Microdraw.ImageInfo[0].Regions.length,
         pathSegments: Microdraw.ImageInfo[0].Regions[0].path.segments.length
@@ -305,20 +307,20 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
     // eslint-disable-next-line max-statements
     it('draw square in slice 1, browser 2, and save', async () => {
       await page2.bringToFront();
-      await shadowclick(UI.DRAWPOLYGON, page2);
+      await clickTool(UI.DRAWPOLYGON, page2);
       await page2.mouse.click(400, 100);
       await page2.mouse.click(500, 100);
       await page2.mouse.click(500, 200);
       await page2.mouse.click(400, 200);
       await page2.mouse.click(400, 100);
-      await shadowclick(UI.SAVE, page2);
+      await clickTool(UI.SAVE, page2);
       await U.waitUntilHTMLRendered(page2);
 
-      filename = "multiple-users.12.page2-square.png";
+      filename = 'multiple-users.12.page2-square.png';
       await page2.screenshot({path: U.newPath + filename});
 
       res = await page2.evaluate(() => ({
-        sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
+        sliceIndex: Number(document.querySelector('.tools input[type=range]').value),
         regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
         regionsLength: Microdraw.ImageInfo[0].Regions.length,
         pathSegments: Microdraw.ImageInfo[0].Regions[0].path.segments.length
@@ -335,11 +337,11 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       await page1.reload();
       await U.waitUntilHTMLRendered(page1);
 
-      filename = "multiple-users.13.page1-both.png";
+      filename = 'multiple-users.13.page1-both.png';
       await page1.screenshot({path: U.newPath + filename});
 
       res = await page1.evaluate(() => ({
-        sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
+        sliceIndex: Number(document.querySelector('.tools input[type=range]').value),
         regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
         regionsLength: Microdraw.ImageInfo[0].Regions.length,
         pathSegments: Microdraw.ImageInfo[0].Regions.reduce((x, y) => x + y.path.segments.length, 0)
@@ -356,11 +358,11 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       await page2.reload();
       await U.waitUntilHTMLRendered(page2);
 
-      filename = "multiple-users.14.page2-both.png";
+      filename = 'multiple-users.14.page2-both.png';
       await page2.screenshot({path: U.newPath + filename});
 
       res = await page2.evaluate(() => ({
-        sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
+        sliceIndex: Number(document.querySelector('.tools input[type=range]').value),
         regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
         regionsLength: Microdraw.ImageInfo[0].Regions.length,
         pathSegments: Microdraw.ImageInfo[0].Regions.reduce((x, y) => x + y.path.segments.length, 0)
@@ -375,13 +377,13 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
     // eslint-disable-next-line max-statements
     it('delete triangle and square in browser 1, disappears from both browsers', async () => {
       await page1.bringToFront();
-      await shadowclick(UI.SELECT, page1);
+      await clickTool(UI.SELECT, page1);
       await page1.mouse.click(350, 150);
-      await shadowclick(UI.DELETE, page1);
+      await clickTool(UI.DELETE, page1);
       await U.delay(1000);
       await page1.mouse.click(450, 150);
-      await shadowclick(UI.DELETE, page1);
-      await shadowclick(UI.SAVE, page1);
+      await clickTool(UI.DELETE, page1);
+      await clickTool(UI.SAVE, page1);
       await U.delay(1000);
       await page1.reload();
       await U.waitUntilHTMLRendered(page1);
@@ -390,14 +392,14 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       await page2.reload();
       await U.waitUntilHTMLRendered(page2);
 
-      filename = "multiple-users.15.page1-cleanup.png";
+      filename = 'multiple-users.15.page1-cleanup.png';
       await page2.screenshot({path: U.newPath + filename});
 
-      filename = "multiple-users.16.page2-cleanup.png";
+      filename = 'multiple-users.16.page2-cleanup.png';
       await page2.screenshot({path: U.newPath + filename});
 
       res = await page1.evaluate(() => ({
-        sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
+        sliceIndex: Number(document.querySelector('.tools input[type=range]').value),
         regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
         regionsLength: Microdraw.ImageInfo[0].Regions.length
       }));
@@ -407,7 +409,7 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       assert(res.regionsLength === 0, `Regions.length is ${res.regionsLength} instead of 0`);
 
       res = await page2.evaluate(() => ({
-        sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
+        sliceIndex: Number(document.querySelector('.tools input[type=range]').value),
         regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
         regionsLength: Microdraw.ImageInfo[0].Regions.length
       }));

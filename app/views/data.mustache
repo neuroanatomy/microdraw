@@ -3,57 +3,20 @@
 
 <head>
     {{> partials/header }}
-    <link rel="stylesheet" href="css/data-style.css" type="text/css" />
+    <link rel="stylesheet" href="/css/ui.css" type="text/css" />
+    <link rel="stylesheet" href="/css/data-style.css" type="text/css" />
+    <link rel="stylesheet" href="/css/project-style.css" type="text/css" />
     <link href='https://fonts.googleapis.com/css?family=Roboto:100' rel='stylesheet' type='text/css'>
 </head>
 
+<script>
+    const loggedUser={{{loggedUser}}};
+</script>
 <body>
 
-<!-- Header (fixed height) -->
-<div id="header">
-    {{> partials/menu }}
+<div id="app"></div>
 
-    <!-- Small left-top logo -->
-    <div style="display:inline-block;margin:10px">
-        <a href='/' style="text-decoration:none">
-            <img style='height:28px;vertical-align:middle' src='/img/microdraw-white.svg'/>
-        </a><span id="fontLogo">
-            <a href='/' style="font-family: Roboto, sans-serif; font-size: 28px; font-weight:100; text-decoration:none;vertical-align:middle">MicroDraw</a>
-        </span>
-    </div>
-</div>
-
-<div id="content" style="width:100%;height:calc( 100% - 48px );background:white;position:relative"></div>
-
-<script>
-function loadScript (path, testScriptPresent) {
-  return new Promise((resolve, reject) => {
-      if(testScriptPresent && testScriptPresent()) {
-          resolve();
-      }
-      const s = document.createElement("script");
-      s.src = path;
-      s.onload=resolve;
-      s.onerror=reject;
-      document.body.appendChild(s);
-  });
-}
-
-async function attach () {
-  const res = await fetch("/microdraw");
-  const txt = await res.text();
-  const parser = new DOMParser();
-  const elem = parser.parseFromString(txt, 'text/html').documentElement;
-  const shadow = document.querySelector("#content").attachShadow({mode: 'open'});
-  shadow.appendChild(elem);
-  loadScript("/js/microdraw.js")
-  .then(() => {
-      Microdraw.init(shadow);
-  });
-}
-attach();
-</script>
+<script src="/js/pages/data-page.js"></script>
 
 </body>
-
 </html>

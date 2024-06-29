@@ -1,10 +1,13 @@
 /* global Microdraw */
 
 'use strict';
-const UI = require('../UI');
-const U = require('../mocha.test.util');
 const chai = require('chai');
-var {assert} = chai;
+const puppeteer = require('puppeteer');
+
+const U = require('../mocha.test.util');
+const UI = require('../UI');
+
+const {assert} = chai;
 
 // try {
 //     require('puppeteer')
@@ -12,21 +15,20 @@ var {assert} = chai;
 //     console.warn(`[microdraw]: dependency error: puppeteer needs to be installed manually. - npm i puppeteer`)
 //     process.exit(1)
 // }
-const puppeteer = require('puppeteer');
-
-const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
 let browser;
 let page;
 
-const shadowclick = async function (sel) {
-  const handle = await page.evaluateHandle(shadow(sel));
+const selectTool = (tool) => `document.querySelector(".tools ${tool}")`;
+
+const clickTool = async function (tool) {
+  const handle = await page.evaluateHandle(selectTool(tool));
   await handle.click();
 };
 
 describe('Editing tools: order', () => {
   it('opens a data page', async () => {
-    browser = await puppeteer.launch({headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'], dumpio: false});
+    browser = await puppeteer.launch({headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox'], dumpio: false});
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
     await page.goto('http://localhost:3000/data?source=/test_data/cat.json&slice=0',
@@ -47,7 +49,7 @@ describe('Editing tools: order', () => {
   // eslint-disable-next-line max-statements
   it('draws four overlapping triangles', async () => {
     // select the polygon tool
-    await shadowclick(UI.DRAWPOLYGON);
+    await clickTool(UI.DRAWPOLYGON);
 
     for(let i=0; i<4; i++) {
       // draw a triangle
@@ -59,11 +61,11 @@ describe('Editing tools: order', () => {
       /* eslint-enable no-await-in-loop */
     }
 
-    await shadowclick(UI.SELECT);
+    await clickTool(UI.SELECT);
     await page.mouse.click(500, 100);
 
     await U.waitUntilHTMLRendered(page);
-    const filename = "order.02.triangles.png";
+    const filename = 'order.02.triangles.png';
     await page.screenshot({path: U.newPath + filename});
 
     const res = await page.evaluate(() => ({
@@ -75,7 +77,7 @@ describe('Editing tools: order', () => {
     console.log(res);
     assert(res.regionsExists === true, 'No Regions object');
     assert(res.regionsLength === 4, `Regions.length is ${res.regionsLength} instead of 4`);
-    assert(res.firstRegionX < res.lastRegionX, `X-coord of 1st region is not smaller than that of the last region`);
+    assert(res.firstRegionX < res.lastRegionX, 'X-coord of 1st region is not smaller than that of the last region');
 
     // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     // assert(diff<1000, `${diff} pixels were different`);
@@ -85,17 +87,17 @@ describe('Editing tools: order', () => {
   it('invert the order by sending front', async () => {
     for(let i=2; i>=0; i--) {
       /* eslint-disable no-await-in-loop */
-      await shadowclick(UI.SELECT);
+      await clickTool(UI.SELECT);
       await page.mouse.click(395 + i*10, 101 + i*10);
-      await shadowclick(UI.FRONT);
+      await clickTool(UI.FRONT);
       /* eslint-enable no-await-in-loop */
     }
 
-    await shadowclick(UI.SELECT);
+    await clickTool(UI.SELECT);
     await page.mouse.click(500, 100);
 
     await U.waitUntilHTMLRendered(page);
-    const filename = "order.03.invert.png";
+    const filename = 'order.03.invert.png';
     await page.screenshot({path: U.newPath + filename});
 
     const res = await page.evaluate(() => ({
@@ -107,7 +109,7 @@ describe('Editing tools: order', () => {
     console.log(res);
     assert(res.regionsExists === true, 'No Regions object');
     assert(res.regionsLength === 4, `Regions.length is ${res.regionsLength} instead of 4`);
-    assert(res.lastRegionX < res.firstRegionX, `X-coord of last region is not smaller than that of the 1st region`);
+    assert(res.lastRegionX < res.firstRegionX, 'X-coord of last region is not smaller than that of the 1st region');
 
     // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
@@ -117,17 +119,17 @@ describe('Editing tools: order', () => {
   it('invert the order by sending back', async () => {
     for (let i = 2; i >= 0; i--) {
       /* eslint-disable no-await-in-loop */
-      await shadowclick(UI.SELECT);
+      await clickTool(UI.SELECT);
       await page.mouse.click(395 + i*10, 101 + i*10);
-      await shadowclick(UI.BACK);
+      await clickTool(UI.BACK);
       /* eslint-enable no-await-in-loop */
     }
 
-    await shadowclick(UI.SELECT);
+    await clickTool(UI.SELECT);
     await page.mouse.click(500, 100);
 
     await U.waitUntilHTMLRendered(page);
-    const filename = "order.04.invert-again.png";
+    const filename = 'order.04.invert-again.png';
     await page.screenshot({path: U.newPath + filename});
 
     const res = await page.evaluate(() => ({
@@ -139,7 +141,7 @@ describe('Editing tools: order', () => {
     console.log(res);
     assert(res.regionsExists === true, 'No Regions object');
     assert(res.regionsLength === 4, `Regions.length is ${res.regionsLength} instead of 4`);
-    assert(res.firstRegionX < res.lastRegionX, `X-coord of 1st region is not smaller than that of the last region`);
+    assert(res.firstRegionX < res.lastRegionX, 'X-coord of 1st region is not smaller than that of the last region');
 
     // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
