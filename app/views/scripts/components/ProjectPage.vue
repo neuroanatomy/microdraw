@@ -84,19 +84,16 @@ const crdtProvider = new HocuspocusProvider({
 
 const { baseURL } = Vue.inject('config');
 
-const props = defineProps({
+defineProps({
   project: {
     type: Object,
-    required: true
-  },
-  selectedFile: {
-    type: String,
     required: true
   }
 });
 
-const linkPrefix = `${baseURL}/project/${projectInfo.shortname}?source=`;
-const selectedFileIndex = projectInfo.files.list.findIndex((file) => file.source === props.selectedFile);
+const linkPrefix = `${baseURL}/data?source=`;
+const sourceFile = new URL(document.location).searchParams.get('source');
+const selectedFileIndex = Vue.ref(projectInfo.files.list.findIndex((file) => file.source === sourceFile));
 
 const textAnnotations = projectInfo.annotations.list.filter((anno) => anno.type !== 'vectorial');
 const volumeAnnotations = projectInfo.annotations.list.filter((anno) => anno.type === 'vectorial');
@@ -141,8 +138,19 @@ const valueChange = (content, index, selector) => {
   set(store.files, sel, content);
 };
 
-const selectFile = async (/* file */) => {
-  // No-op. We'd rather let user click on a link.
+const selectFile = async ( file ) => {
+  const selectedFile = {...file};
+  console.log(selectedFile);
+  const openedFile = projectInfo.files.list[selectedFileIndex.value];
+  if (selectedFile.source === openedFile.source) {
+    return;
+  }
+  const url = new URL(window.location);
+  url.searchParams.set('source', selectedFile.source);
+  window.history.pushState({}, '', url);
+  selectedFileIndex.value = projectInfo.files.list.findIndex((f) => f.source === selectedFile.source);
+
+  await Microdraw.reloadImage();
 };
 
 const setupKeyDownListeners = () => {
@@ -154,7 +162,7 @@ const setupKeyDownListeners = () => {
         return;
       }
       if (selectedTr.previousElementSibling) {
-        selectedTr.previousElementSibling.querySelector('a[href]').click();
+        selectedTr.previousElementSibling.click();
       }
       break;
     case 'ArrowDown':
@@ -162,7 +170,7 @@ const setupKeyDownListeners = () => {
         return;
       }
       if (selectedTr.nextElementSibling) {
-        selectedTr.nextElementSibling.querySelector('a[href]').click();
+        selectedTr.nextElementSibling.click();
       }
       break;
     default:

@@ -38,6 +38,7 @@ const Microdraw = (function () {
     secure: window.location.protocol === 'https:',
 
     ImageInfo: {},               // regions for each sections, can be accessed by the section name. (e.g. me.ImageInfo[me.imageOrder[viewer.current_page()]])
+    ImageInfos: {},              // image infos of the previously loaded json
     // regions contain a paper.js path, a unique ID and a name
     imageOrder: [],              // names of sections ordered by their openseadragon page numbers
     currentImage: null,          // name of the current image
@@ -1959,84 +1960,7 @@ const Microdraw = (function () {
         * @param {Object} obj DZI json configuration object
         * @returns {void}
         */
-    // eslint-disable-next-line complexity
-    initOpenSeadragon: (obj) => {
-      if( me.debug>1 ) { console.log('json file:', obj); }
-
-      // for loading the bigbrain
-      if( obj.tileCodeY ) {
-        obj.tileSources = obj.tileCodeY;
-      }
-
-      // set up the ImageInfo array and me.imageOrder array
-      for( let i = 0; i < obj.tileSources.length; i += 1 ) {
-        // name is either the index of the tileSource or a named specified in the json file
-        const name = ((obj.names && obj.names[i]) ? String(obj.names[i]) : String(i));
-        me.imageOrder.push(name);
-        me.ImageInfo[name] = {
-          source: obj.tileSources[i],
-          Regions: [],
-          RegionsToRemove: []
-        };
-        // if getTileUrl is specified, we might need to eval it to get the function
-        if( obj.tileSources[i].getTileUrl && typeof obj.tileSources[i].getTileUrl === 'string' ) {
-          // eslint-disable-next-line no-eval
-          eval(`me.ImageInfo[name].source.getTileUrl = ${obj.tileSources[i].getTileUrl}`);
-        }
-      }
-
-      // set default values for new regions (general configuration)
-      if (typeof me.config.defaultStrokeColor === 'undefined') {
-        me.config.defaultStrokeColor = 'black';
-      }
-      if (typeof me.config.defaultStrokeWidth === 'undefined') {
-        me.config.defaultStrokeWidth = 1;
-      }
-      if (typeof me.config.defaultFillAlpha === 'undefined') {
-        me.config.defaultFillAlpha = 0.5;
-      }
-      // set default values for new regions (per-brain configuration)
-      if (obj.configuration) {
-        if (typeof obj.configuration.defaultStrokeColor !== 'undefined') {
-          me.config.defaultStrokeColor = obj.configuration.defaultStrokeColor;
-        }
-        if (typeof obj.configuration.defaultStrokeWidth !== 'undefined') {
-          me.config.defaultStrokeWidth = obj.configuration.defaultStrokeWidth;
-        }
-        if (typeof obj.configuration.defaultFillAlpha !== 'undefined') {
-          me.config.defaultFillAlpha = obj.configuration.defaultFillAlpha;
-        }
-      }
-
-      me.totalImages = obj.tileSources.length - 1;
-      // send init event so that view can be configured properly
-      if(me.params.slice === 'undefined' || typeof me.params.slice === 'undefined') { // this is correct: the string "undefined", or the type
-        window.dispatchEvent(new CustomEvent('brainImageConfigured', { detail :
-          {
-            totalSlices: me.totalImages,
-            currentSlice: Math.round(me.totalImages / 2)
-          }
-        }));
-        const newIndex = Math.floor(me.totalImages / 2);
-        me.currentImage = me.imageOrder[newIndex];
-        me.addSliceToURL(newIndex);
-      } else {
-        const currentSlice = parseInt(me.params.slice, 10);
-        window.dispatchEvent(new CustomEvent('brainImageConfigured', { detail :
-          {
-            totalSlices: me.totalImages,
-            currentSlice
-          }
-        }));
-        me.currentImage = me.imageOrder[currentSlice];
-      }
-
-      me.params.tileSources = obj.tileSources;
-      if (typeof obj.fileID !== 'undefined') {
-        me.fileID = obj.fileID;
-      } else {
-        me.fileID = me.source + '_' + me.section;
-      }
+    initOpenSeadragon: () => {
       me.viewer = new OpenSeadragon({
         // id: "openseadragon1",
         element: me.dom.querySelector('#openseadragon1'),
@@ -2062,7 +1986,7 @@ const Microdraw = (function () {
       me.viewer.scalebar({
         type: OpenSeadragon.ScalebarType.MICROSCOPE,
         minWidth:'150px',
-        pixelsPerMeter:obj.pixelsPerMeter,
+        pixelsPerMeter:me.pixelsPerMeter,
         color:'black',
         fontColor:'black',
         backgroundColor:'rgba(255, 255, 255, 0.5)',
@@ -2128,11 +2052,8 @@ const Microdraw = (function () {
       window.dispatchEvent(new CustomEvent('newMessage', { detail: { message: msg }}));
     },
 
-    init: async function (dom) {
-      me.dom = dom;
-
-      await me.loadConfiguration();
-
+    // eslint-disable-next-line complexity
+    loadParams: async function() {
       me.params = me.deparam();
 
       /* recognised parameters:
@@ -2148,18 +2069,120 @@ const Microdraw = (function () {
       }
 
       if( me.config.useDatabase ) {
-        me.section = me.currentImage;
         me.source = me.params.source;
         if(typeof me.params.project !== 'undefined') {
           me.project = me.params.project;
         }
       }
 
-      me.initMicrodraw();
-
       const json = await me.loadSourceJson();
       console.log('read json', json);
-      me.initOpenSeadragon(json);
+
+      // for loading the bigbrain
+      if( json.tileCodeY ) {
+        json.tileSources = json.tileCodeY;
+      }
+
+      if (me.params.source in me.ImageInfos) {
+        me.ImageInfo = me.ImageInfos[me.params.source];
+        me.imageOrder = Object.keys(me.ImageInfo);
+      } else {
+        // set up the ImageInfo array and me.imageOrder array
+        me.ImageInfo = {};
+        me.imageOrder = [];
+        for( let i = 0; i < json.tileSources.length; i += 1 ) {
+          // name is either the index of the tileSource or a named specified in the json file
+          const name = ((json.names && json.names[i]) ? String(json.names[i]) : String(i));
+          me.imageOrder.push(name);
+          me.ImageInfo[name] = {
+            source: json.tileSources[i],
+            Regions: [],
+            RegionsToRemove: []
+          };
+          // if getTileUrl is specified, we might need to eval it to get the function
+          if( json.tileSources[i].getTileUrl && typeof json.tileSources[i].getTileUrl === 'string' ) {
+            // eslint-disable-next-line no-eval
+            eval(`me.ImageInfo[name].source.getTileUrl = ${json.tileSources[i].getTileUrl}`);
+          }
+        }
+      }
+
+      // set default values for new regions (general configuration)
+      if (typeof me.config.defaultStrokeColor === 'undefined') {
+        me.config.defaultStrokeColor = 'black';
+      }
+      if (typeof me.config.defaultStrokeWidth === 'undefined') {
+        me.config.defaultStrokeWidth = 1;
+      }
+      if (typeof me.config.defaultFillAlpha === 'undefined') {
+        me.config.defaultFillAlpha = 0.5;
+      }
+      // set default values for new regions (per-brain configuration)
+      if (json.configuration) {
+        if (typeof json.configuration.defaultStrokeColor !== 'undefined') {
+          me.config.defaultStrokeColor = json.configuration.defaultStrokeColor;
+        }
+        if (typeof json.configuration.defaultStrokeWidth !== 'undefined') {
+          me.config.defaultStrokeWidth = json.configuration.defaultStrokeWidth;
+        }
+        if (typeof json.configuration.defaultFillAlpha !== 'undefined') {
+          me.config.defaultFillAlpha = json.configuration.defaultFillAlpha;
+        }
+      }
+
+      me.totalImages = json.tileSources.length - 1;
+      // send init event so that view can be configured properly
+      if(me.params.slice === 'undefined' || typeof me.params.slice === 'undefined') { // this is correct: the string "undefined", or the type
+        window.dispatchEvent(new CustomEvent('brainImageConfigured', { detail :
+          {
+            totalSlices: me.totalImages,
+            currentSlice: Math.round(me.totalImages / 2)
+          }
+        }));
+        const newIndex = Math.floor(me.totalImages / 2);
+        me.currentImage = me.imageOrder[newIndex];
+        me.addSliceToURL(newIndex);
+      } else {
+        const currentSlice = parseInt(me.params.slice, 10);
+        window.dispatchEvent(new CustomEvent('brainImageConfigured', { detail :
+          {
+            totalSlices: me.totalImages,
+            currentSlice
+          }
+        }));
+        me.currentImage = me.imageOrder[currentSlice];
+      }
+
+      me.params.tileSources = json.tileSources;
+      if (typeof json.fileID !== 'undefined') {
+        me.fileID = json.fileID;
+      } else {
+        me.fileID = me.source + '_' + me.section;
+      }
+
+      me.pixelsPerMeter = json.pixelsPerMeter;
+    },
+
+    reloadImage: async function () {
+      me.ImageInfos[me.params.source] = me.ImageInfo;
+      await me.loadParams();
+      me.viewerOpenImage(me.ImageInfo[me.currentImage]);
+      me.viewer.scalebar({
+        pixelsPerMeter: me.pixelsPerMeter
+      });
+    },
+
+    init: async function (dom) {
+      me.dom = dom;
+
+      await me.loadConfiguration();
+
+      await me.loadParams();
+
+      me.initMicrodraw();
+
+      me.initOpenSeadragon();
+
     }
   };
 
