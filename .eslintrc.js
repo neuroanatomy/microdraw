@@ -16,8 +16,7 @@ module.exports = {
         'app/views/scripts/components/LayersManager.vue'
       ],
       rules: {
-        'max-lines': 'off',
-        'no-undef': 'off'
+        'max-lines': 'off'
       }
     }
   ]

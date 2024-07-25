@@ -182,7 +182,7 @@ const start = async function () {
 
   const hocuspocusServer = HocuspocusServer.configure({
     address: Config.crdt_backend_host,
-    port: Config.crdt_backend_port,
+    port: process.env.CRDT_BACKEND_PORT || Config.crdt_backend_port,
     debounce: 3000,
     onStoreDocument(data) {
       storeDocument(data);

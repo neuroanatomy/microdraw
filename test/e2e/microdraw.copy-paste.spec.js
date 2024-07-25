@@ -40,6 +40,12 @@ describe('Editing tools: Copy and paste', () => {
     await U.waitUntilHTMLRendered(page);
     const filename = 'copyPaste.01.cat.png';
     await page.screenshot({path: U.newPath + filename});
+
+    const res = await page.evaluate(() => ({
+      regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
+      regionsLength: Microdraw.ImageInfo[0].Regions?.length
+    }));
+    assert(res.regionsExists === false || res.regionsLength === 0, 'Regions already present');
     // const diff = await U.comparePageScreenshots(
     //   page,
     //   'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
@@ -84,7 +90,7 @@ describe('Editing tools: Copy and paste', () => {
     await page.mouse.click(405, 405);
     await clickTool(UI.COPY);
 
-    await clickTool(UI.SELECT);
+    await clickTool(UI.MOVE);
     await page.mouse.click(405, 405);
 
     await page.mouse.move(405, 405);

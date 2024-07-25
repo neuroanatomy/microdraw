@@ -43,6 +43,7 @@
 </template>
 
 <script setup>
+/* globals Microdraw projectInfo */
 import {
   Editor,
   OntologySelector

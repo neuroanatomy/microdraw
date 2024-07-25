@@ -111,7 +111,7 @@ describe('Editing tools: undo and redo', () => {
     await U.waitUntilHTMLRendered(page);
 
     // draw a triangle
-    await selectTool(UI.DRAWPOLYGON);
+    await clickTool(UI.DRAWPOLYGON);
     await page.mouse.click(300, 100);
     await page.mouse.click(400, 100);
     await page.mouse.click(350, 200);

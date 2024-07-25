@@ -445,6 +445,7 @@
   </Row>
 </template>
 <script setup>
+/* global Microdraw */
 import {
   Button,
   ButtonsGroup,

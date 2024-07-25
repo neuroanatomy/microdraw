@@ -1235,11 +1235,11 @@ const Microdraw = (function () {
       */
 
     /**
-       * @param {number} imageNumber The image number
+       * @param {string} imageName The image name
        * @returns {void}
        */
-    loadImage: function (imageNumber) {
-      if( me.debug>1 ) { console.log('> loadImage(' + imageNumber + ')'); }
+    loadImage: function (imageName) {
+      if( me.debug>1 ) { console.log('> loadImage(' + imageName + ')'); }
 
       // when loading a new image, deselect any currently selected regions
       // n.b. this needs to be called before me.currentImage is set
@@ -1249,12 +1249,12 @@ const Microdraw = (function () {
       me.prevImage = me.currentImage;
 
       // set current image to new image
-      me.currentImage = parseInt(imageNumber, 10);
+      me.currentImage = imageName;
 
       window.dispatchEvent(new CustomEvent('brainImageConfigured', { detail :
         {
           totalSlices: me.totalImages,
-          currentSlice: me.currentImage
+          currentSlice: me.currentImage // will break if me.ImageOrder is not the range from 0 to n
         }
       }));
 
@@ -1590,9 +1590,9 @@ const Microdraw = (function () {
        */
     sliderOnChange: function (newImageNumber) {
       if( me.debug>1 ) { console.log('> sliderOnChange promise'); }
-      const imageNumber = me.imageOrder[newImageNumber];
-      me.loadImage(imageNumber);
-      me.updateURL(imageNumber);
+      const imageName = me.imageOrder[newImageNumber];
+      me.loadImage(imageName);
+      me.updateURL(newImageNumber);
     },
 
     /**
@@ -2132,26 +2132,18 @@ const Microdraw = (function () {
 
       me.totalImages = json.tileSources.length - 1;
       // send init event so that view can be configured properly
-      if(me.params.slice === 'undefined' || typeof me.params.slice === 'undefined') { // this is correct: the string "undefined", or the type
-        window.dispatchEvent(new CustomEvent('brainImageConfigured', { detail :
-          {
-            totalSlices: me.totalImages,
-            currentSlice: Math.round(me.totalImages / 2)
-          }
-        }));
-        const newIndex = Math.floor(me.totalImages / 2);
-        me.currentImage = me.imageOrder[newIndex];
-        me.addSliceToURL(newIndex);
-      } else {
-        const currentSlice = parseInt(me.params.slice, 10);
-        window.dispatchEvent(new CustomEvent('brainImageConfigured', { detail :
-          {
-            totalSlices: me.totalImages,
-            currentSlice
-          }
-        }));
-        me.currentImage = me.imageOrder[currentSlice];
+      let currentSlice = parseInt(me.params.slice, 10);
+      if(!(me.params.slice in me.imageOrder)) {
+        currentSlice = Math.floor(me.totalImages / 2);
+        me.addSliceToURL(currentSlice);
       }
+      window.dispatchEvent(new CustomEvent('brainImageConfigured', { detail :
+        {
+          totalSlices: me.totalImages,
+          currentSlice
+        }
+      }));
+      me.currentImage = me.imageOrder[currentSlice];
 
       me.params.tileSources = json.tileSources;
       if (typeof json.fileID !== 'undefined') {
@@ -2179,7 +2171,7 @@ const Microdraw = (function () {
 
       await me.loadParams();
 
-      me.initMicrodraw();
+      await me.initMicrodraw();
 
       me.initOpenSeadragon();
 

@@ -64,8 +64,8 @@ describe('Editing tools: Translate, rotate, flip', () => {
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
-      regionsLength: Microdraw.ImageInfo[0].Regions.length,
-      pathSegments: Microdraw.ImageInfo[0].Regions[0].path.segments.length
+      regionsLength: Microdraw.ImageInfo[0].Regions?.length,
+      pathSegments: Microdraw.ImageInfo[0].Regions?.[0]?.path?.segments?.length
     }));
     // console.log(res);
     assert(res.regionsExists === true, 'No Regions object');
@@ -76,27 +76,23 @@ describe('Editing tools: Translate, rotate, flip', () => {
     // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
 
-  /*
-
-    Translation is disabled
-    -----------------------
-
   // eslint-disable-next-line max-statements
   it('translate', async () => {
-    await clickTool(UI.SELECT);
-    await page.mouse.click(405, 405);
+    await clickTool(UI.MOVE);
+    await page.mouse.click(450, 450);
 
     const res1 = await page.evaluate(() => ({
       regionX: Microdraw.ImageInfo[0].Regions[0].path.segments[0].point.x
     }));
     console.log(res1);
 
-    await page.mouse.move(405, 405);
+    await page.mouse.move(450, 450);
     await page.mouse.down();
-    await page.mouse.move(255, 255, {steps: 10});
+    await page.mouse.move(300, 300, {steps: 10});
     await page.mouse.up();
 
-    const filename = "transform.03.cat-translate.png";
+    await U.waitUntilHTMLRendered(page);
+    const filename = 'transform.03.cat-translate.png';
     await page.screenshot({path: U.newPath + filename});
 
     const res2 = await page.evaluate(() => ({
@@ -104,23 +100,22 @@ describe('Editing tools: Translate, rotate, flip', () => {
     }));
     console.log(res2);
 
-    assert(res1.regionX < res2.regionX, `X-coord is not larger after translation`);
+    assert(res2.regionX < res1.regionX, 'X-coord is not smaller after translation');
 
     // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
-  */
 
   // eslint-disable-next-line max-statements
   it('rotate', async () => {
     await clickTool(UI.SELECT);
-    await page.mouse.click(405, 405);
+    await page.mouse.click(300, 300);
 
     await clickTool(UI.ROTATE);
 
-    await page.mouse.move(400, 300);
+    await page.mouse.move(300, 255);
     await page.mouse.down();
-    await page.mouse.move(450, 300, {steps: 10});
+    await page.mouse.move(450, 255, {steps: 10});
     await page.mouse.up();
 
     await U.waitUntilHTMLRendered(page);

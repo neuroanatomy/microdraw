@@ -35,6 +35,7 @@
 </template>
 
 <script setup>
+/* global Microdraw */
 import {
   Header,
   Editor,

@@ -67,6 +67,7 @@
   </div>
 </template>
 <script setup>
+/* global Microdraw */
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 
 import Layer from './Layer.vue';

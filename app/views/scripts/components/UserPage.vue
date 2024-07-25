@@ -1,93 +1,144 @@
 <template>
-    <UserPage :user="user">
-      <template v-slot:side> {{projects.length}} Projects </template>
-      <template v-slot:content>
-        <Tabs>
-          <Tab title="Projects">
-            <Table id="projects">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Files</th>
-                  <th>Collaborators</th>
-                  <th>Owner</th>
-                  <th>Created</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="project in projects" :key="project.shortname">
-                  <td>
-                    <a :href="`/project/${project.shortname}/settings`" class="settings">
-                      <img
-                        style="width: 11px; margin: 3px 8px 0 0"
-                        src="/img/settings.svg"
-                      />
-                    </a>
-                    <a :href="`/project/${project.shortname}`"> {{ project.name || "Untitled" }} </a>
-                  </td>
-                  <td>{{project.files.list.length}}</td>
-                  <td>{{project.collaborators.list.length}}</td>
-                  <td>
-                    <a :href="`/user/${project.owner}`"> {{project.owner}}</a>
-                  </td>
-                  <td>{{new Date(project.created).toLocaleDateString()}}</td>
-                </tr>
-              </tbody>
-            </Table>
-          </Tab>
-          <Tab title="Settings" v-if="displaySettings">
-            <form class="embed-preferences" action="/user/savePreferences" method="POST">
-              <h3>Embed</h3>
-              <p>Limit embedding of my contents to the following hosts (1 item by line):</p>
-              <textarea placeholder="example.com" name="authorizedHosts">{{ user.authorizedHostsForEmbedding ?? '' }}</textarea>
-              <div class="action-buttons">
-                <button className="push-button" type="submit">Save</button>
+  <UserPage :user="user">
+    <template #side>
+      {{ projects.length }} Projects
+    </template>
+    <template #content>
+      <Tabs>
+        <Tab title="Projects">
+          <Table id="projects">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Files</th>
+                <th>Collaborators</th>
+                <th>Owner</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="project in projects"
+                :key="project.shortname"
+              >
+                <td>
+                  <a
+                    :href="`/project/${project.shortname}/settings`"
+                    class="settings"
+                  >
+                    <img
+                      style="width: 11px; margin: 3px 8px 0 0"
+                      src="/img/settings.svg"
+                    >
+                  </a>
+                  <a :href="`/project/${project.shortname}`"> {{ project.name || "Untitled" }} </a>
+                </td>
+                <td>{{ project.files.list.length }}</td>
+                <td>{{ project.collaborators.list.length }}</td>
+                <td>
+                  <a :href="`/user/${project.owner}`"> {{ project.owner }}</a>
+                </td>
+                <td>{{ new Date(project.created).toLocaleDateString() }}</td>
+              </tr>
+            </tbody>
+          </Table>
+        </Tab>
+        <Tab
+          title="Settings"
+          v-if="displaySettings"
+        >
+          <form
+            class="embed-preferences"
+            action="/user/savePreferences"
+            method="POST"
+          >
+            <h3>Embed</h3>
+            <p>Limit embedding of my contents to the following hosts (1 item by line):</p>
+            <textarea
+              placeholder="example.com"
+              name="authorizedHosts"
+              :value="user.authorizedHostsForEmbedding"
+            />
+            <div class="action-buttons">
+              <button
+                className="push-button"
+                type="submit"
+              >
+                Save
+              </button>
             </div>
+          </form>
+          <h3>Account</h3>
+          <dialog
+            ref="removeAccountDialog"
+            class="removeAccountDialog"
+          >
+            <form
+              action="/user/delete"
+              method="POST"
+            >
+              <p>
+                Are you sure you want to delete your account?
+              </p>
+              <div class="action-buttons">
+                <button
+                  className="push-button"
+                  value="cancel"
+                  formmethod="dialog"
+                >
+                  Cancel
+                </button>
+                <button
+                  className="push-button danger"
+                  type="submit"
+                  value="default"
+                >
+                  Delete account
+                </button>
+              </div>
             </form>
-            <h3>Account</h3>
-            <dialog ref="removeAccountDialog" class="removeAccountDialog">
-              <form action="/user/delete" method="POST">
-                <p>
-                  Are you sure you want to delete your account?
-                </p>
-                <div class="action-buttons">
-                  <button className="push-button" value="cancel" formmethod="dialog">Cancel</button>
-                  <button className="push-button danger" type="submit" value="default">Delete account</button>
-                </div>
-              </form>
-            </dialog>
-            <button class="push-button danger" @click.prevent="showRemoveAccountDialog">Remove account</button>
-          </Tab>
-        </Tabs>
-      </template>
-    </UserPage>
-  </template>
-  <script setup>
-  import { ref, onMounted, computed } from "vue";
-  import { UserPage, Tabs, Tab, Table } from "nwl-components";
-  const projects = ref([]);
-  const removeAccountDialog = ref(null);
-  
-  const props = defineProps({
-      user: Object,
-  })
+          </dialog>
+          <button
+            class="push-button danger"
+            @click.prevent="showRemoveAccountDialog"
+          >
+            Remove account
+          </button>
+        </Tab>
+      </Tabs>
+    </template>
+  </UserPage>
+</template>
+<script setup>
+/* global loggedUser */
+import { UserPage, Tabs, Tab, Table } from 'nwl-components';
+import { ref, onMounted, computed } from 'vue';
+const projects = ref([]);
+const removeAccountDialog = ref(null);
 
-  const fetchProjects = async () => {
-    const res = await (await fetch(`/user/json/${props.user.username}/projects?start=${projects.value.length}&length=100`)).json();
-    if (res.successful & (res.list.length > 0)) {
-        projects.value.push(...res.list);
-    }
-  };
-
-  const displaySettings = computed(() => loggedUser && props.user.username === loggedUser.username);
- 
-  onMounted(() => {
-    fetchProjects();
-  });
-
-  const showRemoveAccountDialog = () => {
-    removeAccountDialog.value.showModal();
+const props = defineProps({
+  user: {
+    type: Object,
+    required: true
   }
+});
+
+const fetchProjects = async () => {
+  const res = await (await fetch(`/user/json/${props.user.username}/projects?start=${projects.value.length}&length=100`)).json();
+  if (res.successful & (res.list.length > 0)) {
+    projects.value.push(...res.list);
+  }
+};
+
+const displaySettings = computed(() => loggedUser && props.user.username === loggedUser.username);
+
+onMounted(() => {
+  fetchProjects();
+});
+
+const showRemoveAccountDialog = () => {
+  removeAccountDialog.value.showModal();
+};
 
 </script>
 
@@ -111,7 +162,7 @@
 .push-button {
   border: 1px solid #ccc;
   padding: 10px;
-  background: #222;    
+  background: #222;
   color: white;
 }
 .push-button + .push-button {

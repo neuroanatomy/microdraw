@@ -2,12 +2,13 @@
 'use strict';
 
 const chai = require('chai');
-var {assert, expect} = chai;
+const {assert, expect} = chai;
 const chaiHttp = require('chai-http');
 chai.use(chaiHttp);
-const U = require('../../test/mocha.test.util');
 const _ = require('lodash');
 const puppeteer = require('puppeteer');
+
+const U = require('../../test/mocha.test.util');
 
 // eslint-disable-next-line max-statements
 describe('TESTING PERMISSIONS', function () {
@@ -108,7 +109,7 @@ describe('TESTING PERMISSIONS', function () {
     };
 
     before(function () {
-      ["none", "view", "edit", "add", "remove"].forEach((access) => {
+      ['none', 'view', 'edit', 'add', 'remove'].forEach((access) => {
         setupProjectWithAccess(
           { files: access },
           `files${access}`
@@ -169,14 +170,14 @@ describe('TESTING PERMISSIONS', function () {
       let project = _.cloneDeep(projects.collaboratorsnonefilesedit);
       let initialProjectState = _.cloneDeep(project);
       project.collaborators.list.push({
-        userID: "foo",
+        userID: 'foo',
         access: {
-          collaborators: "edit",
-          annotations: "edit",
-          files: "edit"
+          collaborators: 'edit',
+          annotations: 'edit',
+          files: 'edit'
         },
-        username: "foo",
-        name: "Foo"
+        username: 'foo',
+        name: 'Foo'
       });
 
       let res = await post('/project/json/' + project.shortname, true)
@@ -188,14 +189,14 @@ describe('TESTING PERMISSIONS', function () {
       project = _.cloneDeep(projects.collaboratorsviewfilesedit);
       initialProjectState = _.cloneDeep(project);
       project.collaborators.list.push({
-        userID: "foo",
+        userID: 'foo',
         access: {
-          collaborators: "edit",
-          annotations: "edit",
-          files: "edit"
+          collaborators: 'edit',
+          annotations: 'edit',
+          files: 'edit'
         },
-        username: "foo",
-        name: "Foo"
+        username: 'foo',
+        name: 'Foo'
       });
       res = await post('/project/json/' + project.shortname, true)
         .send({data: project});
@@ -246,14 +247,14 @@ describe('TESTING PERMISSIONS', function () {
       let project = projects.collaboratorsaddfilesedit;
       let initialProjectState = _.cloneDeep(project);
       project.collaborators.list.push({
-        userID: "foo",
+        userID: 'foo',
         access: {
-          collaborators: "edit",
-          annotations: "edit",
-          files: "edit"
+          collaborators: 'edit',
+          annotations: 'edit',
+          files: 'edit'
         },
-        username: "foo",
-        name: "Foo"
+        username: 'foo',
+        name: 'Foo'
       });
 
       let res = await post('/project/json/' + project.shortname, true)
@@ -266,14 +267,14 @@ describe('TESTING PERMISSIONS', function () {
       project = projects.collaboratorsremovefilesedit;
       initialProjectState = _.cloneDeep(project);
       project.collaborators.list.push({
-        userID: "foo",
+        userID: 'foo',
         access: {
-          collaborators: "edit",
-          annotations: "edit",
-          files: "edit"
+          collaborators: 'edit',
+          annotations: 'edit',
+          files: 'edit'
         },
-        username: "foo",
-        name: "Foo"
+        username: 'foo',
+        name: 'Foo'
       });
       res = await post('/project/json/' + project.shortname, true)
         .send({data: project});
@@ -299,8 +300,8 @@ describe('TESTING PERMISSIONS', function () {
       const project = _.cloneDeep(projects.fileseditannotationsnone);
       const initialProjectState = _.cloneDeep(project);
       project.annotations.list.push({
-        type: "text",
-        name: "Annotation name",
+        type: 'text',
+        name: 'Annotation name',
         values: null
       });
       const res = await post('/project/json/' + project.shortname, true)
@@ -314,8 +315,8 @@ describe('TESTING PERMISSIONS', function () {
       const project = _.cloneDeep(projects.fileseditannotationsview);
       const initialProjectState = _.cloneDeep(project);
       project.annotations.list.push({
-        type: "text",
-        name: "Annotation name",
+        type: 'text',
+        name: 'Annotation name',
         values: null
       });
       const res = await post('/project/json/' + project.shortname, true)
@@ -330,8 +331,8 @@ describe('TESTING PERMISSIONS', function () {
       let project = projects.fileseditannotationsadd;
       let initialProjectState = _.cloneDeep(project);
       project.annotations.list.push({
-        type: "text",
-        name: "Annotation name",
+        type: 'text',
+        name: 'Annotation name',
         values: null
       });
       let res = await post('/project/json/' + project.shortname, true)
@@ -343,8 +344,8 @@ describe('TESTING PERMISSIONS', function () {
       project = projects.fileseditannotationsremove;
       initialProjectState = _.cloneDeep(project);
       project.annotations.list.push({
-        type: "text",
-        name: "Annotation name",
+        type: 'text',
+        name: 'Annotation name',
         values: null
       });
       res = await post('/project/json/' + project.shortname, true)
@@ -393,13 +394,13 @@ describe('TESTING PERMISSIONS', function () {
 
     it('Checks that collaborators cannot add project files if set to none or view', async function() {
       let project = _.cloneDeep(projects.filesnone);
-      project.files.list.push({source: "https://zenodo.org/record/44855/files/MRI-n4.nii.gz", name: "MRI-n4.nii.gz"});
+      project.files.list.push({source: 'https://zenodo.org/record/44855/files/MRI-n4.nii.gz', name: 'MRI-n4.nii.gz'});
       let res = await post('/project/json/' + project.shortname, true)
         .send({data: project});
       assert.oneOf(res.statusCode, forbiddenStatusCodes);
 
       project = _.cloneDeep(projects.filesview);
-      project.files.list.push({source: "https://zenodo.org/record/44855/files/MRI-n4.nii.gz", name: "MRI-n4.nii.gz"});
+      project.files.list.push({source: 'https://zenodo.org/record/44855/files/MRI-n4.nii.gz', name: 'MRI-n4.nii.gz'});
       res = await post('/project/json/' + project.shortname, true)
         .send({data: project});
       assert.oneOf(res.statusCode, forbiddenStatusCodes);
@@ -409,7 +410,7 @@ describe('TESTING PERMISSIONS', function () {
     it('Checks that collaborators can add project files if set to add or remove', async function() {
       let project = _.cloneDeep(projects.filesadd);
       let initialProjectState = _.cloneDeep(project);
-      project.files.list.push({source: "https://zenodo.org/record/44855/files/MRI-n4.nii.gz", name: "MRI-n4.nii.gz"});
+      project.files.list.push({source: 'https://zenodo.org/record/44855/files/MRI-n4.nii.gz', name: 'MRI-n4.nii.gz'});
       let res = await post('/project/json/' + project.shortname, true)
         .send({data: project});
       assert.equal(res.statusCode, 200);
@@ -418,7 +419,7 @@ describe('TESTING PERMISSIONS', function () {
 
       project = _.cloneDeep(projects.filesremove);
       initialProjectState = _.cloneDeep(project);
-      project.files.list.push({source: "https://zenodo.org/record/44855/files/MRI-n4.nii.gz", name: "MRI-n4.nii.gz"});
+      project.files.list.push({source: 'https://zenodo.org/record/44855/files/MRI-n4.nii.gz', name: 'MRI-n4.nii.gz'});
       res = await post('/project/json/' + project.shortname, true)
         .send({data: project});
       assert.equal(res.statusCode, 200);
@@ -476,7 +477,7 @@ describe('TESTING PERMISSIONS', function () {
       let browser, page;
 
       before(async function() {
-        browser = await puppeteer.launch({ headless: "new", ignoreHTTPSErrors: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+        browser = await puppeteer.launch({ headless: 'new', ignoreHTTPSErrors: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
         page = await browser.newPage();
         await page.setCookie(...cookies);
       });

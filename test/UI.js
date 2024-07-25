@@ -14,6 +14,7 @@ module.exports = {
   'FOREWARD': '#foreward',
   'FRONT': '#front',
   'HOME':'#home',
+  'MOVE': '#move',
   'NAVIGATE':  '#navigate',
   'NEXT':'.range-slider button:last-child',
   'PASTE':'#paste',

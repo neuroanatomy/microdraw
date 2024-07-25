@@ -41,6 +41,12 @@ describe('Editing tools: Add regions', () => {
     await U.waitUntilHTMLRendered(page);
     const filename = 'addRegion.01.cat.png';
     await page.screenshot({path: U.newPath + filename});
+
+    const res = await page.evaluate(() => ({
+      regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
+      regionsLength: Microdraw.ImageInfo[0].Regions?.length
+    }));
+    assert(res.regionsExists === false || res.regionsLength === 0, 'Regions already present');
     // const diff = await U.comparePageScreenshots(
     //   page,
     //   'http://localhost:3000/data?source=/test_data/cat.json&slice=0',

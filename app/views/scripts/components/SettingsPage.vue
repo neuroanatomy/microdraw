@@ -1,9 +1,9 @@
 <template>
-    <SettingsPage :project="project" />    
+  <SettingsPage :project="project" />
 </template>
 <script setup>
 import { SettingsPage } from 'nwl-components';
-import { ref } from 'vue';
+// import { ref } from 'vue';
 
-const files = ref([]);
+// const files = ref([]);
 </script>
