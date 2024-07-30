@@ -547,6 +547,7 @@ button img.icon {
 }
 .text {
   width: 100%;
+  height: 100%;
 }
 .textRow {
   flex: 1;
