@@ -2,7 +2,7 @@
 /* global paper */
 
 window.ToolTextAnnotation = {textAnnotation: (function() {
-  const {dom} = Microdraw;
+  const dom = window.document;
 
   const tool = {
     // eslint-disable-next-line max-statements

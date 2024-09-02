@@ -232,6 +232,18 @@
         src="/img/flipRegion.svg"
       >
     </Button>
+    <Button
+      :class="{ pressed: currentTool === 'textAnnotation' }"
+      id="textAnnotation"
+      @click="selectTool($event)"
+      title="textAnnotation"
+    >
+      <img
+        class="icon"
+        alt="textAnnotation"
+        src="/img/textAnnotation.svg"
+      >
+    </Button>
   </ButtonsGroup>
   <Row>
     <Button
@@ -443,6 +455,45 @@
       <ScriptConsole v-if="displayScript" />
     </div>
   </Row>
+
+  <!-- Text Annotation -->
+  <div id="text-annotation-panel">
+    <div id="header">
+      <img
+        id="text-annotation-close"
+        class="button"
+        alt="close"
+        src="/img/times-circle.svg"
+        onclick="Microdraw.tools.textAnnotation.cancelTextAnnotation()"
+        style="float:right;pointer-events:auto;"
+      ><br>
+      <b>Text Annotation</b>
+    </div>
+
+    <div id="add-text-annotation">
+      <b>Text</b> <input
+        type="text"
+        placeholder="Enter annotation text"
+      > <br>
+      <b>Color</b> <input type="color"> <br>
+      <b>Font size</b> <input
+        type="number"
+        value="18"
+      > <br>
+      <br>
+      <div>
+        <button onclick="Microdraw.tools.textAnnotation.addTextAnnotation(event)">
+          Add
+        </button>
+        <button onclick="Microdraw.tools.textAnnotation.updateTextAnnotation(event)">
+          Update
+        </button>
+        <button onclick="Microdraw.tools.textAnnotation.cancelTextAnnotation(event)">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 <script setup>
 /* global Microdraw */
@@ -553,6 +604,50 @@ button img.icon {
   flex: 1;
   min-height: 40px;
 }
+
+/*------------------*/
+/*  Text Annotation */
+#text-annotation-panel {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 300px;
+    height: 200px;
+    max-height: 300px;
+    transform: translate( -50%, -50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    padding: 10px;
+    z-index: 100;
+    font-size: 0.8rem;
+}
+#text-annotation-panel > #header {
+    height: 36px;
+    background-color: #666;
+    padding: 0 5px 0 10px;
+    margin: -10px -10px 5px -10px;
+    pointer-events: none;
+}
+#add-text-annotation > b {
+    display: inline-block;
+    width: 60px;
+    margin-left: 10px;
+}
+#add-text-annotation > input[type="text"] {
+    width: calc(100% - 80px);
+}
+#add-text-annotation > input[type="color"], input[type="number"] {
+    width: 60px;
+}
+#add-text-annotation > div {
+    display: block;
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+}
+input, button {
+  color: black;
+}
 </style>
 <style>
 .range-slider button {
@@ -563,6 +658,6 @@ button img.icon {
   #logScript {
     height: calc(100% - 22px);
   }
-  </style>
+</style>
 
 

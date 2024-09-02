@@ -1848,30 +1848,6 @@ const Microdraw = (function () {
     },
 
     /**
-       * @desc Changes the way in which the toolbar is displayed
-       * @param {string} display Position where the toolbar is displayed
-       * @returns {void}
-       */
-    changeToolbarDisplay: function (display) {
-      switch(display) {
-      case 'minimize':
-        me.dom.querySelector('#tools-maximized').style.display = 'none';
-        me.dom.querySelector('#tools-minimized').style.display = 'block';
-        break;
-      case 'maximize':
-        me.dom.querySelector('#tools-maximized').style.display = 'block';
-        me.dom.querySelector('#tools-minimized').style.display = 'none';
-        break;
-      case 'left':
-        me.dom.querySelector('body').setAttribute('data-toolbarDisplay', 'left');
-        break;
-      case 'right':
-        me.dom.querySelector('body').setAttribute('data-toolbarDisplay', 'right');
-        break;
-      }
-    },
-
-    /**
        * @returns {void}
        */
     initMicrodraw: async () => {
