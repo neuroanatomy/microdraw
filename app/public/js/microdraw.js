@@ -3,7 +3,7 @@
 /*eslint max-statements: ["error", 80]*/
 /*eslint max-lines: ["error", 3000]*/
 /*eslint no-alert: "off"*/
-/* global paper MUI */
+/* global paper */
 /* global OpenSeadragon */
 /* exported Microdraw */
 
@@ -913,8 +913,8 @@ const Microdraw = (function () {
       if( me.debug>1 ) { console.log('> setImage'); }
       const index = me.imageOrder.indexOf(imageNumber);
 
-      // update image slider
-      me.updateSliderValue(index);
+      // // update image slider
+      // me.updateSliderValue(index);
 
       //update url
       me.updateURL(index);
@@ -1245,7 +1245,7 @@ const Microdraw = (function () {
       // n.b. this needs to be called before me.currentImage is set
       me.selectRegion(null);
 
-      // save previous image for some (later) cleanup
+      // save previous image for some (later) cleanup (no longer used)
       me.prevImage = me.currentImage;
 
       // set current image to new image
@@ -1254,7 +1254,7 @@ const Microdraw = (function () {
       window.dispatchEvent(new CustomEvent('brainImageConfigured', { detail :
         {
           totalSlices: me.totalImages,
-          currentSlice: me.currentImage // will break if me.ImageOrder is not the range from 0 to n
+          currentSlice: me.imageOrder.indexOf(imageName)
         }
       }));
 
@@ -1273,8 +1273,8 @@ const Microdraw = (function () {
       const index = me.imageOrder.indexOf(me.currentImage);
       const nextIndex = (index + 1) % me.imageOrder.length;
 
-      // update image slider
-      me.updateSliderValue(nextIndex);
+      // // update image slider
+      // me.updateSliderValue(nextIndex);
 
       // update URL
       me.updateURL(nextIndex);
@@ -1595,27 +1595,27 @@ const Microdraw = (function () {
       me.updateURL(newImageNumber);
     },
 
-    /**
-       * @desc Used to update the slider value if the section was changed by another control
-       * @param {number} newIndex section number to which the slider will be set
-       * @returns {void}
-       */
-    updateSliderValue: function (newIndex) {
-      if( me.debug>1 ) { console.log('> updateSliderValue promise'); }
-      const slider = me.dom.querySelector('#slice');
-      if( slider ) { // only if slider could be found
-        slider.dataset.val = newIndex;
-        me.updateSliderDisplay();
-      }
-    },
+    // /**
+    //    * @desc Used to update the slider value if the section was changed by another control
+    //    * @param {number} newIndex section number to which the slider will be set
+    //    * @returns {void}
+    //    */
+    // updateSliderValue: function (newIndex) {
+    //   if( me.debug>1 ) { console.log('> updateSliderValue promise'); }
+    //   const slider = me.dom.querySelector('#slice');
+    //   if( slider ) { // only if slider could be found
+    //     slider.dataset.val = newIndex;
+    //     me.updateSliderDisplay();
+    //   }
+    // },
 
-    updateSliderDisplay: () => {
-      let {val, max} = me.dom.querySelector('#slice').dataset;
-      const thumb = me.dom.querySelector('#slice .mui-thumb');
-      val = Number(val);
-      max = Number(max);
-      thumb.style.left = (val*100/max) + '%';
-    },
+    // updateSliderDisplay: () => {
+    //   let {val, max} = me.dom.querySelector('#slice').dataset;
+    //   const thumb = me.dom.querySelector('#slice .mui-thumb');
+    //   val = Number(val);
+    //   max = Number(max);
+    //   thumb.style.left = (val*100/max) + '%';
+    // },
 
     /**
        * Searches for the given section-number.
@@ -1766,40 +1766,39 @@ const Microdraw = (function () {
         me.loadScript('https://cdn.jsdelivr.net/gh/r03ert0/Openseadragon-screenshot@v0.0.1/openseadragonScreenshot.js'),
         me.loadScript('/lib/FileSaver.js/FileSaver.min.js'),
         me.loadScript('/js/neurolex-ontology.js'),
-        me.loadScript('https://cdn.jsdelivr.net/gh/r03ert0/muijs@v0.1.3/mui.js'),
         me.loadScript('https://unpkg.com/codeflask/build/codeflask.min.js'),
         me.loadScript('https://cdn.jsdelivr.net/gh/r03ert0/consolita.js@0.2.1/consolita.js'),
 
-        me.loadScript('/js/tools/fullscreen.js'),
+        // me.loadScript('/js/tools/fullscreen.js'),
         me.loadScript('/js/tools/home.js'),
         me.loadScript('/js/tools/navigate.js'),
         me.loadScript('/js/tools/zoomIn.js'),
-        me.loadScript('/js/tools/zoomOut.js'),
-        me.loadScript('/js/tools/previous.js'),
-        me.loadScript('/js/tools/next.js'),
-        me.loadScript('/js/tools/closeMenu.js'),
-        me.loadScript('/js/tools/openMenu.js')
+        me.loadScript('/js/tools/zoomOut.js')
+        // me.loadScript('/js/tools/previous.js'),
+        // me.loadScript('/js/tools/next.js'),
+        // me.loadScript('/js/tools/closeMenu.js'),
+        // me.loadScript('/js/tools/openMenu.js')
       ]);
 
-      /* global ToolFullscreen */
+      // /* global ToolFullscreen */
       /* global ToolHome */
       /* global ToolNavigate */
       /* global ToolZoomIn */
       /* global ToolZoomOut */
-      /* global ToolPrevious */
-      /* global ToolNext */
-      /* global ToolCloseMenu */
-      /* global ToolOpenMenu */
+      // /* global ToolPrevious */
+      // /* global ToolNext */
+      // /* global ToolCloseMenu */
+      // /* global ToolOpenMenu */
 
-      $.extend(me.tools, ToolFullscreen);
+      // $.extend(me.tools, ToolFullscreen);
       $.extend(me.tools, ToolHome);
       $.extend(me.tools, ToolNavigate);
       $.extend(me.tools, ToolZoomIn);
       $.extend(me.tools, ToolZoomOut);
-      $.extend(me.tools, ToolPrevious);
-      $.extend(me.tools, ToolNext);
-      $.extend(me.tools, ToolCloseMenu);
-      $.extend(me.tools, ToolOpenMenu);
+      // $.extend(me.tools, ToolPrevious);
+      // $.extend(me.tools, ToolNext);
+      // $.extend(me.tools, ToolCloseMenu);
+      // $.extend(me.tools, ToolOpenMenu);
 
       // load configuration file, then load the tools accordingly
       const r = await fetch('/js/configuration.json');
@@ -1853,27 +1852,27 @@ const Microdraw = (function () {
     initMicrodraw: async () => {
       if( me.debug>1 ) { console.log('> initMicrodraw promise'); }
 
-      // Enable click on toolbar buttons
-      Array.prototype.forEach.call(me.dom.querySelectorAll('#buttonsBlock div.mui.push'), (el) => {
-        el.addEventListener('click', me.toolSelection);
-      });
-      MUI.toggle(me.dom.querySelector('#fullscreen'), () => { me.clickTool('fullscreen'); });
-      MUI.push(me.dom.querySelector('#sliderBlock #previous'), () => { me.clickTool('previous'); });
-      MUI.push(me.dom.querySelector('#sliderBlock #next'), () => { me.clickTool('next'); });
-      MUI.slider(me.dom.querySelector('#sliderBlock #slice'), (x, ev) => {
-        const newImageNumber = Math.round((me.imageOrder.length-1)*x/100);
-        if(ev.type === 'mouseup' || ev.type === 'touchend') {
-          me.sliderOnChange(newImageNumber);
-        } else {
-          const imageNumber = me.imageOrder[newImageNumber];
-          me.dom.querySelector('#slice-number').innerHTML = `Slice ${imageNumber}`;
-        }
-      });
-      MUI.chose(me.dom.querySelector('#clickTool.mui-chose'), (title) => {
-        const el = me.dom.querySelector(`[title="${title}"]`);
-        const tool = el.id;
-        me.clickTool(tool);
-      });
+      // // Enable click on toolbar buttons
+      // Array.prototype.forEach.call(me.dom.querySelectorAll('#buttonsBlock div.mui.push'), (el) => {
+      //   el.addEventListener('click', me.toolSelection);
+      // });
+      // MUI.toggle(me.dom.querySelector('#fullscreen'), () => { me.clickTool('fullscreen'); });
+      // MUI.push(me.dom.querySelector('#sliderBlock #previous'), () => { me.clickTool('previous'); });
+      // MUI.push(me.dom.querySelector('#sliderBlock #next'), () => { me.clickTool('next'); });
+      // MUI.slider(me.dom.querySelector('#sliderBlock #slice'), (x, ev) => {
+      //   const newImageNumber = Math.round((me.imageOrder.length-1)*x/100);
+      //   if(ev.type === 'mouseup' || ev.type === 'touchend') {
+      //     me.sliderOnChange(newImageNumber);
+      //   } else {
+      //     const imageNumber = me.imageOrder[newImageNumber];
+      //     me.dom.querySelector('#slice-number').innerHTML = `Slice ${imageNumber}`;
+      //   }
+      // });
+      // MUI.chose(me.dom.querySelector('#clickTool.mui-chose'), (title) => {
+      //   const el = me.dom.querySelector(`[title="${title}"]`);
+      //   const tool = el.id;
+      //   me.clickTool(tool);
+      // });
 
       // set annotation loading flag to false
       me.annotationLoadingFlag = false;
@@ -2036,13 +2035,13 @@ const Microdraw = (function () {
          source: url to the dzi file
          slice: initial slice to display
          project: project name
-         displayTools: show or hide the tools
+        //  displayTools: show or hide the tools
          layers: initialise the list of layers
       */
 
-      if (me.params.displayTools === 'false') {
-        me.dom.querySelector('#menuBar').style.display='none';
-      }
+      // if (me.params.displayTools === 'false') {
+      //   me.dom.querySelector('#menuBar').style.display='none';
+      // }
 
       if( me.config.useDatabase ) {
         me.source = me.params.source;
