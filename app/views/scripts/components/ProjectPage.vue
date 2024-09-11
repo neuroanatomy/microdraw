@@ -195,23 +195,13 @@ const updateOpacity = () => {
 
 Vue.watch(opacity, updateOpacity);
 
-const _findSelectedRegion = () => {
-  const {currentImage, region} = Microdraw;
-  const {Regions: regions} = Microdraw.ImageInfo[currentImage];
-
-  return regions.findIndex((reg) => reg.uid === region.uid);
-};
-
 const handleOntologyLabelClick = (index) => {
   Microdraw.currentLabelIndex = index;
   displayOntology.value = false;
   currentLabel.value = index;
-  const regionIndex = _findSelectedRegion();
-  if(regionIndex !== null) {
-    const { region } = Microdraw;
-    if (region !== null) {
-      Microdraw.changeRegionName(region, Microdraw.ontology.labels[index].name);
-    }
+  const { region } = Microdraw;
+  if (region !== null) {
+    Microdraw.changeRegionName(region, Microdraw.ontology.labels[index].name);
   }
 };
 
