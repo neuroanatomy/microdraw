@@ -11,6 +11,7 @@
       :open="displayOntology"
       @on-close="displayOntology = false"
       @label-click="handleOntologyLabelClick"
+      v-model:opacity="opacity"
     />
     <Editor
       :title="title"
@@ -57,6 +58,7 @@ const {
   currentLabel,
   ontology,
   fullscreen,
+  opacity,
   init: initVisualization
 } = useVisualization();
 
@@ -73,6 +75,12 @@ const toggleFullScreen = () => {
 };
 
 Vue.watch(fullscreen, toggleFullScreen);
+
+const updateOpacity = () => {
+  Microdraw.dom.querySelector('#paperjs-container').style.opacity = opacity.value;
+};
+
+Vue.watch(opacity, updateOpacity);
 
 const _findSelectedRegion = () => {
   const {currentImage, region} = Microdraw;

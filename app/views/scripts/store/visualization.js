@@ -20,7 +20,8 @@ const state = reactive({
   currentTool: 'navigate',
   currentSlice: 0,
   totalSlices: 0,
-  fullscreen: false
+  fullscreen: false,
+  opacity: 1
 });
 
 const loadScript = (path, testScriptPresent) => new Promise((resolve, reject) => {
