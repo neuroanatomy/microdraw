@@ -1273,9 +1273,6 @@ const Microdraw = (function () {
       const index = me.imageOrder.indexOf(me.currentImage);
       const nextIndex = (index + 1) % me.imageOrder.length;
 
-      // // update image slider
-      // me.updateSliderValue(nextIndex);
-
       // update URL
       me.updateURL(nextIndex);
 
@@ -1289,9 +1286,6 @@ const Microdraw = (function () {
       if(me.debug>1) { console.log('> loadPrevImage'); }
       const index = me.imageOrder.indexOf(me.currentImage);
       const previousIndex = ((index - 1 >= 0)? index - 1 : me.imageOrder.length - 1 );
-
-      // update image slider
-      me.updateSliderValue(previousIndex);
 
       // update URL
       me.updateURL(previousIndex);
@@ -1909,26 +1903,7 @@ const Microdraw = (function () {
      * @returns {void}
      */
     _configureLayersFromParams: () => {
-      const timer = setInterval(async () => {
-        if (me.tools.layers) {
-          console.log('layers tool loaded');
-          clearInterval(timer);
-          const layers = me.params.layers.split(';').map( (layer) => layer.split(',') );
-          for (const layer of layers) {
-            const [source, name] = layer;
-            const opacity = parseFloat(layer.opacity);
-            // eslint-disable-next-line no-await-in-loop, dot-notation
-            const dzi = await me.tools['layers'].fetchDZI(source);
-            if (!dzi) {
-              continue;
-            }
-            // eslint-disable-next-line dot-notation
-            me.tools['layers'].addLayer(name, source, opacity * 100, dzi);
-          }
-        } else {
-          console.log('layers tool not loaded yet');
-        }
-      }, 200);
+      window.dispatchEvent(new CustomEvent('updateMicrodrawLayers', {detail: me.params.layers}));
     },
 
     /**

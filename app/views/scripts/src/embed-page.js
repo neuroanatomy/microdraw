@@ -1,9 +1,11 @@
 /* global projectInfo */
 
 import 'nwl-components/dist/style.css';
-import Embed from '../components/Embed.vue';
-import config from './nwl-components-config';
 import { createApp } from 'vue';
+
+import Embed from '../components/Embed.vue';
+
+import config from './nwl-components-config';
 
 const params = new URL(document.location).searchParams;
 const selectedFile = projectInfo.files.list.find((file) => file.source === params.get('source'));

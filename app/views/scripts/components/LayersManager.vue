@@ -49,7 +49,7 @@
           :class="{ hasSourceError }"
           v-model="newLayerSource"
         >
-        <button @click="addLayer">
+        <button @click="addLayerUI">
           Add
         </button>
         <button @click="cancelAddRow">
@@ -124,34 +124,16 @@ const fetchDZI = async (url) => {
   return dzi;
 };
 
-const addLayerToViewer = (url, tileIndex, imageSources, opacity) => {
-  let tileSource = imageSources.tileSources[tileIndex];
-  if (tileSource[0] === '/') {
-    const tmp = new URL(url);
-    tileSource = tmp.origin + tileSource;
-  }
-  const options = {
-    tileSource,
-    opacity,
-    compositeOperation: 'source-over'
-  };
-  Microdraw.viewer.addTiledImage(options);
-};
-
 const updateLayer = (index, property, value) => {
   layers.value[index][property] = value;
   const viewerItem = Microdraw.viewer.world.getItemAt(index + 1);
   const layer = layers.value[index];
-  viewerItem.setPosition({x: layer.x, y: layer.y });
+  viewerItem.setPosition({x: layer.x/100, y: layer.y/100 });
   viewerItem.setRotation(layer.rotation);
   viewerItem.setOpacity(layer.opacity);
 };
 
-const updateLayers = () => {
-  // return if there's no layers
-  if (layers.value.length === 0) {
-    return;
-  }
+const addLayerToViewer = (layer) => {
 
   // current slice index
   const currentImage = Number(Microdraw.currentImage);
@@ -159,11 +141,10 @@ const updateLayers = () => {
   // total number of slices
   const totalImages = Microdraw.imageOrder.length;
 
-  // get 1st and last slice of layers[0]
-  const layerIndex = 0;
-  const {url, opacity, firstSlice, lastSlice, imageSources} = layers.value[layerIndex];
+  // get 1st and last slice of layer
+  const {url, opacity, x, y, rotation, firstSlice, lastSlice, imageSources} = layer;
 
-  // get the sliceIndex in layers[0] corresponding to sliceIndex in the viewer
+  // get the sliceIndex in layer corresponding to sliceIndex in the viewer
   const [a0, a1, l0, l1] = [0, totalImages - 1, firstSlice, lastSlice];
   // ia = (il) => {a0=6;a1=58;l0=94;l1=12;m=(l0-l1)/(a0-a1);n=l0-a0*m;return (il-n)/m};
   const il = (ia) => {
@@ -172,11 +153,60 @@ const updateLayers = () => {
     return ia*m+n;
   };
   const tileIndex = Math.floor(il(currentImage));
-  addLayerToViewer(url, tileIndex, imageSources, opacity);
+  let tileSource = imageSources.tileSources[tileIndex];
+  if (tileSource[0] === '/') {
+    const tmp = new URL(url);
+    tileSource = tmp.origin + tileSource;
+  }
+  const options = {
+    tileSource,
+    opacity,
+    x: x/100,
+    y: y/100,
+    degrees: rotation,
+    compositeOperation: 'source-over'
+  };
+  Microdraw.viewer.addTiledImage(options);
 
 };
 
-const addLayer = async () => {
+const addLayer = (name, url, opacity, dzi) => {
+  const newLayer = {
+    name,
+    url,
+    x: 0,
+    y: 0,
+    rotation: 0,
+    opacity,
+    imageSources: dzi,
+    firstSlice: 0,
+    lastSlice: dzi.tileSources.length - 1
+  };
+
+  layers.value.push(newLayer);
+
+  addLayerToViewer(newLayer);
+};
+
+const loadLayers = async (event) => {
+  if(event.detail) {
+    const layersParams = event.detail.split(';').map( (layer) => layer.split(',') );
+    for (const layer of layersParams) {
+      const [name, source] = layer;
+      // eslint-disable-next-line no-await-in-loop
+      const dzi = await fetchDZI(source);
+      if (!dzi) {
+        continue;
+      }
+      addLayer(name, source, 0.5, dzi);
+    }
+  }
+  for (const layer of layers.value) {
+    addLayerToViewer(layer);
+  }
+};
+
+const addLayerUI = async () => {
   const dzi = await fetchDZI(newLayerSource.value);
   if (!dzi) {
     hasSourceError.value = true;
@@ -184,24 +214,12 @@ const addLayer = async () => {
     return;
   }
 
-  layers.value.push({
-    name: newLayerName.value,
-    url: newLayerSource.value,
-    x: 0,
-    y: 0,
-    rotation: 0,
-    opacity: 0.5,
-    imageSources: dzi,
-    firstSlice: 0,
-    lastSlice: dzi.tileSources.length - 1
-  });
+  addLayer(newLayerName.value, newLayerSource.value, 0.5, dzi);
 
   displayAddRow.value = false;
   hasSourceError.value = false;
   newLayerName.value = '';
   newLayerSource.value = '';
-
-  updateLayers();
 };
 
 const deleteLayer = (index) => {
@@ -227,12 +245,12 @@ const onMouseMove = (e) => {
 
 onMounted(() => {
   document.addEventListener('mousemove', onMouseMove);
-  window.addEventListener('updateMicrodrawLayers', updateLayers);
+  window.addEventListener('updateMicrodrawLayers', loadLayers);
 });
 
 onUnmounted(() => {
   document.removeEventListener('mousemove', onMouseMove);
-  window.removeEventListener('updateMicrodrawLayers', updateLayers);
+  window.removeEventListener('updateMicrodrawLayers', loadLayers);
 });
 
 
@@ -248,6 +266,8 @@ onUnmounted(() => {
   left: var(--left);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  resize: both;
 }
 .header {
   user-select: none;
@@ -264,11 +284,10 @@ onUnmounted(() => {
   padding: 0;
   align-items: flex-start;
   flex: 1;
+  overflow: hidden;
 }
 .addRow {
-  margin-top: auto;
-  margin-left: 10px;
-  margin-bottom: 10px;
+  margin: 10px;
 }
 .addLayerPanel {
   background-color: #333;
@@ -291,7 +310,7 @@ input[type=text] {
 
 .layersList {
   overflow-y: auto;
-  height: 222px;
+  flex-grow: 1;
   width: 100%;
 }
 </style>
