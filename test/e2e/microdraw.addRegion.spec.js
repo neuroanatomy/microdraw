@@ -1,10 +1,13 @@
 /* global Microdraw */
 
 'use strict';
-const UI = require('../UI');
-const U = require('../mocha.test.util');
 const chai = require('chai');
-var {assert} = chai;
+const puppeteer = require('puppeteer');
+
+const U = require('../mocha.test.util');
+const UI = require('../UI');
+
+const {assert} = chai;
 
 // try {
 //   require('puppeteer');
@@ -12,21 +15,21 @@ var {assert} = chai;
 //   console.warn(`[microdraw]: dependency error: puppeteer needs to be installed manually. - npm i puppeteer`);
 //   process.exit(1);
 // }
-const puppeteer = require('puppeteer');
-
-const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
 let browser;
 let page;
 
-const shadowclick = async function (sel) {
-  const handle = await page.evaluateHandle(shadow(sel));
+const selectTool = (tool) => `document.querySelector(".tools ${tool}")`;
+
+const clickTool = async function (tool) {
+  const handle = await page.evaluateHandle(selectTool(tool));
   await handle.click();
 };
 
+
 describe('Editing tools: Add regions', () => {
   before(async () => {
-    browser = await puppeteer.launch({headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    browser = await puppeteer.launch({headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   });
   it('opens a data page', async () => {
     page = await browser.newPage();
@@ -38,6 +41,12 @@ describe('Editing tools: Add regions', () => {
     await U.waitUntilHTMLRendered(page);
     const filename = 'addRegion.01.cat.png';
     await page.screenshot({path: U.newPath + filename});
+
+    const res = await page.evaluate(() => ({
+      regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
+      regionsLength: Microdraw.ImageInfo[0].Regions?.length
+    }));
+    assert(res.regionsExists === false || res.regionsLength === 0, 'Regions already present');
     // const diff = await U.comparePageScreenshots(
     //   page,
     //   'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
@@ -49,7 +58,7 @@ describe('Editing tools: Add regions', () => {
   // eslint-disable-next-line max-statements
   it('draws a square', async () => {
     // select the polygon tool
-    await shadowclick(UI.DRAWPOLYGON);
+    await clickTool(UI.DRAWPOLYGON);
     // draw a square A
     await page.mouse.click(400, 400);
     await page.mouse.click(500, 400);
@@ -58,7 +67,7 @@ describe('Editing tools: Add regions', () => {
     await page.mouse.click(400, 400);
 
     await U.waitUntilHTMLRendered(page);
-    const filename = "addRegion.02.cat-square-A.png";
+    const filename = 'addRegion.02.cat-square-A.png';
     await page.screenshot({path: U.newPath + filename});
 
     const res = await page.evaluate(() => ({
@@ -85,7 +94,7 @@ describe('Editing tools: Add regions', () => {
     await page.mouse.click(450, 450);
 
     await U.waitUntilHTMLRendered(page);
-    const filename = "addRegion.03.cat-square-B.png";
+    const filename = 'addRegion.03.cat-square-B.png';
     await page.screenshot({path: U.newPath + filename});
 
     const res = await page.evaluate(() => ({
@@ -106,7 +115,7 @@ describe('Editing tools: Add regions', () => {
 
   it('does the union of the 2 squares', async () => {
     // select union tool
-    await shadowclick(UI.ADDREGION);
+    await clickTool(UI.ADDREGION);
 
     // click on square A (square B is already selected)
     await page.mouse.click(405, 405);
@@ -115,7 +124,7 @@ describe('Editing tools: Add regions', () => {
     await page.mouse.click(540, 540);
 
     await U.waitUntilHTMLRendered(page);
-    const filename = "addRegion.04.cat-union.png";
+    const filename = 'addRegion.04.cat-union.png';
     await page.screenshot({path: U.newPath + filename});
 
     const res = await page.evaluate(() => ({

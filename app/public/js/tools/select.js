@@ -5,23 +5,23 @@
 window.ToolSelect = {select: (function() {
   const tool = {
 
-    /**
-         * @function mouseDrag
-         * @param {object} point The point where you moved to (x,y)
-         * @param {object} dpoint The movement of the point
-         * @return {void}
-        */
-    mouseDrag: function mouseDrag(point, dpoint) {
+    // /**
+    //      * @function mouseDrag
+    //      * @param {object} point The point where you moved to (x,y)
+    //      * @param {object} dpoint The movement of the point
+    //      * @return {void}
+    //     */
+    // mouseDrag: function mouseDrag(point, dpoint) {
 
-      // event.stopHandlers = true;
-      // for( var reg of Microdraw.ImageInfo[Microdraw.currentImage].Regions ) {
-      //   if( reg.path.selected ) {
-      //     reg.path.position.x += dpoint.x;
-      //     reg.path.position.y += dpoint.y;
-      //     Microdraw.commitMouseUndo();
-      //   }
-      // }
-    },
+    //   event.stopHandlers = true;
+    //   for( var reg of Microdraw.ImageInfo[Microdraw.currentImage].Regions ) {
+    //     if( reg.path.selected ) {
+    //       reg.path.position.x += dpoint.x;
+    //       reg.path.position.y += dpoint.y;
+    //       Microdraw.commitMouseUndo();
+    //     }
+    //   }
+    // },
 
     _handleHitResultType: function (hitResult, point) {
       if( hitResult.type === 'handle-in' ) {

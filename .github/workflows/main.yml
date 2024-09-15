@@ -11,15 +11,14 @@ jobs:
     env:
       MONGODB_TEST: 127.0.0.1:27017/circleci_test
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 16
       - uses: supercharge/mongodb-github-action@1.3.0
         with:
           mongodb-version: 4.2
       - run: npm install
-      - run: npm run build-pages
       - name: Instantiate github-keys.json
         run: |
           echo "{ \"clientID\": \"clientID\", \"clientSecret\": \"clientSecret\", \"callbackURL\": \"http://localhost:3000/auth/github/callback\"}" > app/auth/github-keys.json
@@ -31,6 +30,7 @@ jobs:
         run: echo {} > app/controller/microdrawWebsocketServer/blacklist.json
       - name: Instantiate whitelist
         run: echo "{}" > app/controller/microdrawWebsocketServer/whitelist.json
+      - run: npm run build-pages
       - name: Run the server during 5 seconds
         run: timeout 5 npm start && exit 10 || [[ $? -eq 124 ]]
       - name: Run api tests
@@ -39,7 +39,7 @@ jobs:
         run: npm run test-e2e
       - name: Archive screenshots
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: screenshots
           path: test/e2e/screenshots/
@@ -51,8 +51,8 @@ jobs:
       NETWORK_NAME: microdraw-docker-test
       MICRODRAW_IMAGE_NAME: "microdraw:test-label"
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 16
       - name: Build docker image
@@ -95,7 +95,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Invoke deployment hook
-        uses: distributhor/workflow-webhook@v1
+        uses: distributhor/workflow-webhook@v3
         env:
           webhook_url: ${{ secrets.WEBHOOK_URL }}
           webhook_secret: ${{ secrets.WEBHOOK_SECRET }}

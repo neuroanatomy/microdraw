@@ -10,7 +10,7 @@ html, body {
     -webkit-font-smoothing: antialiased;
     -moz-font-smoothing: antialiased;
 }
-#info {
+/* #info {
     position:absolute;
     width:200px;
     height:41px;
@@ -18,17 +18,17 @@ html, body {
     left:0px;
     background-color:rgba(200,200,200,0.5);
     z-index:10;
-}
-#myNavigator {
+} */
+/* #myNavigator { */
     /* position:absolute; */
-    width:200px;
-    height:150px;
+    /* width:200px; */
+    /* height:150px; */
     /* top:0px; */
     /* right:0px; */
-    z-index:10;
-    display: none;
-}
-#menuButton {
+    /* z-index:10; */
+    /* display: none; */
+/* } */
+/* #menuButton {
     position:absolute;
     top:1px;
     left:1px;
@@ -46,25 +46,25 @@ html, body {
 }
 #closeMenu {
     right:2px;
-}
-#menuBar {
-    display:table;
-    box-sizing: border-box;
-    position:absolute;
-    width: 250px;
-    top: 5px;
+} */
+/* #menuBar { */
+    /* display:table; */
+    /* box-sizing: border-box; */
+    /* position:absolute; */
+    /* width: 250px; */
+    /* top: 5px; */
     /* height: 100%; */
-    background-color:rgba(0,0,0,0.7);
-    z-index:10;
-    box-shadow: 2px 2px 5px grey;
-}
-#bars-icon {
+    /* background-color:rgba(0,0,0,0.7); */
+    /* z-index:10; */
+    /* box-shadow: 2px 2px 5px grey; */
+/* } */
+/* #bars-icon {
     width:28px;
     position:absolute;
     top:50%;
     left:50%;
     transform: translate( -50%, -50%);
-}
+} */
 #saveDialog {
     display: none;
     position:absolute;
@@ -249,7 +249,9 @@ html, body {
     box-sizing: border-box;
 }
 
-.mui {
+/* mui class is no longer used */
+
+/* .mui {
     border:thin solid #777;
     border-radius:3px;
     margin:1px;
@@ -270,9 +272,9 @@ html, body {
     border:thin solid #777;
     border-radius:3px;
     margin:1px;
-    text-align:center;
+    text-align:center; /*
     /* height: 24px; */
-    position: relative;
+/*    position: relative;
 }
 
 .mui.sub {
@@ -286,7 +288,7 @@ html, body {
     -webkit-user-select:none;
     -moz-user-select:none;
     user-select:none;
-}
+} */
 
 .text {
     border:thin solid #777;
@@ -296,10 +298,10 @@ html, body {
     margin:1px;
     /* user-select: text; */
 }
-.text * {
+/* .text * { */
     /* font-size: 12px !important; */
     /* line-height: 15px !important; */
-}
+/* } */
 .text:hover {
     opacity:1;
 }
@@ -327,7 +329,7 @@ html, body {
     border-radius:6px;
     color:#ddd;
     text-align:center;
-    -webkit-appearance:none;
+    appearance:none;
     cursor: pointer;
 }
 img.button {
@@ -367,8 +369,8 @@ img.icon {
 /*--------------------------------------*/
 
 /*-----------------*/
-/* toolbar display */
-#tools-minimized div {
+/* toolbar display (no longer used) */
+/* #tools-minimized div {
     display:inline-block;
     width:32px;
     height:32px;
@@ -388,12 +390,12 @@ body[data-toolbarDisplay=left] #tools-minimized div {
 body[data-toolbarDisplay=right] #menuBar,
 body[data-toolbarDisplay=right] #tools-minimized div {
     right: 0;
-}
+} */
 /*------------------*/
 
 /*-------------------*/
-/* Label set display */
-#labelset-panel {
+/* Label set display (no longer used) */
+/* #labelset-panel {
   display: none;
   position: fixed;
   width: 50%;
@@ -415,9 +417,9 @@ body[data-toolbarDisplay=right] #tools-minimized div {
     background-color: #666;
     padding: 0 5px 0 10px;
     margin: -10px -10px 5px -10px;
-    cursor:  pointer;
+    cursor:  pointer; */
     /* pointer-events: none; */
-}
+/* }
 .label-color {
   vertical-align: middle;
   margin: 6px;
@@ -444,11 +446,11 @@ body[data-toolbarDisplay=right] #tools-minimized div {
 }
 #labelset-panel li {
   margin-bottom: 1rem;
-}
+} */
 /*-----------------*/
 
 /*-----------------*/
-/*  Layers display */
+/*  Layers display (not used) */
 #layers-panel {
     display: none;
     position: fixed;
@@ -525,48 +527,6 @@ b.layer-item {
     right: auto;
     bottom: auto;
 }
-/*-----------------*/
-
-/*------------------*/
-/*  Text Annotation */
-#text-annotation-panel {
-    display: none;
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    width: 300px;
-    height: 200px;
-    max-height: 300px;
-    transform: translate( -50%, -50%);
-    background-color: rgba(0, 0, 0, 0.8);
-    padding: 10px;
-    z-index: 100;
-    font-size: 0.8rem;
-}
-#text-annotation-panel > #header {
-    height: 36px;
-    background-color: #666;
-    padding: 0 5px 0 10px;
-    margin: -10px -10px 5px -10px;
-    pointer-events: none;
-}
-#add-text-annotation > b {
-    display: inline-block;
-    width: 60px;
-    margin-left: 10px;
-}
-#add-text-annotation > input[type="text"] {
-    width: calc(100% - 80px);
-}
-#add-text-annotation > input[type="color"], input[type="number"] {
-    width: 60px;
-}
-#add-text-annotation > div {
-    display: block;
-    position: absolute;
-    right: 10px;
-    bottom: 10px;
-}
 
 /*------------------*/
 
@@ -580,9 +540,9 @@ b.layer-item {
     pointer-events: none;
 }
 
-#paperjs-container canvas {
+/* #paperjs-container canvas { */
     /* pointer-events:  */
-}
+/* } */
 
 /*-----------*/
 /* Consolita */

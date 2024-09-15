@@ -1,8 +1,11 @@
 'use strict';
-const UI = require('../UI');
-const U = require('../mocha.test.util');
 const chai = require('chai');
-var {assert} = chai;
+const puppeteer = require('puppeteer');
+
+const U = require('../mocha.test.util');
+const UI = require('../UI');
+
+const {assert} = chai;
 
 // try {
 //     require('puppeteer')
@@ -10,21 +13,20 @@ var {assert} = chai;
 //     console.warn(`[microdraw]: dependency error: puppeteer needs to be installed manually. - npm i puppeteer`)
 //     process.exit(1)
 // }
-const puppeteer = require('puppeteer');
 
-const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
+const selectTool = (tool) => `document.querySelector(".tools ${tool}")`;
 
 let browser;
 let page;
 
-const shadowclick = async function (sel) {
-  const handle = await page.evaluateHandle(shadow(sel));
+const clickTool = async function (tool) {
+  const handle = await page.evaluateHandle(selectTool(tool));
   await handle.click();
 };
 
 describe('Editing tools: convert polygons to bézier and vice-versa', () => {
   it('opens a data page', async () => {
-    browser = await puppeteer.launch({headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'], dumpio: false});
+    browser = await puppeteer.launch({headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox'], dumpio: false});
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
     const diff = await U.comparePageScreenshots(
@@ -38,7 +40,7 @@ describe('Editing tools: convert polygons to bézier and vice-versa', () => {
   // eslint-disable-next-line max-statements
   it('draws a star polygon', async () => {
     // select the polygon tool
-    await shadowclick(UI.DRAWPOLYGON);
+    await clickTool(UI.DRAWPOLYGON);
 
     const o = [U.width*2/3, U.height/2];
     const r = U.width/4;
@@ -51,17 +53,17 @@ describe('Editing tools: convert polygons to bézier and vice-versa', () => {
     }
 
     await U.waitUntilHTMLRendered(page);
-    const filename = "toBezierPolygon.02.cat-star.png";
+    const filename = 'toBezierPolygon.02.cat-star.png';
     await page.screenshot({path: U.newPath + filename});
     const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     assert(diff<U.pct5, `${diff} pixels were different`);
   }).timeout(0);
 
   it('converts the star polygon to a bézier curve', async () => {
-    await shadowclick(UI.TOBEZIER);
+    await clickTool(UI.TOBEZIER);
 
     await U.waitUntilHTMLRendered(page);
-    const filename = "toBezierPolygon.03.cat-star-toBezier.png";
+    const filename = 'toBezierPolygon.03.cat-star-toBezier.png';
     await page.screenshot({path: U.newPath + filename});
     const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     assert(diff<U.pct5, `${diff} pixels were different`);
@@ -73,10 +75,10 @@ describe('Editing tools: convert polygons to bézier and vice-versa', () => {
       await dialog.accept();
     });
 
-    await shadowclick(UI.TOPOLYGON);
+    await clickTool(UI.TOPOLYGON);
 
     await U.waitUntilHTMLRendered(page);
-    const filename = "toBezierPolygon.04.cat-star-toPolygon.png";
+    const filename = 'toBezierPolygon.04.cat-star-toPolygon.png';
     await page.screenshot({path: U.newPath + filename});
     const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
     assert(diff<U.pct5, `${diff} pixels were different`);

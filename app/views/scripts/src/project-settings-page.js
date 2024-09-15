@@ -1,25 +1,13 @@
 /* global project, loggedUser */
 
 import 'nwl-components/dist/style.css';
-import { createApp, ref } from 'vue';
-import { SettingsPage } from 'nwl-components';
+import { createApp } from 'vue';
+
+import SettingsPage from '../components/SettingsPage.vue';
+
 import config from './nwl-components-config';
 
-const PageContents = {
-  template: `
-    <SettingsPage :project="project" />
-  `,
-  setup() {
-    const files = ref([]);
-
-    return {
-      project,
-      files
-    };
-  }
-};
-
-const app = createApp(PageContents);
+const app = createApp(SettingsPage, { project });
 app.component('SettingsPage', SettingsPage);
 app.provide('config', config);
 app.provide('user', loggedUser);

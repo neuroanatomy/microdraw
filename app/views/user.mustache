@@ -11,110 +11,11 @@
 <body>
 
 <div id="app"></div>
-<script type="text/html" id="template">
-<UserPage :user='userInfo'>
-    <template v-slot:side>
-        [[projects.length]] Projects
-    </template>
-    <template v-slot:content>
-        <Tabs>
-             <Tab title="Datasets">
-                <Table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Dimensions</th>
-                            <th>Included</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="file in files">
-                            <td>[[file.name]]</td>
-                            <td>[[file.dimensions]]</td>
-                            <td>[[file.included]]</td>
-                        </tr>
-                    </tbody>
-                </Table>
-             </Tab>
-             <Tab title="Atlas Files">
-                <Table>
-                    <thead>
-                        <tr>
-                            <th>Parent Dataset</th>
-                            <th>Name</th>
-                            <th>Project</th>
-                            <th>Last modified</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="at in atlas">
-                            <td>[[at.parent]]</td>
-                            <td>[[at.name]]</td>
-                            <td>[[at.project]]</td>
-                            <td>[[at.lastModified]]</td>
-                        </tr>
-                    </tbody>
-                </Table>
-             </Tab>
-            <Tab title="Projects">
-                <Table id="projects">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Files</th>
-                            <th>Collaborators</th>
-                            <th>Owner</th>
-                            <th>Last modified</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    <tr v-for="project in projects">
-                        <td>
-                            <a :href="`/project/${project.shortname}/settings`" class="settings">
-                                <img style="width:11px; margin:3px 8px 0 0" src="/img/settings.svg"/>
-                            </a>
-                            <a :href="`/project/${project.shortname}`">
-                                [[project.name]]
-                            </a>
-                        </td>
-                        <td>[[project.numFiles]]</td>
-                        <td>[[project.numCollaborators]]</td>
-                        <td>
-                            <a :href="`/user/${project.owner}`">
-                                [[project.owner]]
-                            </a>
-                        </td>
-                        <td>[[project.modified]]</td>
-                    </tr>
-                    </tbody>
-                </Table>
-            </Tab>
-       </Tabs>
-    </template>
-</UserPage>
-</script>
-<style>
-#projects {
-    table-layout: auto;
-}
-#projects td {
-    padding: 0 4px;
-}
-#projects a {
-    text-decoration: none;
-}
-.settings {
-    opacity: 0.5;
-    transition: opacity 500ms;
-}
-.settings:hover {
-    opacity: 1;
-}
-</style>
 
 <script>
 const userInfo={{{userInfo}}};
 const loggedUser={{{loggedUser}}};
+const user = {{{userInfo}}};
 </script>
 <script src="/js/pages/user-page.js"></script>
 

@@ -33,3 +33,4 @@ whitelist.json
 app/public/js/pages/*.js
 app/views/scripts/dist
 diff
+yalc.lock

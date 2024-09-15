@@ -1,5 +1,7 @@
 /* eslint-disable radix */
 /* eslint-disable no-plusplus */
+/* eslint-disable max-statements */
+/* eslint-disable max-lines */
 // const async = require('async');
 // const dateFormat = require('dateformat');
 // const checkAccess = require('../checkAccess/checkAccess.js');
@@ -9,13 +11,10 @@ const { AccessControlService, AccessLevel } = require('neuroweblab');
 const validator = function (req, res, next) {
   next();
 };
-
 const project = async function (req, res) {
-  const login = (req.user) ?
-    ('<a href=\'/user/' + req.user.username + '\'>' + req.user.username + '</a> (<a href=\'/logout\'>Log Out</a>)') :
-    ('<a href=\'/auth/github\'>Log in with GitHub</a>');
   const requestedProject = req.params.projectName;
-  let loggedUser = "anyone";
+  const embedProject = req.route.path.endsWith('embed');
+  let loggedUser = 'anyone';
   if(req.isAuthenticated()) {
     loggedUser = req.user.username;
   } else if(req.isTokenAuthenticated) {
@@ -33,12 +32,19 @@ const project = async function (req, res) {
 
         return;
       }
+      if (embedProject) {
+        const refererURL = new URL(req.headers.referer);
+        const disallowedDomains = req.user.authorizedHostsForEmbedding.split('\n') || [];
+        if (disallowedDomains.include(refererURL.host)) {
+          return res.status(403).send('Not authorized to embed this project');
+        }
+      }
       const context = {
         projectShortname: json.shortname,
         projectInfo: JSON.stringify(json),
-        login
+        loggedUser: JSON.stringify(req.user || null)
       };
-      res.render('project', context);
+      res.render(embedProject ? 'embed' : 'project', context);
     } else {
       res.status(404).send('Project Not Found');
     }
@@ -54,11 +60,11 @@ const project = async function (req, res) {
  * @param {Object} res Res object from express
  * @returns {void}
  */
-var settings = async function(req, res) {
-  console.log("Settings");
+const settings = async function(req, res) {
+  console.log('Settings');
   const requestedProject = req.params.projectName;
 
-  var loggedUser = "anyone";
+  let loggedUser = 'anyone';
   if(req.isAuthenticated()) {
     loggedUser = req.user.username;
   } else if(req.isTokenAuthenticated) {
@@ -70,9 +76,9 @@ var settings = async function(req, res) {
   let json = await req.appConfig.db.queryProject({shortname: requestedProject});
   if(typeof json === 'undefined') {
     json = {
-      name: "",
+      name: '',
       shortname: requestedProject,
-      url: "",
+      url: '',
       created: (new Date()).toJSON(),
       owner: loggedUser,
       collaborators: {
@@ -109,9 +115,9 @@ var settings = async function(req, res) {
   if (AccessControlService.canViewCollaborators(json, loggedUser)) {
     const arr1 = [];
     for(let j=0; j<json.collaborators.list.length; j++) {
-      if (Object.keys(json.collaborators.list[j]).includes("username") === false) {
+      if (Object.keys(json.collaborators.list[j]).includes('username') === false) {
 
-        return res.send("Error with user in project. Contact the adminstrators at https://mattermost.brainhack.org/brainhack/channels/microdraw").status(500);
+        return res.send('Error with user in project. Contact the adminstrators at https://mattermost.brainhack.org/brainhack/channels/microdraw').status(500);
       }
 
       arr1.push(req.appConfig.db.queryUser({username: json.collaborators.list[j].username}));
@@ -123,7 +129,7 @@ var settings = async function(req, res) {
         if(collaboratorsList[j]) { // name found
           json.collaborators.list[j].name=collaboratorsList[j].name;
         } else { // name not found: set to empty
-          json.collaborators.list[j].name = "";
+          json.collaborators.list[j].name = '';
         }
       }
     } catch(e) {
@@ -133,7 +139,7 @@ var settings = async function(req, res) {
     json.collaborators.list = json.collaborators.list.filter((collaborator) => collaborator.username === 'anyone');
   }
 
-  var context = {
+  const context = {
     projectShortname: json.shortname,
     owner: json.owner,
     projectInfo: JSON.stringify(json),
@@ -150,9 +156,9 @@ var settings = async function(req, res) {
  * @returns {void}
  */
 const projectNew = function (req, res) {
-  console.log("New Project");
+  console.log('New Project');
 
-  let loggedUser = "anyone";
+  let loggedUser = 'anyone';
   if(req.isAuthenticated()) {
     loggedUser = req.user.username;
   } else
@@ -163,30 +169,30 @@ const projectNew = function (req, res) {
   // Store return path in case of login
   req.session.returnTo = req.originalUrl;
 
-  if(loggedUser === "anyone" ) {
+  if(loggedUser === 'anyone' ) {
     res.render('askForLogin', {
-      title: "MicroDraw: New Project",
-      functionality: "create a new project",
+      title: 'MicroDraw: New Project',
+      functionality: 'create a new project',
       loggedUser: JSON.stringify(req.user || null)
     });
   } else {
     res.render('projectNew', {
-      title: "MicroDraw: New Project",
+      title: 'MicroDraw: New Project',
       loggedUser: JSON.stringify(req.user || null)
     });
   }
 };
 
 const apiProject = async function (req, res) {
-  console.log("GET project", req.params);
-  const json = await req.appConfig.db.queryProject({shortname: req.params.projectName, backup: {$exists: false}});
+  console.log('GET project', req.params);
+  let json = await req.appConfig.db.queryProject({shortname: req.params.projectName, backup: {$exists: false}});
   if (_.isNil(json)) {
     res.status(404).json({error: 'Project not found'});
 
     return;
   }
 
-  let loggedUser = "anyone";
+  let loggedUser = 'anyone';
   if(req.isAuthenticated()) {
     loggedUser = req.user.username;
   } else if(req.isTokenAuthenticated) {
@@ -237,23 +243,6 @@ const apiProjectAll = function (req, res) {
     });
 };
 
-/**
- * @function apiProjectFiles
- */
-
-/**
- * @todo Check access rights for this route
- */
-
-const apiProjectFiles = function (req, res) {
-  const {projectName} = req.params;
-  const start = parseInt(req.query.start);
-  const length = parseInt(req.query.length);
-
-  console.log('projectName:', projectName, 'start:', start, 'length:', length);
-  res.send({});
-};
-
 const postProject = async function (req, res) {
   let loggedUser = 'anonymous';
   if(req.isAuthenticated()) {
@@ -268,11 +257,11 @@ const postProject = async function (req, res) {
     return;
   }
 
-  const newProject = typeof req.body.data === "string" ? JSON.parse(req.body.data): req.body.data;
+  const newProject = typeof req.body.data === 'string' ? JSON.parse(req.body.data): req.body.data;
   const oldProject = await req.appConfig.db.queryProject({shortname: newProject.shortname});
 
   let ignoredChanges = [];
-  if (oldProject != null) {
+  if (oldProject !== null && typeof oldProject !== 'undefined') {
     if (!AccessControlService.hasFilesAccess(AccessLevel.EDIT, oldProject, loggedUser)) {
       res.status(403).json({ error: 'error', message: 'User does not have edit rights' });
 
@@ -282,7 +271,7 @@ const postProject = async function (req, res) {
   }
 
 
-  let successMessage = "Project settings updated.";
+  let successMessage = 'Project settings updated.';
   if(ignoredChanges.length > 0) {
     successMessage += ` Some changes (on ${ignoredChanges.join(', ')}) were ignored due to a lack of permissions.`;
   }
@@ -296,7 +285,7 @@ const postProject = async function (req, res) {
 };
 
 const deleteProject = async function (req, res) {
-  console.log("DELETE Project");
+  console.log('DELETE Project');
 
   let loggedUser = 'anonymous';
   if(req.isAuthenticated()) {
@@ -311,13 +300,13 @@ const deleteProject = async function (req, res) {
   if(loggedUser === 'anonymous') {
     res
       .status(403)
-      .send({message: "Log in required"})
+      .send({message: 'Log in required'})
       .end();
   } else {
     const {projectName} = req.params;
 
-    const project = await req.appConfig.db.queryProject({shortname: projectName});
-    if (!AccessControlService.hasFilesAccess(AccessLevel.REMOVE, project, loggedUser)) {
+    const projectToDelete = await req.appConfig.db.queryProject({shortname: projectName});
+    if (!AccessControlService.hasFilesAccess(AccessLevel.REMOVE, projectToDelete, loggedUser)) {
       console.log('WARNING: user does not have remove rights');
       res.status(403).json({ success: false, message: 'The user is not allowed to delete this project' });
 
@@ -340,7 +329,6 @@ module.exports = {
   validator,
   apiProject,
   apiProjectAll,
-  apiProjectFiles,
   project,
   projectNew,
   settings,

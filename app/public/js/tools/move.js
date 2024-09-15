@@ -14,7 +14,7 @@ window.ToolMove = {move: (function() {
     mouseDrag: function mouseDrag(point, dpoint) {
 
       // event.stopHandlers = true;
-      for( var reg of Microdraw.ImageInfo[Microdraw.currentImage].Regions ) {
+      for( const reg of Microdraw.ImageInfo[Microdraw.currentImage].Regions ) {
         if( reg.path.selected ) {
           reg.path.position.x += dpoint.x;
           reg.path.position.y += dpoint.y;
