@@ -217,7 +217,8 @@ window.ToolLayers = { layers : (function() {
       }
 
       // current slice index
-      const currentImage = Number(Microdraw.currentImage);
+      // const currentImage = Number(Microdraw.currentImage);
+      const currentImage = Microdraw.imageOrder.indexOf(Microdraw.currentImage);
 
       // total number of slices
       const totalImages = Microdraw.imageOrder.length;
