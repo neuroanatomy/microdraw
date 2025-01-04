@@ -1326,7 +1326,13 @@ const Microdraw = (function () {
       const regions = me._convertDBAnnotationsToRegions(data);
 
       if (data.length) {
-        const match = data[0].fileID.match(/slice=(\d+)/);
+        /** @todo: the 'slice' parameter in fileID is currently the display name,
+        it should be the slice index. The regex was appropriately made to handle
+        only numbers, which works when the slice index is used to make a default
+        display name (see line ~2050). I'm patching it to recover the complete
+        string.
+        */
+        const match = data[0].fileID.match(/slice=(.+)/);
 
         if (!match) {
           throw new Error("Annotation fileID does not have a slice number indicated");
