@@ -99,7 +99,27 @@ curl -XPOST /api?action=append&source=/path/to/file&slice=12token=FAKE_TOKEN -F 
 The token expires after 24 hours by default (can be changed by setting env `TOKEN_DURATION`)
 
 #### Example data.json file
-TODO
+```json
+{
+  "tileSources": [
+    "/MyBrain/1.dzi",
+    "/MyBrain/2.dzi",
+    "/MyBrain/3.dzi",
+    "/MyBrain/4.dzi",
+    "/MyBrain/5.dzi"
+  ],
+  "names": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+  ],
+  "pixelsPerMeter": 1000000,
+  "fileID": "MyBrain"
+}
+
+```
 
 #### Saving annotation via file upload
 Deploy environments may not allow for `fs` access. As a result, Microdraw uses [memory storage](https://github.com/expressjs/multer#memorystorage) by default. This can lead to OOM. If `TMP_DIR` env is set, Microdraw will use `TMP_DIR` to write uploaded file. 
