@@ -99,6 +99,24 @@ curl -XPOST /api?action=append&source=/path/to/file&slice=12token=FAKE_TOKEN -F 
 The token expires after 24 hours by default (can be changed by setting env `TOKEN_DURATION`)
 
 #### Example data.json file
+
+This is the basic format. The slice indices will go from 0 to 4:
+
+```json
+{
+  "tileSources": [
+    "/MyBrain/1.dzi",
+    "/MyBrain/2.dzi",
+    "/MyBrain/3.dzi",
+    "/MyBrain/4.dzi",
+    "/MyBrain/5.dzi"
+  ],
+  "pixelsPerMeter": 1000000,
+  "fileID": "MyBrain"
+}
+```
+
+In this other example, the default slice indices are replaced by a display name:
 ```json
 {
   "tileSources": [
@@ -109,16 +127,15 @@ The token expires after 24 hours by default (can be changed by setting env `TOKE
     "/MyBrain/5.dzi"
   ],
   "names": [
-    "1",
+    "1 first",
     "2",
-    "3",
+    "3 mid",
     "4",
-    "5"
+    "5 last"
   ],
   "pixelsPerMeter": 1000000,
   "fileID": "MyBrain"
 }
-
 ```
 
 #### Saving annotation via file upload
