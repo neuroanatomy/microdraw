@@ -73,7 +73,7 @@ In order to access the user specific annotation, logged in user can visit `token
 
 ```
 # get annotations
-curl -XGET /api?source=/path/to/file&slice=12&token=FAKE_TOKEN
+curl -XGET /api?source=/path/to/file&slice=12&token=YOUR_TOKEN
 ```
 
 ```
