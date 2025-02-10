@@ -432,7 +432,28 @@ body[data-toolbarDisplay=right] #tools-minimized div {
 }
 #label-template {
     display:none;
+    background: #333;
+    margin: 3px;
+    padding: 0 5px 0 0;
 }
+.label-display {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    background: white;
+    outline: 1px solid white;
+    outline-offset: 1px;
+    border-radius: 50%;
+    margin: 3px;
+    vertical-align: middle;
+}
+.label-display.off {
+    background: none;
+    outline: 1px solid white;
+}
+.label-display:hover {
+    outline: 2px solid white;
+  }
 #label-list {
   display:flex;
   flex-wrap:wrap;

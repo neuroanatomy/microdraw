@@ -85,9 +85,8 @@ window.ToolColor = { color : (function() {
       la.setAttribute("data-index", i);
       la.querySelector(".label-color").style["background-color"] = `rgb(${l.color[0]},${l.color[1]},${l.color[2]})`;
       la.querySelector(".label-name").textContent = l.name;
-      la.onclick = () => {
+      la.querySelector(".label-color").onclick = () => {
         Microdraw.currentLabelIndex = i;
-
         const regionIndex = tool._findSelectedRegion();
         if(typeof regionIndex !== "undefined") {
           console.log(regionIndex);
@@ -96,9 +95,19 @@ window.ToolColor = { color : (function() {
             Microdraw.changeRegionName(region, l.name);
           }
         }
-
         Microdraw.updateLabelDisplay();
         tool._detachLabelsetContainer();
+      };
+      la.querySelector(".label-display").onclick = (e) => {
+        e.target.classList.toggle("off");
+        const clickedRegion = e.target;
+        const clickedRegionName = clickedRegion.parentElement.querySelector(".label-name").innerText;
+        const regions = Microdraw.ImageInfo[Microdraw.currentImage].Regions;
+        for(let j=0; j<regions.length; j+=1) {
+          if(regions[j].name === clickedRegionName) {
+            regions[j].path.opacity = !regions[j].path.opacity;
+          }
+        }
       };
       obj.querySelector("#label-list").appendChild(la);
       la.style.display = "block";
