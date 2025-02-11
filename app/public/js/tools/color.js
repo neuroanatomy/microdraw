@@ -100,12 +100,13 @@ window.ToolColor = { color : (function() {
       };
       la.querySelector(".label-display").onclick = (e) => {
         e.target.classList.toggle("off");
+        const invisible = e.target.classList.contains("off");
         const clickedRegion = e.target;
         const clickedRegionName = clickedRegion.parentElement.querySelector(".label-name").innerText;
         const regions = Microdraw.ImageInfo[Microdraw.currentImage].Regions;
         for(let j=0; j<regions.length; j+=1) {
           if(regions[j].name === clickedRegionName) {
-            regions[j].path.opacity = !regions[j].path.opacity;
+            regions[j].path.opacity = invisible ? 0 : 1;
           }
         }
       };
