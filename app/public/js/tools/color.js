@@ -17,11 +17,8 @@ window.ToolColor = { color : (function() {
       return regionIndex;
     },
 
-    _detachLabelsetContainer: () => {
-      const obj = dom.querySelector("#labelset-panel");
-      obj.style.display = "none";
-    },
     _handleStart: (obj) => {
+      // eslint-disable-next-line max-statements
       const _start = (e) => {
         if (e.target.id !== "labelset-header") { return; }
 
@@ -43,6 +40,7 @@ window.ToolColor = { color : (function() {
       obj.querySelector("#labelset-header").addEventListener('mousedown', _start);
       obj.querySelector("#labelset-header").addEventListener('touchstart', _start);
     },
+
     _handleMove: (obj) => {
       const _move = (e) => {
         if (!tool._isDragging) { return; }
@@ -56,6 +54,7 @@ window.ToolColor = { color : (function() {
       dom.addEventListener('mousemove', _move);
       dom.addEventListener('touchmove', _move);
     },
+
     _handleEnd: (obj) => {
       const _end = () => {
         if (!tool._isDragging) { return; }
@@ -65,6 +64,12 @@ window.ToolColor = { color : (function() {
       dom.addEventListener('mouseup', _end);
       dom.addEventListener('touchend', _end);
     },
+
+    _detachLabelsetContainer: () => {
+      const obj = dom.querySelector("#labelset-panel");
+      obj.style.display = "none";
+    },
+
     _attachLabelsetContainer: () => {
       const obj = dom.querySelector("#labelset-panel");
       dom.querySelector("body").appendChild(obj);
@@ -79,37 +84,65 @@ window.ToolColor = { color : (function() {
       tool._handleEnd(obj);
     },
 
+    // eslint-disable-next-line max-statements
+    _handleLabelDisplayClick: (e, l) => {
+      const me = Microdraw;
+      const {name: targetName} = l;
+
+      // switch the visibility of the label
+      e.target.classList.toggle("off");
+
+      // find out what the new visibility is
+      const invisible = e.target.classList.contains("off");
+
+      // update the visibility in the Microdraw.ontology object
+      for (let j=0; j < me.ontology.labels.length; j+=1) {
+        const {name} = me.ontology.labels[j];
+        if(name === targetName) {
+          me.ontology.labels[j].visible = !invisible;
+        }
+      }
+
+      // update the display of the regions
+      const regions = Microdraw.ImageInfo[Microdraw.currentImage].Regions;
+      for(let j=0; j<regions.length; j+=1) {
+        if(regions[j].name === targetName) {
+          regions[j].path.opacity = invisible ? 0 : 1;
+        }
+      }
+    },
+
+    _handleLabelColorClick: (l, i) => {
+      Microdraw.currentLabelIndex = i;
+      const regionIndex = tool._findSelectedRegion();
+      if(typeof regionIndex !== "undefined") {
+        console.log(regionIndex);
+        const {region} = Microdraw;
+        if (typeof region !== "undefined") {
+          Microdraw.changeRegionName(region, l.name);
+        }
+      }
+      Microdraw.updateLabelDisplay();
+      tool._detachLabelsetContainer();
+    },
+
+    // eslint-disable-next-line max-statements
     _attachLabel: (l, i) => {
       const obj = dom.querySelector("#labelset-panel");
       const la = obj.querySelector("#label-template").cloneNode(true);
+
       la.setAttribute("data-index", i);
       la.querySelector(".label-color").style["background-color"] = `rgb(${l.color[0]},${l.color[1]},${l.color[2]})`;
       la.querySelector(".label-name").textContent = l.name;
-      la.querySelector(".label-color").onclick = () => {
-        Microdraw.currentLabelIndex = i;
-        const regionIndex = tool._findSelectedRegion();
-        if(typeof regionIndex !== "undefined") {
-          console.log(regionIndex);
-          const {region} = Microdraw;
-          if (typeof region !== "undefined") {
-            Microdraw.changeRegionName(region, l.name);
-          }
-        }
-        Microdraw.updateLabelDisplay();
-        tool._detachLabelsetContainer();
-      };
-      la.querySelector(".label-display").onclick = (e) => {
-        e.target.classList.toggle("off");
-        const invisible = e.target.classList.contains("off");
-        const clickedRegion = e.target;
-        const clickedRegionName = clickedRegion.parentElement.querySelector(".label-name").innerText;
-        const regions = Microdraw.ImageInfo[Microdraw.currentImage].Regions;
-        for(let j=0; j<regions.length; j+=1) {
-          if(regions[j].name === clickedRegionName) {
-            regions[j].path.opacity = invisible ? 0 : 1;
-          }
-        }
-      };
+      if (Microdraw._isRegionVisible(l.name)) {
+        la.querySelector(".label-display").classList.remove("off");
+      } else {
+        la.querySelector(".label-display").classList.add("off");
+      }
+
+      la.querySelector(".label-color").onclick = () => { tool._handleLabelColorClick(l, i); };
+      la.querySelector(".label-display").onclick = (e) => { tool._handleLabelDisplayClick(e, l); };
+
       obj.querySelector("#label-list").appendChild(la);
       la.style.display = "block";
     },

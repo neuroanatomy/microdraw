@@ -414,6 +414,22 @@ const Microdraw = (function () {
       }
     },
 
+    _isRegionVisible: function (name) {
+      if( me.debug>1 ) { console.log("> isRegionVisible"); }
+      for (const reg of me.ontology.labels) {
+        if( reg.name === name ) {
+          let visible;
+          if (!Object.prototype.hasOwnProperty.call(reg, 'visible')) {
+            visible = 1;
+          } else {
+            visible = (reg.visible === false ? 0 : 1);
+          }
+
+          return visible;
+        }
+      }
+    },
+
     /**
        * Create a new region, adding it to the ImageInfo structure and the current paper project
        * @param {object} arg An object containing the name, uid and path of the region
@@ -439,8 +455,13 @@ const Microdraw = (function () {
       const color = me.regionColor(reg.name);
 
       if( arg.path ) {
+        const {name} = reg;
+        const visible = me._isRegionVisible(name);
         reg.path = arg.path;
-        reg.path.fillColor = arg.path.fillColor ? arg.path.fillColor :'rgba(' + color.red + ',' + color.green + ',' + color.blue + ',' + me.config.defaultFillAlpha + ')';
+        reg.path.fillColor = arg.path.fillColor ?
+          arg.path.fillColor
+          :`rgba(${color.red},${color.green},${color.blue},${me.config.defaultFillAlpha})`;
+        reg.path.opacity = visible ? 1 : 0;
         reg.path.selected = false;
         if (arg.name !== "textAnnotation") {
           reg.path.strokeWidth = arg.path.strokeWidth ? arg.path.strokeWidth : me.config.defaultStrokeWidth;
@@ -729,7 +750,7 @@ const Microdraw = (function () {
       // update region tag
       me.dom
         .querySelector(".region-tag#" + reg.uid + ">.region-color")
-        .style['background-color'] ='rgba(' + red + ',' + green + ',' + blue + ',0.67)';
+        .style['background-color'] =`rgba(${red},${green},${blue},0.67)`;
 
       // update stroke color
       const {selectedIndex} = me.dom.querySelector('#selectStrokeColor');
@@ -1326,6 +1347,7 @@ const Microdraw = (function () {
       const regions = me._convertDBAnnotationsToRegions(data);
 
       if (data.length) {
+
         /** @todo: the 'slice' parameter in fileID is currently the display name,
         it should be the slice index. The regex was appropriately made to handle
         only numbers, which works when the slice index is used to make a default
@@ -1366,6 +1388,13 @@ const Microdraw = (function () {
 
     _drawRegionsInPaper: function(regions) {
       for(const region of regions) {
+
+        const {name} = region;
+        const color = me.regionColor(name);
+        const visible = me._isRegionVisible(name);
+        region.path.fillColor = `rgba(${color.red},${color.green},${color.blue},${me.config.defaultFillAlpha})`;
+        region.path.opacity = visible ? 1 : 0;
+
         paper.project.activeLayer.addChild(region.path);
       }
       me._resizePaperViewToMatchContainer();
