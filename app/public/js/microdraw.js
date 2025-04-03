@@ -473,7 +473,9 @@ const Microdraw = (function () {
           reg.path.strokeColor = arg.path.strokeColor ? arg.path.strokeColor : me.config.defaultStrokeColor;
           reg.path.strokeScaling = false;
         } else {
+          console.log("Text annotation", arg);
           reg.path.opacity = 1;
+          reg.path.fillColor = arg.path.fillColor;
         }
       }
 
@@ -1397,8 +1399,21 @@ const Microdraw = (function () {
       for(const region of regions) {
 
         const {name} = region;
-        const color = me.regionColor(name);
-        const visible = me._isRegionVisible(name);
+        let color;
+        let visible;
+
+        if (name === "textAnnotation") {
+          const rgb = region.path.fillColor._components.map((v) => parseInt(255*v, 10));
+          color = {
+            red: rgb[0],
+            green: rgb[1],
+            blue: rgb[2]
+          };
+          visible = true;
+        } else {
+          color = me.regionColor(name);
+          visible = me._isRegionVisible(name);
+        }
         region.path.fillColor = `rgba(${color.red},${color.green},${color.blue},${me.config.defaultFillAlpha})`;
         region.path.opacity = visible ? 1 : 0;
 
