@@ -416,6 +416,11 @@ const Microdraw = (function () {
 
     _isRegionVisible: function (name) {
       if( me.debug>1 ) { console.log("> isRegionVisible"); }
+
+      if (name === "textAnnotation") {
+        return 1;
+      }
+
       for (const reg of me.ontology.labels) {
         if( reg.name === name ) {
           let visible;
@@ -467,6 +472,8 @@ const Microdraw = (function () {
           reg.path.strokeWidth = arg.path.strokeWidth ? arg.path.strokeWidth : me.config.defaultStrokeWidth;
           reg.path.strokeColor = arg.path.strokeColor ? arg.path.strokeColor : me.config.defaultStrokeColor;
           reg.path.strokeScaling = false;
+        } else {
+          reg.path.opacity = 1;
         }
       }
 

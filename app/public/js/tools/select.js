@@ -23,6 +23,17 @@ window.ToolSelect = {select: (function() {
       // }
     },
 
+    /**
+     * Test if hitResult item is a text annotation
+     * @param {object} hitResult The hit result
+     * @returns {boolean} True if the hitResult item is a text annotation
+     */
+    _isTextAnnotation: function (hitResult) {
+      const {fontSize} = hitResult.item;
+
+      return typeof fontSize !== 'undefined';
+    },
+
     _handleHitResultType: function (hitResult, point) {
       if( hitResult.type === 'handle-in' ) {
         Microdraw.handle = hitResult.segment.handleIn;
@@ -34,8 +45,7 @@ window.ToolSelect = {select: (function() {
         Microdraw.handle = hitResult.segment.point;
         Microdraw.handle.point = point;
       } else if( hitResult.type === 'fill' ) {
-        const {fontSize} = hitResult.item; // test if it is a text annotation
-        if (typeof fontSize !== 'undefined') {
+        if (tool._isTextAnnotation(hitResult)) {
           Microdraw.tools.textAnnotation.updateTextAnnotationPanel(hitResult.item);
         }
       }
