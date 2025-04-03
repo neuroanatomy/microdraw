@@ -1409,12 +1409,13 @@ const Microdraw = (function () {
             green: rgb[1],
             blue: rgb[2]
           };
+          region.path.fillColor = `rgba(${color.red},${color.green},${color.blue},1)`;
           visible = true;
         } else {
           color = me.regionColor(name);
+          region.path.fillColor = `rgba(${color.red},${color.green},${color.blue},${me.config.defaultFillAlpha})`;
           visible = me._isRegionVisible(name);
         }
-        region.path.fillColor = `rgba(${color.red},${color.green},${color.blue},${me.config.defaultFillAlpha})`;
         region.path.opacity = visible ? 1 : 0;
 
         paper.project.activeLayer.addChild(region.path);
