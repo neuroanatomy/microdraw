@@ -154,7 +154,6 @@ const start = async function () {
     projectsCollection: "projects",
     annotationsCollection: "annotations"
   });
-  global.authTokenMiddleware = nwl.authTokenMiddleware;
 
   /* setup GUI routes */
   routes(app);
