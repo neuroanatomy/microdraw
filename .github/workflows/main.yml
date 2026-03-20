@@ -11,13 +11,13 @@ jobs:
     env:
       MONGODB_TEST: 127.0.0.1:27017/circleci_test
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 20
       - uses: supercharge/mongodb-github-action@1.3.0
         with:
-          mongodb-version: 4.2
+          mongodb-version: 6.0
       - run: npm install
       - run: npm run build-pages
       - name: Instantiate github-keys.json
@@ -51,10 +51,10 @@ jobs:
       NETWORK_NAME: microdraw-docker-test
       MICRODRAW_IMAGE_NAME: "microdraw:test-label"
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 20
       - name: Build docker image
         run: docker build -t ${{ env.MICRODRAW_IMAGE_NAME }} .
       - name: Run docker image

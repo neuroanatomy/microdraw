@@ -1,13 +1,27 @@
 /* eslint-disable no-undef */
 const assert = require('assert');
+const http = require('http');
 const chai = require('chai');
 const nock = require('nock');
-const request = require('request');
 const {expect} = chai;
 
 const express = require('express');
 const app = express();
 require('./routesExtensions')(app);
+
+/**
+ * Make an HTTP GET request compatible with nock interception.
+ * @param {string} requestUrl The URL to fetch
+ * @returns {Promise<{statusCode: number, body: string}>} The status code and body
+ */
+const httpGet = (requestUrl) => new Promise((resolve, reject) => {
+  http.get(requestUrl, (res) => {
+    const chunks = [];
+    res.on('data', (chunk) => chunks.push(chunk));
+    res.on('end', () => resolve({ statusCode: res.statusCode, body: Buffer.concat(chunks).toString() }));
+    res.on('error', reject);
+  }).on('error', reject);
+});
 
 const nockMockUrl = 'http://nock-mock-url.me:3000';
 const mockReplyJson1 = {
@@ -64,12 +78,9 @@ describe('Mocha started', () => {
 });
 
 describe('nock setup correctly', () => {
-  it('fetches nock server correctly', (done) => {
-    request(nockMockUrl, (err, res /*, body*/) => {
-      expect(err).to.be.equal(null);
-      expect(res.statusCode).to.be.equals(200);
-      done();
-    });
+  it('fetches nock server correctly', async () => {
+    const { statusCode } = await httpGet(nockMockUrl);
+    expect(statusCode).to.be.equals(200);
   });
 });
 
@@ -87,97 +98,59 @@ describe('Test /getJson api end point', () => {
     _server.close();
   });
 
-  it('fetches / correctly', (done) => {
-    request('http://localhost:10002/', (err, res, body) => {
-      expect(err).to.be.equals(null);
-      expect(res.statusCode).to.be.equals(200);
-      expect(body).to.equal('ok');
-      done();
-    });
+  it('fetches / correctly', async () => {
+    const { statusCode, body } = await httpGet('http://localhost:10002/');
+    expect(statusCode).to.be.equals(200);
+    expect(body).to.equal('ok');
   });
 
-  it('endpoint /getJson exists', (done) => {
-    request('http://localhost:10002/getJson', (err, res /*, body*/) => {
-      expect(err).to.be.equal(null);
-      expect(res.statusCode).to.be.equal(404);
-      done();
-    });
+  it('endpoint /getJson exists', async () => {
+    const { statusCode } = await httpGet('http://localhost:10002/getJson');
+    expect(statusCode).to.be.equal(404);
+  });
+
+  it('endpoint /getTile exists', async () => {
+    const { statusCode } = await httpGet('http://localhost:10002/getTile');
+    expect(statusCode).to.be.equal(404);
   });
 
   describe('endpoint /getJson fetches existing endpoint correctly', () => {
 
-    it('error status code forwards the result onwards', (done) => {
-      request(`http://localhost:10002/getJson?source=${nockMockUrl}/nonexistent.json`, (err, res /*, body*/) => {
-        expect(err).to.be.equal(null);
-        expect(res.statusCode).to.be.equal(404);
-        done();
-      });
+    it('error status code forwards the result onwards', async () => {
+      const { statusCode } = await httpGet(`http://localhost:10002/getJson?source=${nockMockUrl}/nonexistent.json`);
+      expect(statusCode).to.be.equal(404);
     });
 
-    it('illformed json returns 404', (done) => {
-      request(`http://localhost:10002/getJson?source=${nockMockUrl}/1.json`, (err, res /*, body*/) => {
-        expect(err).to.be.equal(null);
-        expect(res.statusCode).to.be.equal(404);
-        done();
-      });
+    it('illformed json returns 404', async () => {
+      const { statusCode } = await httpGet(`http://localhost:10002/getJson?source=${nockMockUrl}/1.json`);
+      expect(statusCode).to.be.equal(404);
     });
 
-    it('sometimes foreign server returns error (resp arg is undefined)', (done) => {
-      request(`http://localhost:10002/getJson?source=${nockMockUrl}/error.json`, (err, res /*, body*/) => {
-        expect(err).to.be.equal(null);
-        expect(res.statusCode).to.be.equal(404);
-        done();
-      });
+    it('sometimes foreign server returns error (resp arg is undefined)', async () => {
+      const { statusCode } = await httpGet(`http://localhost:10002/getJson?source=${nockMockUrl}/error.json`);
+      expect(statusCode).to.be.equal(404);
     });
 
     describe('correctly formed json returns json with tileSources field correctly augmented', () => {
-      it('http protocol tileSources augmented correctly', (done) => {
-        request(`http://localhost:10002/getJson?source=${nockMockUrl}/2.json`, (err, res, body) => {
-          expect(err).to.be.equal(null);
-          expect(res.statusCode).to.be.equal(200);
-          expect(JSON.parse(body)).to.be.deep.equal(mockReplyJson2Augmented);
-          done();
-        });
+      it('http protocol tileSources augmented correctly', async () => {
+        const { statusCode, body } = await httpGet(`http://localhost:10002/getJson?source=${nockMockUrl}/2.json`);
+        expect(statusCode).to.be.equal(200);
+        expect(JSON.parse(body)).to.be.deep.equal(mockReplyJson2Augmented);
       });
 
-      /*
-            it('http protocol tileSources augmented correctly when data are in the same server', (done) => {
-                request(`http://localhost:10002/getJson?source=/2.json`, (err, res, body) => {
-                    expect(err).to.be.equal(null);
-                    expect(res.statusCode).to.be.equal(200);
-                    expect(JSON.parse(body)).to.be.deep.equal(mockReplyJson2Augmented);
-                    done();
-                });
-            });
-            */
-
-      it('absolute path protocol tileSources augmented correctly', (done) => {
-        request(`http://localhost:10002/getJson?source=${nockMockUrl}/3.json`, (err, res, body) => {
-          expect(err).to.be.equal(null);
-          expect(res.statusCode).to.be.equal(200);
-          expect(JSON.parse(body)).to.be.deep.equal(mockReplyJson3Augmented);
-          done();
-        });
+      it('absolute path protocol tileSources augmented correctly', async () => {
+        const { statusCode, body } = await httpGet(`http://localhost:10002/getJson?source=${nockMockUrl}/3.json`);
+        expect(statusCode).to.be.equal(200);
+        expect(JSON.parse(body)).to.be.deep.equal(mockReplyJson3Augmented);
       });
-    });
-  });
-
-  it('endpoint /getTile exists', (done) => {
-    request('http://localhost:10002/getTile', (err, res /*, body*/) => {
-      expect(err).to.be.equal(null);
-      expect(res.statusCode).to.be.equal(404);
-      done();
     });
   });
 
   describe('endpoint /getTile pipes response correctly', () => {
-    it('pipes requests correctly', (done) => {
-      request(`http://localhost:10002/getTile?source=${nockMockUrl}/test.jpg`, (err, res, body) => {
-        expect(err).to.be.equal(null);
-        expect(res.statusCode).to.be.equal(200);
-        expect(body).to.be.equal(imageData);
-        done();
-      });
+    it('pipes requests correctly', async () => {
+      const { statusCode, body } = await httpGet(`http://localhost:10002/getTile?source=${nockMockUrl}/test.jpg`);
+      expect(statusCode).to.be.equal(200);
+      expect(body).to.be.equal(imageData);
     });
   });
 });
