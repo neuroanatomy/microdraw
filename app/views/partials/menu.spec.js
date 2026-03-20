@@ -2,7 +2,22 @@
 /* eslint-disable no-undef */
 const chai = require('chai');
 const assert = require('assert');
-const request = require('request');
+const http = require('http');
+
+/**
+ * Make an HTTP GET request.
+ * @param {string} requestUrl The URL to fetch
+ * @param {Function} callback Callback with (err, res, body)
+ * @returns {void}
+ */
+const request = (requestUrl, callback) => {
+  http.get(requestUrl, (res) => {
+    const chunks = [];
+    res.on('data', (chunk) => chunks.push(chunk));
+    res.on('end', () => callback(null, res, Buffer.concat(chunks).toString()));
+    res.on('error', (err) => callback(err));
+  }).on('error', (err) => callback(err));
+};
 const {expect} = chai;
 const express = require('express');
 const mustacheExpress = require('mustache-express');

@@ -1,41 +1,46 @@
-/*
-// not following 301 redirects, we should rather use a higher level alternative like fetch
 const http = require('http');
+const https = require('https');
+
+/**
+ * Fetch a URL following redirects, returning the final response.
+ * @param {string} requestUrl The URL to fetch
+ * @param {number} maxRedirects Maximum number of redirects to follow
+ * @returns {Promise<object>} The HTTP response stream
+ */
+const fetchFollowingRedirects = (requestUrl, maxRedirects = 5) => new Promise((resolve, reject) => {
+  if(maxRedirects <= 0) {
+    return reject(new Error('Too many redirects'));
+  }
+  const client = requestUrl.startsWith('https') ? https : http;
+  client.get(requestUrl, (response) => {
+    if([301, 302, 307, 308].includes(response.statusCode) && response.headers.location) {
+      fetchFollowingRedirects(response.headers.location, maxRedirects - 1)
+        .then(resolve)
+        .catch(reject);
+    } else {
+      resolve(response);
+    }
+  }).on('error', reject);
+});
 
 const getHttpImg = function (req, res) {
   const { url } = req.query;
-
-  http.get(url, (response) => {
-    let data = Buffer.alloc(0);
-
-    response.on('data', (chunk) => {
-      data = Buffer.concat([data, chunk]);
-    });
-
-    response.on('end', () => {
-      res.writeHead(200, { 'Content-Type': 'image/jpeg' });
-      res.end(data, 'binary');
-    });
-  }).on('error', (err) => {
-    console.error(err);
-    res.sendStatus(500);
-  });
-};
-*/
-
-// exports.getHttpImg = getHttpImg;
-
-const request = require('request');
-
-const getHttpImg = function (req, res) {
-  const {url} = req.query;
-  request.get(url, {encoding: 'binary'}, (err, resp, body) => {
-    if(err) {
+  fetchFollowingRedirects(url)
+    .then((response) => {
+      let data = Buffer.alloc(0);
+      response.on('data', (chunk) => {
+        data = Buffer.concat([data, chunk]);
+      });
+      response.on('end', () => {
+        const contentType = response.headers['content-type'] || 'image/jpeg';
+        res.writeHead(200, { 'Content-Type': contentType });
+        res.end(data, 'binary');
+      });
+    })
+    .catch((err) => {
       console.error(err);
-    }
-    res.writeHead(200, {'Content-Type': 'image/jpg' });
-    res.end(body, 'binary');
-  });
+      res.sendStatus(500);
+    });
 };
 
 exports.getHttpImg = getHttpImg;
