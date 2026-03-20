@@ -146,11 +146,17 @@ describe('Test /getJson api end point', () => {
     });
   });
 
-  describe('endpoint /getTile pipes response correctly', () => {
-    it('pipes requests correctly', async () => {
-      const { statusCode, body } = await httpGet(`http://localhost:10002/getTile?source=${nockMockUrl}/test.jpg`);
-      expect(statusCode).to.be.equal(200);
-      expect(body).to.be.equal(imageData);
+  describe('endpoint /getTile returns correct response', () => {
+    it('returns tile data correctly', (done) => {
+      http.get(`http://localhost:10002/getTile?source=${nockMockUrl}/test.jpg`, (res) => {
+        const chunks = [];
+        res.on('data', (chunk) => chunks.push(chunk));
+        res.on('end', () => {
+          expect(res.statusCode).to.be.equal(200);
+          expect(Buffer.concat(chunks).toString()).to.be.equal(imageData);
+          done();
+        });
+      });
     });
   });
 });

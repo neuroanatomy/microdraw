@@ -3,16 +3,22 @@ const http = require('http');
 const https = require('https');
 
 /**
- * Make an HTTP(S) GET request and return a Promise resolving to { res, body }.
+ * Make an HTTP(S) GET request, returning the response metadata and body as a Buffer.
  * @param {string} requestUrl The URL to fetch
- * @returns {Promise<{res: object, body: string}>} The response and body
+ * @returns {Promise<{statusCode: number, headers: object, body: Buffer}>} The response
  */
 const httpGet = (requestUrl) => new Promise((resolve, reject) => {
-  const client = requestUrl.startsWith('https') ? https : http;
-  client.get(requestUrl, (res) => {
+  const isHttps = requestUrl.startsWith('https');
+  const client = isHttps ? https : http;
+  const args = isHttps ? [requestUrl, { rejectUnauthorized: false }] : [requestUrl];
+  client.get(...args, (res) => {
     const chunks = [];
     res.on('data', (chunk) => chunks.push(chunk));
-    res.on('end', () => resolve({ res, body: Buffer.concat(chunks).toString() }));
+    res.on('end', () => resolve({
+      statusCode: res.statusCode,
+      headers: res.headers,
+      body: Buffer.concat(chunks)
+    }));
     res.on('error', reject);
   }).on('error', reject);
 });
@@ -26,10 +32,10 @@ module.exports = (app) => {
     }
 
     httpGet(source)
-      .then(({ res: proxyRes, body }) => {
-        res.status(proxyRes.statusCode);
-        if(proxyRes.headers['content-type']) {
-          res.set('content-type', proxyRes.headers['content-type']);
+      .then(({ statusCode, headers, body }) => {
+        res.status(statusCode);
+        if(headers['content-type']) {
+          res.set('content-type', headers['content-type']);
         }
         res.end(body);
       })
@@ -58,17 +64,17 @@ module.exports = (app) => {
         throw new Error('ERROR: sourceurl not defined');
       }
 
-      const { res: proxyRes, body } = await httpGet(sourceHostname + sourcePath);
+      const { statusCode, body } = await httpGet(sourceHostname + sourcePath);
 
       if ((/error/).test(sourcePath)) {
-        console.log({body, proxyRes});
+        console.log({body: body.toString(), statusCode});
       }
 
-      if(proxyRes.statusCode >= 400) {
-        throw body;
+      if(statusCode >= 400) {
+        throw body.toString();
       }
 
-      const json = JSON.parse(body);
+      const json = JSON.parse(body.toString());
       json.tileSources = json.tileSources.map((result) => {
         let tileSource = result;
         if(typeof result === 'string') {

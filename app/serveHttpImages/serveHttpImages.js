@@ -11,8 +11,10 @@ const fetchFollowingRedirects = (requestUrl, maxRedirects = 5) => new Promise((r
   if(maxRedirects <= 0) {
     return reject(new Error('Too many redirects'));
   }
-  const client = requestUrl.startsWith('https') ? https : http;
-  client.get(requestUrl, (response) => {
+  const isHttps = requestUrl.startsWith('https');
+  const client = isHttps ? https : http;
+  const options = isHttps ? { rejectUnauthorized: false } : {};
+  client.get(requestUrl, options, (response) => {
     if([301, 302, 307, 308].includes(response.statusCode) && response.headers.location) {
       fetchFollowingRedirects(response.headers.location, maxRedirects - 1)
         .then(resolve)
