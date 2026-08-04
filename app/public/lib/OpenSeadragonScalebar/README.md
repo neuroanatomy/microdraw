@@ -1,7 +1,15 @@
-This OpenSeadragon ( http://openseadragon.github.io/ ) plugin provides 
+This [OpenSeadragon](http://openseadragon.github.io/) plugin provides 
 a scale bar which adjusts depending on the zoom level.
 
-A demo is available here: http://nist-isg.github.io/OpenSeadragonScalebar/
+A demo is available [here](https://pages.nist.gov/OpenSeadragonScalebar/).
+
+For OpenSeadragon 1.x, use the 1.x releases of this plugin.
+
+For OpenSeadragon 2.x, use the master branch of this plugin.
+
+Note: If you are displaying multiple images in OpenSeadragon 2.x, this plugin
+assumes that the provided pixelsPerMeter is the one of the image at index 0
+in world.getItemAt. You can change that index via the referenceItemIdx option.
 
 It can be used like this:
 `````javascript
@@ -23,9 +31,52 @@ viewer.scalebar({
 });
 `````
 
-The list of all the options can be found and tested on http://nist-isg.github.io/OpenSeadragonScalebar/
+To change the unit system from the default of Metric to Imperial,
+you must reference the `sizeAndTextRenderer` function in the library directly:
+
+`````javascript
+viewer.scalebar({
+  ...
+  sizeAndTextRenderer: OpenSeadragon.ScalebarSizeAndTextRenderer.IMPERIAL_LENGTH,
+  ...
+});
+`````
+
+To change the unit system from the default of Metric to Astronomical,
+you must reference the `sizeAndTextRenderer` function in the library directly:
+
+`````javascript
+viewer.scalebar({
+  ...
+  sizeAndTextRenderer: OpenSeadragon.ScalebarSizeAndTextRenderer.ASTRONOMY,
+  ...
+});
+`````
+
+The list of all the options can be found and tested on the [demo site](https://pages.nist.gov/OpenSeadragonScalebar/).
+
 If type, pixelsPerMeter or location are not set (or set to 0), the bar is hidden.
 
+
+The `getAsCanvas` method let one retrieve the scalebar as a canvas element like this:
+```javascript
+var canvas = viewer.scalebarInstance.getAsCanvas();
+```
+
+To retrieve the current display of the OpenSeadragon viewer with the scalebar,
+one can use the `getImageWithScalebarAsCanvas` method:
+```javascript
+var canvas = viewer.scalebarInstance.getImageWithScalebarAsCanvas();
+```
+
+Since it is [difficult to define the anchor point](https://github.com/usnistgov/OpenSeadragonScalebar/issues/2) upon rotation. It is recommended to disable `stayInsideImage` if rotation is supported:
+`````javascript
+viewer.scalebar({
+  ...
+  stayInsideImage: false,
+  ...
+});
+`````
 
 Disclaimer:
 
@@ -38,5 +89,3 @@ no responsibility whatsoever for its use by other parties, and makes no
 guarantees, expressed or implied, about its quality, reliability, or
 any other characteristic. We would appreciate acknowledgement if the
 software is used.
-
-[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/NIST-ISG/OpenSeadragonScalebar?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)

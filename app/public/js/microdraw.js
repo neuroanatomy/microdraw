@@ -2182,7 +2182,7 @@ const Microdraw = (function () {
 
       // add the scalebar
       me.viewer.scalebar({
-        type: OpenSeadragon.ScalebarType.MICROSCOPE,
+        type: OpenSeadragon.ScalebarType.MICROSCOPY,
         minWidth:'150px',
         pixelsPerMeter:obj.pixelsPerMeter,
         color:'black',
