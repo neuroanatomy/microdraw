@@ -2173,8 +2173,7 @@ const Microdraw = (function () {
         maxZoomPixelRatio:10,
         preserveViewport: true,
         // debugMode: true,
-        imageSmoothingEnabled: false,
-        drawer: 'canvas'
+        imageSmoothingEnabled: false
       });
 
       // open the currentImage
