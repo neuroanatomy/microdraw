@@ -2068,8 +2068,8 @@ const Microdraw = (function () {
           clearInterval(timer);
           const layers = me.params.layers.split(";").map( (layer) => layer.split(",") );
           for (const layer of layers) {
-            let [source, name, opacity] = layer;
-            opacity = parseFloat(opacity);
+            const [source, name, rawOpacity] = layer;
+            const opacity = parseFloat(rawOpacity);
             // eslint-disable-next-line no-await-in-loop, dot-notation
             const dzi = await me.tools["layers"].fetchDZI(source);
             if (!dzi) {
@@ -2173,7 +2173,8 @@ const Microdraw = (function () {
         maxZoomPixelRatio:10,
         preserveViewport: true,
         // debugMode: true,
-        imageSmoothingEnabled: false
+        imageSmoothingEnabled: false,
+        drawer: 'canvas'
       });
 
       // open the currentImage
