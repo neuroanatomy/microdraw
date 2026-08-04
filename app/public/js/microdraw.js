@@ -2284,6 +2284,19 @@ const Microdraw = (function () {
       me.initMicrodraw();
 
       const json = await me.loadSourceJson();
+
+      // OMEZarrTileSource must be registered on OpenSeadragon before initOpenSeadragon()
+      // calls viewer.open(). Load it only when a source actually needs it: DZI-only pages
+      // (the common case) never pay for the 1.6 MB bundle. ".zarr"/".ozx" is also accepted
+      // in case a source is hand-authored without the "type" field.
+      const needsOMEZarr = (json.tileSources || []).some((source) => (
+        source && typeof source === 'object' &&
+        (source.type === 'ome-zarr' || (/\.(zarr|ozx)$/).test(source.url || ''))
+      ));
+      if (needsOMEZarr) {
+        await me.loadScript("/lib/omezarr-tilesource/omezarr-tilesource.js");
+      }
+
       me.initOpenSeadragon(json);
     }
   };
