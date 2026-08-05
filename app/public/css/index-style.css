@@ -18,6 +18,7 @@ html, #menu, #footer {
     transform: translate( -50% , -50%);
     width:600px;
     max-width: calc( 100% - 20px );
+    font-family: 'Roboto', sans-serif;
 }
 #menu {
     position: fixed;
