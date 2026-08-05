@@ -2176,6 +2176,18 @@ const Microdraw = (function () {
         imageSmoothingEnabled: false
       });
 
+      /* The navigator draws with the canvas drawer, not WebGL. OSD 6.0.2 builds the
+         navigator with `drawer: this.drawer.getType()` (openseadragon.js:8815) — a single
+         resolved type instead of the candidate list — so the navigator's WebGL drawer has
+         `_canvasFallbackAllowed === false`. Cross-origin DZI tiles taint the canvas (we do
+         not set crossOriginPolicy), WebGL texture creation then fails, and with no fallback
+         the navigator renders nothing. The main viewer is unaffected: it keeps 'canvas' in
+         its own candidate list and falls back per-image. The thumbnail is ~236x146, so
+         drawing it with canvas costs nothing. Remove once OSD passes the candidate list. */
+      if (me.viewer.navigator) {
+        me.viewer.navigator.requestDrawer('canvas');
+      }
+
       // open the currentImage
       me.viewerOpenImage(me.ImageInfo[me.currentImage]);
 
