@@ -1,6 +1,6 @@
 # MicroDraw
 
-[![CI](https://github.com/neuroanatomy/microdraw/actions/workflows/main.yml/badge.svg)](https://github.com/neuroanatomy/microdraw/actions/workflows/main.yml) [![CircleCI](https://circleci.com/gh/r03ert0/microdraw/tree/master.svg?style=shield)](https://circleci.com/gh/r03ert0/microdraw/tree/master) [![Join the chat at https://gitter.im/r03ert0/microdraw](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/r03ert0/microdraw?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![CI](https://github.com/neuroanatomy/microdraw/actions/workflows/main.yml/badge.svg)](https://github.com/neuroanatomy/microdraw/actions/workflows/main.yml) [![Join the chat at https://gitter.im/r03ert0/microdraw](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/r03ert0/microdraw?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ![microdraw-vervet](https://user-images.githubusercontent.com/2310732/31443628-40b315ec-ae9a-11e7-9c2e-d133b5921687.png)
 
@@ -155,6 +155,18 @@ Deploy environments may not allow for `fs` access. As a result, Microdraw uses [
     }
     ```
 
+
+## Testing
+
+```bash
+# Run unit tests (API routes, mocked with Sinon/nock, no database needed)
+npm run mocha
+
+# Run E2E tests (Puppeteer-based, headless Chrome; requires a running MongoDB instance)
+npm run test-e2e
+```
+
+These are the same checks run in CI (see `.github/workflows/main.yml`).
 
 ## License
 This project is licensed under GNU GPL v3 or any later version.
