@@ -8,7 +8,7 @@ const U = require('../mocha.test.util');
 const chai = require('chai');
 const {assert} = chai;
 
-const puppeteer = require('puppeteer');
+const { launchBrowser } = require('./browser');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
@@ -24,7 +24,7 @@ let filename, res;
 // eslint-disable-next-line max-statements
 describe('Editing tools: multiple users drawing on the same dataset', () => {
   before(async () => {
-    browser = await puppeteer.launch({headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    browser = await launchBrowser();
   });
 
   describe('simultaneously opening the same data set', () => {
@@ -32,7 +32,7 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       page1 = await browser.newPage();
       await page1.setViewport({width: U.width, height: U.height});
       await page1.goto(
-        'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
+        U.url('/data?source=/test_data/cat.json&slice=0'),
         { waitUntil: 'networkidle0' }
       );
 
@@ -55,7 +55,7 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       page2 = await browser.newPage();
       await page2.setViewport({width: U.width, height: U.height});
       await page2.goto(
-        'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
+        U.url('/data?source=/test_data/cat.json&slice=0'),
         { waitUntil: 'networkidle0' }
       );
       await shadowclick(UI.NEXT, page2);
@@ -266,11 +266,11 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
     before(async() => {
       // open slice 1 in both browsers
       await page1.goto(
-        'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
+        U.url('/data?source=/test_data/cat.json&slice=0'),
         { waitUntil: 'networkidle0' }
       );
       await page2.goto(
-        'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
+        U.url('/data?source=/test_data/cat.json&slice=0'),
         { waitUntil: 'networkidle0' }
       );
     });

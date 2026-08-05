@@ -30,22 +30,34 @@ const normalizePort = function (val) {
   return false;
 };
 
-// Event listener for HTTP server "error" event.
-const onError = function (error) {
-  if (error.syscall !== 'listen') { throw error; }
-  const bind = typeof port === 'string'
-    ? 'Pipe ' + port
-    : 'Port ' + port;
-  // handle specific listen errors with friendly messages
+// Turn a listen error into an actionable message.
+const listenError = function (error, which, wanted) {
+  if (error.syscall !== 'listen') { return error; }
+  const bind = typeof wanted === 'string' ? 'Pipe ' + wanted : 'Port ' + wanted;
   switch (error.code) {
   case 'EACCES':
-    throw new Error(bind + ' requires elevated privileges');
+    return new Error(`${which}: ${bind} requires elevated privileges`);
   case 'EADDRINUSE':
-    throw new Error(bind + ' is already in use');
+    return new Error(
+      `${which}: ${bind} is already in use. ` +
+      `Stop whatever is listening on it (e.g. a running \`npm start\`), ` +
+      `or set ${which === 'websocket server' ? 'WS_PORT' : 'PORT'} to a free port.`
+    );
   default:
-    throw error;
+    return error;
   }
 };
+
+// Bind a server, resolving with the port actually assigned.
+// Passing port 0 lets the OS pick a free one, which is what the tests use.
+const listen = (srv, wanted, which) => new Promise((resolve, reject) => {
+  const onListenError = (error) => reject(listenError(error, which, wanted));
+  srv.once('error', onListenError);
+  srv.listen(wanted, () => {
+    srv.removeListener('error', onListenError);
+    resolve(srv.address().port);
+  });
+});
 
 // Event listener for HTTP server "listening" event.
 const onListening = function () {
@@ -61,17 +73,20 @@ const start = async function () {
   const app = express();
 
   port = normalizePort(process.env.PORT || '3000');
-  app.set('port', port);
 
   // Create HTTP server.
   server = http.createServer(app);
 
-  // Listen on provided port, on all network interfaces.
-  server.listen(port);
-  server.on('error', onError);
-  server.on('listening', onListening);
+  // Listen on provided port, on all network interfaces. `port` may be 0,
+  // in which case the OS assigns a free port and we record the real one.
+  port = await listen(server, port, 'app server');
+  app.set('port', port);
+  onListening();
 
-  const Config = JSON.parse(await fs.promises.readFile('./cfg.json'));
+  // CFG_PATH lets the E2E suite pin a known configuration instead of inheriting
+  // whichever cfg.json the developer happens to have locally (it is gitignored,
+  // so an `ssl: true` dev config would otherwise change how the tests render).
+  const Config = JSON.parse(await fs.promises.readFile(process.env.CFG_PATH || './cfg.json'));
   microdrawWebsocketServer.dataDirectory = path.join(__dirname, '/public');
 
   if (Config.secure) {
@@ -87,14 +102,17 @@ const start = async function () {
     microdrawWebsocketServer.server = http.createServer(app);
   }
 
-  const wsServer = microdrawWebsocketServer.server.listen(8080, () => {
-    if (Config.secure) {
-      console.log('Listening wss on port 8080');
-    } else {
-      console.log('Listening ws on port 8080');
-    }
-    microdrawWebsocketServer.initSocketConnection();
-  });
+  const wsServer = microdrawWebsocketServer.server;
+  const wsPort = await listen(
+    wsServer,
+    normalizePort(process.env.WS_PORT || '8080'),
+    'websocket server'
+  );
+  console.log(`Listening ${Config.secure ? 'wss' : 'ws'} on port ${wsPort}`);
+  microdrawWebsocketServer.initSocketConnection();
+
+  // Templates need this so the browser connects to the right websocket port.
+  app.set('wsPort', wsPort);
 
 
   // CORS
@@ -179,7 +197,7 @@ const start = async function () {
     res.render('error');
   });
 
-  return { app, server, wsServer };
+  return { app, server, wsServer, port, wsPort };
 };
 
 module.exports = { start };

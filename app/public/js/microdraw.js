@@ -12,7 +12,7 @@ const Microdraw = (function () {
   const me = {
     debug: 1,
     hostname: window.location.origin,
-    wshostname: `${window.location.hostname}:8080`,
+    wshostname: `${window.location.hostname}:${window.MICRODRAW_WS_PORT || 8080}`,
     secure: window.location.protocol === 'https:',
 
     ImageInfo: {},               // regions for each sections, can be accessed by the section name. (e.g. me.ImageInfo[me.imageOrder[viewer.current_page()]])
@@ -1842,7 +1842,7 @@ const Microdraw = (function () {
         me.loadScript("/lib/jquery-1.11.0.min.js"),
         me.loadScript("/lib/paper-full-0.12.15.min.js"),
         me.loadScript("/lib/openseadragon/openseadragon.js"),
-        me.loadScript("https://unpkg.com/hippy-hippo@0.0.1/dist/hippy-hippo-umd.js"),
+        me.loadScript("/lib/hippy-hippo/hippy-hippo-umd.js"), // vendored: hippy-hippo@0.0.1
         me.loadScript("/js/microdraw-ws.js")
       ]);
 
@@ -1850,13 +1850,12 @@ const Microdraw = (function () {
 
       await Promise.all([
         me.loadScript("/lib/OpenSeadragonScalebar/openseadragon-scalebar.js"),
-        // me.loadScript("/lib/openseadragon-screenshot/openseadragonScreenshot.min.js"),
-        me.loadScript("https://cdn.jsdelivr.net/gh/r03ert0/Openseadragon-screenshot@v0.0.1/openseadragonScreenshot.js"),
+        me.loadScript("/lib/openseadragon-screenshot/openseadragonScreenshot-v0.0.1.js"), // vendored: Openseadragon-screenshot@v0.0.1
         me.loadScript("/lib/FileSaver.js/FileSaver.min.js"),
         me.loadScript("/js/neurolex-ontology.js"),
-        me.loadScript("https://cdn.jsdelivr.net/gh/r03ert0/muijs@v0.1.3/mui.js"),
-        me.loadScript("https://unpkg.com/codeflask/build/codeflask.min.js"),
-        me.loadScript("https://cdn.jsdelivr.net/gh/r03ert0/consolita.js@0.2.1/consolita.js"),
+        me.loadScript("/lib/muijs/mui.js"), // vendored: muijs@v0.1.3
+        me.loadScript("/lib/codeflask/codeflask.min.js"), // vendored: codeflask@1.4.1
+        me.loadScript("/lib/consolita/consolita.js"), // vendored: consolita.js@0.2.1
         /* global Consolita */
 
         me.loadScript('/js/tools/fullscreen.js'),
@@ -2307,6 +2306,16 @@ const Microdraw = (function () {
       ));
       if (needsOMEZarr) {
         await me.loadScript("/lib/omezarr-tilesource/omezarr-tilesource.js");
+
+        // OMEZarrTileSource resolves its store with `new URL(source.url)`, which
+        // throws on a relative path. Resolving against the current page lets a
+        // data.json reference its store relatively, so the same file works
+        // whatever host and port it is served from.
+        json.tileSources.forEach((source) => {
+          if (source && typeof source === 'object' && source.url) {
+            source.url = new URL(source.url, window.location.href).href;
+          }
+        });
       }
 
       me.initOpenSeadragon(json);

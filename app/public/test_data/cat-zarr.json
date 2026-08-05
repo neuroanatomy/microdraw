@@ -1,8 +1,8 @@
 {
     "tileSources": [
-        {"type": "ome-zarr", "url": "http://localhost:3000/test_data/cat.zarr", "z": 0},
-        {"type": "ome-zarr", "url": "http://localhost:3000/test_data/cat.zarr", "z": 1},
-        {"type": "ome-zarr", "url": "http://localhost:3000/test_data/cat.zarr", "z": 2}
+        {"type": "ome-zarr", "url": "/test_data/cat.zarr", "z": 0},
+        {"type": "ome-zarr", "url": "/test_data/cat.zarr", "z": 1},
+        {"type": "ome-zarr", "url": "/test_data/cat.zarr", "z": 2}
     ],
     "pixelsPerMeter": 10000,
     "fileID": "cat-zarr"

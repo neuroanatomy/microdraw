@@ -1,0 +1,73 @@
+{
+  "comment": [
+    "Provenance for third-party assets that MicroDraw used to fetch from a CDN at",
+    "runtime and now ships locally. Run `npm run verify-vendor` to check that every",
+    "file still matches the bytes that were downloaded, and to see the exact URL to",
+    "re-download from when bumping a version.",
+    "Loaded by app/public/js/microdraw.js (scripts) and the mustache views (font)."
+  ],
+  "retrieved": "2026-08-05",
+  "assets": [
+    {
+      "name": "hippy-hippo",
+      "version": "0.0.1",
+      "path": "app/public/lib/hippy-hippo/hippy-hippo-umd.js",
+      "url": "https://unpkg.com/hippy-hippo@0.0.1/dist/hippy-hippo-umd.js",
+      "sha256": "e76bac1a0635b677ee0251aab5c15a0933083f60d593e277539b3e9c4bf9c039"
+    },
+    {
+      "name": "muijs",
+      "version": "v0.1.3",
+      "path": "app/public/lib/muijs/mui.js",
+      "url": "https://cdn.jsdelivr.net/gh/r03ert0/muijs@v0.1.3/mui.js",
+      "sha256": "4ff6142f98be1c0fda507eab5c6b729a7e995d6311340f075af106ba2df8d05f"
+    },
+    {
+      "name": "codeflask",
+      "version": "1.4.1",
+      "path": "app/public/lib/codeflask/codeflask.min.js",
+      "url": "https://unpkg.com/codeflask@1.4.1/build/codeflask.min.js",
+      "sha256": "61d3b7a7d583a165f92983f37718d02abc6de5085356aa217dc4ddad142207cc",
+      "note": "Was requested unpinned as unpkg.com/codeflask/build/codeflask.min.js, so the version served could change at any time. 1.4.1 is what that URL resolved to on the retrieval date; the versions loaded before then are not recoverable."
+    },
+    {
+      "name": "consolita.js",
+      "version": "0.2.1",
+      "path": "app/public/lib/consolita/consolita.js",
+      "url": "https://cdn.jsdelivr.net/gh/r03ert0/consolita.js@0.2.1/consolita.js",
+      "sha256": "268a076274c70a2ba009aa73e6f53650cdeba699e4585d826b19b6ba51329240"
+    },
+    {
+      "name": "Openseadragon-screenshot",
+      "version": "v0.0.1",
+      "path": "app/public/lib/openseadragon-screenshot/openseadragonScreenshot-v0.0.1.js",
+      "url": "https://cdn.jsdelivr.net/gh/r03ert0/Openseadragon-screenshot@v0.0.1/openseadragonScreenshot.js",
+      "sha256": "da1eb10f1d9c7316612d661aab3ebba92a30ec418ccecdddf8998814181c6439",
+      "note": "Kept under its own filename because it is NOT identical to the openseadragonScreenshot.js already in that directory: the CDN build adds a viewer.screenshotInstance.showOptions guard. The suffixed name preserves both."
+    },
+    {
+      "name": "roboto-100-latin",
+      "version": "Google Fonts v51",
+      "path": "app/public/lib/roboto/roboto-100-latin.woff2",
+      "url": "https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbFmQiAr0klQmz24O0g.woff2",
+      "sha256": "71c03e1302469fe67f4156ecd4c5edcbb2a506d3eb45ce9c9f96395602b89559",
+      "upstreamStable": false,
+      "note": "URL taken from https://fonts.googleapis.com/css?family=Roboto:100 requested with a Chrome user agent, which is what selects the woff2 subsets. gstatic re-subsets its binaries at the same versioned URL — hours after retrieval it served 7816 bytes where this copy is 16140 — so the checksum guards this file against in-repo drift but cannot be reproduced by re-downloading. That instability is itself the reason to vendor the font: otherwise the glyphs behind the reference screenshots could change without notice."
+    },
+    {
+      "name": "roboto-100-latin-ext",
+      "version": "Google Fonts v51",
+      "path": "app/public/lib/roboto/roboto-100-latin-ext.woff2",
+      "url": "https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbFmZiAr0klQmz24O0g.woff2",
+      "sha256": "a444ef34fcd2c2410a476f795c634e4747df3afd8400cf91e65fd54f6e83dabb",
+      "upstreamStable": false,
+      "note": "Same gstatic re-subsetting caveat as roboto-100-latin."
+    }
+  ],
+  "derived": [
+    {
+      "path": "app/public/lib/roboto/roboto.css",
+      "note": "Hand-written from the Google Fonts stylesheet: only the latin and latin-ext @font-face blocks are kept (the app renders Latin text only) and their src URLs point at the local woff2 files. Not byte-identical to any upstream file, so it is not checksummed."
+    }
+  ]
+}

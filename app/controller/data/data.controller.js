@@ -8,6 +8,7 @@ const data = function (req, res) {
     title: 'MicroDraw::Data',
     loginMethods : req.appConfig.loginMethods || [],
     params: JSON.stringify(req.query),
+    wsPort: req.app.get('wsPort') || 8080,
     user : req.user
   });
 };

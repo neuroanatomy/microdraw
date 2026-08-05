@@ -7,12 +7,21 @@ const pixelmatch = require('pixelmatch');
 const microdrawApp = require('../app/app');
 
 let appServer, db, wsServer;
-const serverURL = "http://127.0.0.1:3000";
+let serverPort = 3000;
+
+// permissions.spec.js cookies against 127.0.0.1, the screenshot specs localhost.
+const serverOrigin = () => `http://127.0.0.1:${serverPort}`;
+const url = (pathname = '') => `http://localhost:${serverPort}${pathname}`;
 
 const initResources = async () => {
-  let app;
-  ({ server: appServer, app, wsServer } = await microdrawApp.start());
-
+  let app, port;
+  // Port 0 => OS picks a free one. Pin with E2E_PORT / E2E_WS_PORT if needed.
+  process.env.PORT = process.env.E2E_PORT || '0';
+  process.env.WS_PORT = process.env.E2E_WS_PORT || '0';
+  // Pin the config so results ignore the developer's gitignored cfg.json.
+  process.env.CFG_PATH = process.env.CFG_PATH || './cfg.json.example';
+  ({ server: appServer, app, wsServer, port } = await microdrawApp.start());
+  serverPort = port;
   db = app.db.mongoDB();
 };
 
@@ -110,10 +119,10 @@ const compareImages = async function (pathImg1, pathImg2) {
   return pixdiff;
 };
 
-const comparePageScreenshots = async function (testPage, url, filename) {
+const comparePageScreenshots = async function (testPage, pageUrl, filename) {
   const newFilePath = './test/e2e/screenshots/' + filename;
   const refFilePath = './test/reference-screenshots/' + filename;
-  await testPage.goto(url, { waitUntil: 'networkidle0' });
+  await testPage.goto(pageUrl, { waitUntil: 'networkidle0' });
   await waitUntilHTMLRendered(testPage);
   await testPage.screenshot({ path: newFilePath });
   const pixdiff = await compareImages(newFilePath, refFilePath);
@@ -167,7 +176,7 @@ const parseCookies = (str) => str
     acc.push({
       name: decodeURIComponent(v[0].trim()),
       value: decodeURIComponent(v[1].trim()),
-      url: serverURL
+      url: serverOrigin()
     });
 
     return acc;
@@ -276,7 +285,7 @@ module.exports = {
   closeResources,
   getServer,
   parseCookies,
-  serverURL,
+  url,
   testingCredentials,
   privateProjectTest,
   newPath,
@@ -286,3 +295,6 @@ module.exports = {
   pct1,
   pct5
 };
+
+// A getter, not a value: the port is only known once initResources() has run.
+Object.defineProperty(module.exports, 'serverURL', { get: serverOrigin, enumerable: true });

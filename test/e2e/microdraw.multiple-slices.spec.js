@@ -6,7 +6,7 @@ const U = require('../mocha.test.util');
 const chai = require('chai');
 const {assert} = chai;
 
-const puppeteer = require('puppeteer');
+const { launchBrowser } = require('./browser');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
@@ -20,7 +20,7 @@ let page;
 
 describe('Editing tools: draw in multiple slices', () => {
   before(async () => {
-    browser = await puppeteer.launch({headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    browser = await launchBrowser();
   });
   it('opens data page', async () => {
     page = await browser.newPage();
@@ -30,7 +30,7 @@ describe('Editing tools: draw in multiple slices', () => {
     //     .toUpperCase()} ${message.text()}`));
 
     await page.goto(
-      'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
+      U.url('/data?source=/test_data/cat.json&slice=0'),
       { waitUntil: 'networkidle0' }
     );
 
@@ -107,7 +107,7 @@ describe('Editing tools: draw in multiple slices', () => {
 
   it('square is still present after reloading the 1st slice', async () => {
     await page.goto(
-      'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
+      U.url('/data?source=/test_data/cat.json&slice=0'),
       { waitUntil: 'networkidle0' }
     );
 
@@ -155,7 +155,7 @@ describe('Editing tools: draw in multiple slices', () => {
   // eslint-disable-next-line max-statements
   it('clean up the 2 slices', async () => {
     await page.goto(
-      'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
+      U.url('/data?source=/test_data/cat.json&slice=0'),
       { waitUntil: 'networkidle0' }
     );
 

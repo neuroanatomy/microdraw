@@ -166,7 +166,61 @@ npm run mocha
 npm run test-e2e
 ```
 
+`test-e2e` starts its own server (via `test/e2e/runner.js`) on OS-assigned free
+ports, so it runs happily alongside a development server you already have going.
+Pin the ports with `E2E_PORT` / `E2E_WS_PORT` if you need them fixed.
+
+The suite is hermetic: every third-party asset the app used to pull from a CDN is
+vendored under `app/public/lib/`, and the test browser resolves all non-local
+hosts to `NOTFOUND` (see `test/e2e/browser.js`), so runs need no internet access
+and cannot be broken by a CDN outage.
+
+It also runs against `cfg.json.example` rather than your own `cfg.json` (which is
+gitignored, and whose `secure: true` would otherwise leave the page unable to
+reach the websocket server). Override with `CFG_PATH` to test a different config.
+
+Note that the screenshot comparisons are sensitive to the host's installed fonts.
+The app's text falls back through `"Lucida Grande", "Lucida Sans Unicode",
+Helvetica, …`, and Lucida Grande only exists on macOS, so text-heavy pages render
+differently there than on the Linux hosts the reference images in
+`test/reference-screenshots/` came from.
+
 These are the same checks run in CI (see `.github/workflows/main.yml`).
+
+### Vendored third-party assets
+
+These were previously fetched from unpkg/jsdelivr at runtime, which meant a CDN
+outage broke the whole viewer (they load inside a single `Promise.all`, so one
+failure rejected all of them). They now live in `app/public/lib/`, pinned:
+
+| asset | version | upstream |
+| --- | --- | --- |
+| `hippy-hippo/` | 0.0.1 | `unpkg.com/hippy-hippo` |
+| `muijs/` | v0.1.3 | `cdn.jsdelivr.net/gh/r03ert0/muijs` |
+| `codeflask/` | 1.4.1 | `unpkg.com/codeflask` |
+| `consolita/` | 0.2.1 | `cdn.jsdelivr.net/gh/r03ert0/consolita.js` |
+| `openseadragon-screenshot/openseadragonScreenshot-v0.0.1.js` | v0.0.1 | `cdn.jsdelivr.net/gh/r03ert0/Openseadragon-screenshot` |
+| `roboto/` | Google Fonts v51, weight 100, latin + latin-ext | `fonts.googleapis.com` |
+
+`app/public/lib/vendor.json` is the source of truth: it records the exact download
+URL, version, and SHA-256 of every file, and `scripts/verify-vendor.js` checks them.
+
+```bash
+npm run verify-vendor              # do the files still match what was downloaded?
+npm run verify-vendor -- --refetch # ...and do the CDNs still serve those bytes?
+```
+
+To update one, re-download it at the desired version, drop it in the same place,
+bump the path in `app/public/js/microdraw.js`, and update its entry in
+`vendor.json`. Two provenance caveats are recorded there in full:
+
+- `codeflask` used to be requested **unpinned** (`unpkg.com/codeflask/...`), so the
+  version served could change underneath the reference screenshots at any time.
+  1.4.1 is what that URL resolved to on the retrieval date; what loaded before is
+  not recoverable.
+- The Roboto `.woff2` files are marked `upstreamStable: false` — gstatic re-subsets
+  its binaries behind the same versioned URL, so `--refetch` skips them. That
+  instability is precisely why the font is vendored.
 
 ## License
 This project is licensed under GNU GPL v3 or any later version.

@@ -12,7 +12,7 @@ var {assert} = chai;
 //   console.warn(`[microdraw]: dependency error: puppeteer needs to be installed manually. - npm i puppeteer`);
 //   process.exit(1);
 // }
-const puppeteer = require('puppeteer');
+const { launchBrowser } = require('./browser');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
@@ -26,11 +26,11 @@ const shadowclick = async function (sel) {
 
 describe('Editing tools: draw polygons and curves', () => {
   it('opens a data page', async () => {
-    browser = await puppeteer.launch({headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'], dumpio: false});
+    browser = await launchBrowser();
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
     await page.goto( // load test page
-      'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
+      U.url('/data?source=/test_data/cat.json&slice=0'),
       { waitUntil: 'networkidle0' }
     );
     await U.waitUntilHTMLRendered(page);
@@ -38,7 +38,7 @@ describe('Editing tools: draw polygons and curves', () => {
     await page.screenshot({path: U.newPath + filename});
     // const diff = await U.comparePageScreenshots(
     //   page,
-    //   'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
+    //   U.url('/data?source=/test_data/cat.json&slice=0'),
     //   'draw.01.cat.png'
     // );
     // assert(diff<U.pct5, `${diff} pixels were different`);
@@ -70,7 +70,7 @@ describe('Editing tools: draw polygons and curves', () => {
 
   it('does not keep the unsaved triangle upon reload', async () => {
     await page.goto( // reload
-      'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
+      U.url('/data?source=/test_data/cat.json&slice=0'),
       { waitUntil: 'networkidle0' }
     );
 
@@ -87,7 +87,7 @@ describe('Editing tools: draw polygons and curves', () => {
 
     // const diff = await U.comparePageScreenshots(
     //   page,
-    //   'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
+    //   U.url('/data?source=/test_data/cat.json&slice=0'),
     //   'draw.03.cat-empty-reload.png'
     // );
     // assert(diff<U.pct5, `${diff} pixels were different`);
@@ -105,7 +105,7 @@ describe('Editing tools: draw polygons and curves', () => {
 
     await shadowclick(UI.SAVE); // select the save tool
     await page.goto( // reloads
-      'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
+      U.url('/data?source=/test_data/cat.json&slice=0'),
       { waitUntil: 'networkidle0' }
     );
 
@@ -124,7 +124,7 @@ describe('Editing tools: draw polygons and curves', () => {
 
     // const diff = await U.comparePageScreenshots(
     //   page,
-    //   'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
+    //   U.url('/data?source=/test_data/cat.json&slice=0'),
     //   'draw.04.cat-triangle-reload.png'
     // );
     // assert(diff<U.pct5, `${diff} pixels were different`);
@@ -138,7 +138,7 @@ describe('Editing tools: draw polygons and curves', () => {
     await shadowclick(UI.DELETE); // delete tool
     await shadowclick(UI.SAVE); // select the save tool
     await page.goto( // reload
-      'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
+      U.url('/data?source=/test_data/cat.json&slice=0'),
       { waitUntil: 'networkidle0' }
     );
 
@@ -155,7 +155,7 @@ describe('Editing tools: draw polygons and curves', () => {
 
     // const diff = await U.comparePageScreenshots(
     //   page,
-    //   'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
+    //   U.url('/data?source=/test_data/cat.json&slice=0'),
     //   'draw.05.cat-empty-reload.png'
     // );
     // assert(diff<U.pct5, `${diff} pixels were different`);

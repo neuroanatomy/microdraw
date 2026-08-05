@@ -6,7 +6,7 @@ const U = require('../mocha.test.util');
 const chai = require('chai');
 const {assert} = chai;
 
-const puppeteer = require('puppeteer');
+const { launchBrowser } = require('./browser');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
@@ -20,7 +20,7 @@ let page;
 
 describe('OME-Zarr tile source', () => {
   before(async () => {
-    browser = await puppeteer.launch({headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    browser = await launchBrowser();
   });
 
   // eslint-disable-next-line max-statements
@@ -28,7 +28,7 @@ describe('OME-Zarr tile source', () => {
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
     await page.goto(
-      'http://localhost:3000/data?source=/test_data/cat-zarr.json&slice=0',
+      U.url('/data?source=/test_data/cat-zarr.json&slice=0'),
       { waitUntil: 'networkidle0' }
     );
     await U.waitUntilHTMLRendered(page);
@@ -81,7 +81,7 @@ describe('OME-Zarr tile source', () => {
 
   it('the region round-trips through a reload', async () => {
     await page.goto(
-      'http://localhost:3000/data?source=/test_data/cat-zarr.json&slice=0',
+      U.url('/data?source=/test_data/cat-zarr.json&slice=0'),
       { waitUntil: 'networkidle0' }
     );
     await U.waitUntilHTMLRendered(page);
@@ -132,7 +132,7 @@ describe('OME-Zarr tile source', () => {
   // eslint-disable-next-line max-statements
   it('clean up the region', async () => {
     await page.goto(
-      'http://localhost:3000/data?source=/test_data/cat-zarr.json&slice=0',
+      U.url('/data?source=/test_data/cat-zarr.json&slice=0'),
       { waitUntil: 'networkidle0' }
     );
     await U.waitUntilHTMLRendered(page);

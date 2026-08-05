@@ -12,7 +12,7 @@ var {assert} = chai;
 //     console.warn(`[microdraw]: dependency error: puppeteer needs to be installed manually. - npm i puppeteer`)
 //     process.exit(1)
 // }
-const puppeteer = require('puppeteer');
+const { launchBrowser } = require('./browser');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
@@ -26,10 +26,10 @@ const shadowclick = async function (sel) {
 
 describe('Editing tools: order', () => {
   it('opens a data page', async () => {
-    browser = await puppeteer.launch({headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'], dumpio: false});
+    browser = await launchBrowser();
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
-    await page.goto('http://localhost:3000/data?source=/test_data/cat.json&slice=0',
+    await page.goto(U.url('/data?source=/test_data/cat.json&slice=0'),
       { waitUntil: 'networkidle0' });
     await U.waitUntilHTMLRendered(page);
 
@@ -38,7 +38,7 @@ describe('Editing tools: order', () => {
 
   //   const diff = await U.comparePageScreenshots(
   //     page,
-  //     'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
+  //     U.url('/data?source=/test_data/cat.json&slice=0'),
   //     'order.01.cat.png'
   //   );
   //   assert(diff<U.pct5, `${diff} pixels were different`);

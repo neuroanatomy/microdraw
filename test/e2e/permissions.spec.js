@@ -7,7 +7,7 @@ const chaiHttp = require('chai-http');
 chai.use(chaiHttp);
 const U = require('../../test/mocha.test.util');
 const _ = require('lodash');
-const puppeteer = require('puppeteer');
+const { launchBrowser } = require('./browser');
 
 // eslint-disable-next-line max-statements
 describe('TESTING PERMISSIONS', function () {
@@ -476,7 +476,7 @@ describe('TESTING PERMISSIONS', function () {
       let browser, page;
 
       before(async function() {
-        browser = await puppeteer.launch({ headless: "new", ignoreHTTPSErrors: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+        browser = await launchBrowser({ ignoreHTTPSErrors: true });
         page = await browser.newPage();
         await page.setCookie(...cookies);
       });
