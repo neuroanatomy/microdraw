@@ -77,10 +77,6 @@ const waitUntilHTMLRendered = async function(page, timeout = 30000) {
     const html = await page.content();
     const currentHTMLSize = html.length;
 
-    // const bodyHTMLSize = await page.evaluate(() => document.body.innerHTML.length);
-
-    // console.log('last: ', lastHTMLSize, ' <> curr: ', currentHTMLSize, " body html size: ", bodyHTMLSize);
-
     if (lastHTMLSize !== 0 && currentHTMLSize === lastHTMLSize) {
       countStableSizeIterations+=1;
     } else {
@@ -119,11 +115,14 @@ const compareImages = async function (pathImg1, pathImg2) {
   return pixdiff;
 };
 
-const comparePageScreenshots = async function (testPage, pageUrl, filename) {
+const comparePageScreenshots = async function (testPage, pageUrl, filename, beforeScreenshot) {
   const newFilePath = './test/e2e/screenshots/' + filename;
   const refFilePath = './test/reference-screenshots/' + filename;
   await testPage.goto(pageUrl, { waitUntil: 'networkidle0' });
   await waitUntilHTMLRendered(testPage);
+  if (beforeScreenshot) {
+    await beforeScreenshot(testPage);
+  }
   await testPage.screenshot({ path: newFilePath });
   const pixdiff = await compareImages(newFilePath, refFilePath);
 

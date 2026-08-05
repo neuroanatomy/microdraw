@@ -33,7 +33,17 @@ describe('View pages and data', () => {
     const diff = await U.comparePageScreenshots(
       page,
       U.url(''),
-      'view.01.home.png'
+      'view.01.home.png',
+      // The landing page has a looping background video whose current frame
+      // at capture time is non-deterministic across machines. Freeze it on
+      // the static poster image underneath so the screenshot is stable.
+      (testPage) => testPage.evaluate(() => {
+        const video = document.getElementById('neurons');
+        if (video) {
+          video.pause();
+          video.style.display = 'none';
+        }
+      })
     );
     assert(diff<U.pct5, `${diff} pixels were different`);
   }).timeout(0);
