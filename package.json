@@ -9,7 +9,7 @@
     "verify-vendor": "node scripts/verify-vendor.js",
     "mocha": "cross-env MONGODB_TEST='127.0.0.1:27017/circleci_test' mocha test/mocha.test.js",
     "mocha-brk": "cross-env MONGODB_TEST='127.0.0.1:27017/circleci_test' mocha test/mocha.test.js --inspect-brk --timeout=10000000",
-    "test-e2e": "cross-env MONGODB_TEST='127.0.0.1:27017/circleci_test' LOCALSIGNIN=true mocha ./test/e2e/runner.js ./test/e2e/*.spec.js --timeout=100000",
+    "test-e2e": "cross-env MONGODB_TEST='127.0.0.1:27017/circleci_test' LOCALSIGNIN=true nyc --silent mocha ./test/e2e/runner.js ./test/e2e/*.spec.js --timeout=100000",
     "prepare": "husky install",
     "build-pages": "webpack --mode production --config webpack.pages.config.js && cp app/views/scripts/dist/*-page.js app/public/js/pages/",
     "dev-pages": "webpack --mode development --config webpack.pages.config.js && cp app/views/scripts/dist/*-page.js app/public/js/pages/"
@@ -48,6 +48,7 @@
     "mocha": "^6.1.4",
     "mock-fs": "^4.5.0",
     "nock": "^10.0.6",
+    "nyc": "^15.1.0",
     "pixelmatch": "^5.2.1",
     "pngjs": "^6.0.0",
     "puppeteer": "^21.1.0",
