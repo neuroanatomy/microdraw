@@ -1,4 +1,13 @@
 #!/usr/bin/env node
 
 const app = require('../app/app');
-app.start();
+
+app.start().catch((err) => {
+  // Startup failures (a port already in use, a missing cfg.json) are the
+  // operator's problem to fix, so show the message rather than a stack trace.
+  console.error(`Failed to start MicroDraw: ${err.message}`);
+  // Exit explicitly rather than rethrowing: a stack trace here would bury the
+  // message, and a half-bound server can keep the event loop alive.
+  // eslint-disable-next-line no-process-exit
+  process.exit(1);
+});
