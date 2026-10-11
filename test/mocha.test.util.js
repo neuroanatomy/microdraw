@@ -211,6 +211,77 @@ const settleFrames = (page) => page.evaluate(() => new Promise((resolve) => {
   setTimeout(resolve, 500);
 }));
 
+/**
+ * The regions of the current slice, as Paper.js holds them.
+ * bounds are in Paper.js project coordinates; viewBounds in page pixels.
+ * @param {Object} page A puppeteer page
+ * @returns {Promise<Array>} One entry per region, in z-order (index)
+ */
+const regionState = (page) => page.evaluate(() => {
+  const M = window.Microdraw;
+  const rect = (r) => ({ x: r.x, y: r.y, width: r.width, height: r.height });
+  const offset = window.paper.view.element.getBoundingClientRect();
+
+  return M.ImageInfo[M.currentImage].Regions.map((reg) => {
+    const p = reg.path;
+    const tl = window.paper.view.projectToView(p.bounds.topLeft);
+    const br = window.paper.view.projectToView(p.bounds.bottomRight);
+
+    return {
+      name: reg.name,
+      segments: p.segments.length,
+      curvedSegments: p.segments.filter((s) => !s.handleIn.isZero() || !s.handleOut.isZero()).length,
+      closed: p.closed,
+      bounds: rect(p.bounds),
+      viewBounds: { x: tl.x + offset.left, y: tl.y + offset.top, width: br.x - tl.x, height: br.y - tl.y },
+      fill: p.fillColor ? p.fillColor.toCSS(true) : null,
+      fillAlpha: p.fillColor ? p.fillColor.alpha : null,
+      index: p.index,
+      selected: p.selected,
+      isCurrent: M.region === reg
+    };
+  });
+});
+
+/**
+ * The OSD viewport and the current slice.
+ * @param {Object} page A puppeteer page
+ * @returns {Promise<Object>} zoom, centre, slice index, image size, paper zoom
+ */
+const viewportState = (page) => page.evaluate(() => {
+  const M = window.Microdraw;
+  const v = M.viewer.viewport;
+  const item = M.viewer.world.getItemAt(0);
+
+  return {
+    zoom: v.getZoom(true),
+    centre: { x: v.getCenter(true).x, y: v.getCenter(true).y },
+    slice: M.imageOrder.indexOf(M.currentImage),
+    sliceCount: M.imageOrder.length,
+    imageWidth: M.viewer.source.width,
+    imageHeight: M.viewer.source.height,
+    fullyLoaded: Boolean(item) && item.getFullyLoaded(),
+    paperZoom: window.paper.view.zoom
+  };
+});
+
+/**
+ * Read one pixel of a canvas at page coordinates (x, y), with getImageData.
+ * @param {Object} page A puppeteer page
+ * @param {string} which 'paper' (the annotation overlay) or 'osd' (the image)
+ * @param {number} x Page x coordinate (as given to page.mouse)
+ * @param {number} y Page y coordinate
+ * @returns {Promise<Array>} [r, g, b, a], each 0-255
+ */
+const samplePixel = (page, which, x, y) => page.evaluate((w, px, py) => {
+  const canvas = w === 'paper' ? window.paper.view.element : window.Microdraw.viewer.drawer.canvas;
+  const r = canvas.getBoundingClientRect();
+  const cx = Math.round((px - r.left) * canvas.width / r.width);
+  const cy = Math.round((py - r.top) * canvas.height / r.height);
+
+  return Array.from(canvas.getContext('2d').getImageData(cx, cy, 1, 1).data);
+}, which, x, y);
+
 // eslint-disable-next-line max-statements
 const waitUntilHTMLRendered = async function(page, timeout = 30000) {
   const checkDurationMsecs = 1000;
@@ -425,6 +496,9 @@ module.exports = {
   instrumentPage,
   openData,
   settleFrames,
+  regionState,
+  viewportState,
+  samplePixel,
   waitForMicrodraw,
   waitForSave,
   waitForViewport,
