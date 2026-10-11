@@ -66,5 +66,10 @@
   },
   "author": "Roberto Toro <rto@braincatalogue.org> (https://neuroanatomy.github.io)",
   "license": "GPL-3.0",
-  "description": ""
+  "description": "",
+  "overrides": {
+    "neuroweblab": {
+      "bcrypt": "npm:bcryptjs@^3.0.3"
+    }
+  }
 }
