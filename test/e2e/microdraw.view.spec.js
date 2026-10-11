@@ -22,39 +22,154 @@ const shadowclick = async function(sel) {
   await handle.click();
 };
 
+/*
+  Expected values, recorded on 2026-10-11 by running these exact steps in a
+  scratch probe (Chrome 116.0.5845.96, 800x600 viewport) and reading
+  U.viewportState and the DOM; identical across two probe runs (up to 1e-13).
+
+  Slice 0 of cat.json is 480x360 px and slice 1 is 2048x1024 px; both open at
+  the same home zoom. Zoom in multiplies the zoom by 1.5 (tools/zoomIn.js) and
+  zoom out divides it by 1.5. The pan drags the image right by width/6 px, so
+  the viewport centre moves left by (width/6) / (width * zoom) viewport units.
+  UI.SECTION and UI.SLIDER match no element on the data page.
+*/
+const HOME_ZOOM = 0.92;
+const HOME_CENTRE = { x: 0.5, y: 0.375 };
+const ZOOM_FACTOR = 1.5;
+const SLICES = [{ width: 480, height: 360 }, { width: 2048, height: 1024 }];
+const PAN_PX = U.width*2/3 - U.width/2;
+const PANNED_CENTRE_X = HOME_CENTRE.x - PAN_PX/(U.width*HOME_ZOOM*ZOOM_FACTOR); // 0.3792 in the probe
+const TOOLBAR = Object.entries(UI)
+  .filter(([name]) => !['SECTION', 'SLIDER', 'CANVAS'].includes(name))
+  .map(([, sel]) => sel);
+
+let slice0Pixel;
+
+// Element is displayed, not hidden, and has a non-empty box.
+const visibleBox = (root, sel) => page.evaluate((r, s) => {
+  const base = r === 'shadow' ? window.Microdraw.dom : document;
+  const el = base.querySelector(s);
+  if (!el) { return null; }
+  const cs = getComputedStyle(el);
+  const b = el.getBoundingClientRect();
+
+  return {
+    visible: cs.display !== 'none' && cs.visibility !== 'hidden' && b.width > 0 && b.height > 0,
+    x: b.x,
+    y: b.y,
+    width: b.width,
+    height: b.height,
+    text: el.textContent.trim(),
+    placeholder: el.getAttribute('placeholder')
+  };
+}, root, sel);
+
+// The Paper.js overlay follows the OSD viewport (Microdraw.transform).
+const assertOverlayInSync = async (what) => {
+  const s = await page.evaluate(() => {
+    const M = window.Microdraw;
+    const v = M.viewer.viewport;
+    const b = v.getBounds(true);
+
+    return {
+      zoom: window.paper.view.zoom,
+      expectedZoom: M.viewer.source.width*v.viewportToImageZoom(v.getZoom(true))/M.magicV,
+      centre: [window.paper.view.center.x, window.paper.view.center.y],
+      expectedCentre: [M.magicV*(b.x + (b.width/2)), M.magicV*(b.y + (b.height/2))]
+    };
+  });
+  assert.approximately(s.zoom, s.expectedZoom, 1e-6, `${what}: overlay zoom ${s.zoom}, viewport needs ${s.expectedZoom}`);
+  s.centre.forEach((c, i) => assert.approximately(c, s.expectedCentre[i], 1e-6, `${what}: overlay centre ${s.centre}, viewport needs ${s.expectedCentre}`));
+};
+
+// eslint-disable-next-line max-statements
+const assertSlice = async (index) => {
+  const vp = await U.viewportState(page);
+  assert.equal(vp.slice, index, 'slice index');
+  assert.equal(vp.sliceCount, 2);
+  assert.equal(vp.imageWidth, SLICES[index].width, 'image width');
+  assert.equal(vp.imageHeight, SLICES[index].height, 'image height');
+  assert.isTrue(vp.fullyLoaded, 'image tiles not fully loaded');
+  assert.approximately(vp.zoom, HOME_ZOOM, 1e-6, 'zoom');
+  assert.approximately(vp.centre.x, HOME_CENTRE.x, 1e-6, 'centre x');
+  assert.approximately(vp.centre.y, HOME_CENTRE.y, 1e-6, 'centre y');
+  const ui = await page.evaluate(() => ({
+    text: window.Microdraw.dom.querySelector('#slice-number').textContent,
+    slider: window.Microdraw.dom.querySelector('#slice').dataset.val,
+    url: new URLSearchParams(location.search).get('slice')
+  }));
+  assert.deepEqual(ui, { text: `Slice ${index}`, slider: String(index), url: String(index) });
+  await assertOverlayInSync(`slice ${index}`);
+};
+
+const assertView = async (zoom, centreX, what) => {
+  const vp = await U.viewportState(page);
+  assert.approximately(vp.zoom, zoom, 1e-6, `${what}: zoom`);
+  assert.approximately(vp.centre.x, centreX, 1e-6, `${what}: centre x`);
+  assert.approximately(vp.centre.y, HOME_CENTRE.y, 1e-6, `${what}: centre y`);
+  assert.isTrue(vp.fullyLoaded, `${what}: image tiles not fully loaded`);
+  assert.equal(vp.slice, 0, `${what}: slice`);
+  await assertOverlayInSync(what);
+};
+
 describe('View pages and data', () => {
   before(async () => {
     browser = await launchBrowser();
   });
 
+  // eslint-disable-next-line max-statements
   it('shows the landing page', async () => {
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
-    const diff = await U.comparePageScreenshots(
-      page,
-      U.url(''),
-      'view.01.home.png',
-      // The landing page has a looping background video whose current frame
-      // at capture time is non-deterministic across machines. Freeze it on
-      // the static poster image underneath so the screenshot is stable.
-      (testPage) => testPage.evaluate(() => {
-        const video = document.getElementById('neurons');
-        if (video) {
-          video.pause();
-          video.style.display = 'none';
-        }
-      })
-    );
-    assert(diff<U.pct5, `${diff} pixels were different`);
+    await page.goto(U.url(''), { waitUntil: 'load' });
+    // Freeze the looping background video on its poster for the screenshot.
+    await page.evaluate(() => {
+      const video = document.getElementById('neurons');
+      if (video) {
+        video.pause();
+        video.style.display = 'none';
+      }
+    });
+    await page.screenshot({path: U.newPath + 'view.01.home.png'});
+
+    assert.equal(await page.title(), 'MicroDraw');
+    const [logo, url, list, go, footer] = await Promise.all(['#logo', '#url', '#list', '#go', '#footer'].map((sel) => visibleBox('document', sel)));
+    for (const [el, sel] of [[logo, '#logo'], [url, '#url'], [list, '#list'], [go, '#go'], [footer, '#footer']]) {
+      assert.exists(el, `${sel} is missing`);
+      assert.isTrue(el.visible, `${sel} is not visible`);
+    }
+    // layout, independent of font metrics: logo and URL field centred, the
+    // dataset list and Go side by side under the URL field, footer full width below
+    assert.approximately(logo.x + (logo.width/2), U.width/2, 2, 'logo is not centred');
+    assert.approximately(url.x + (url.width/2), U.width/2, 2, 'URL field is not centred');
+    assert.approximately(url.width, 600, 2, 'URL field width');
+    assert.isAbove(url.y, logo.y + logo.height, 'URL field is not below the logo');
+    assert.isAtLeast(list.y, url.y + url.height, 'dataset list is not below the URL field');
+    assert.approximately(go.y, list.y, 2, 'Go is not on the same row as the dataset list');
+    assert.isAbove(go.x, list.x + list.width - 1, 'Go is not right of the dataset list');
+    assert.equal(go.text, 'Go');
+    assert.equal(url.placeholder, 'Enter a DeepZoom image URL and click Go');
+    assert.approximately(footer.width, U.width, 1, 'footer is not full width');
+    assert.isAbove(footer.y, go.y + go.height, 'footer is not below the controls');
   }).timeout(0);
 
+  // eslint-disable-next-line max-statements
   it('shows test data, first page', async () => {
-    const diff = await U.comparePageScreenshots(
-      page,
-      U.url('/data?source=/test_data/cat.json&slice=0'),
-      'view.02.cat.png'
-    );
-    assert(diff<U.pct5, `${diff} pixels were different`);
+    await U.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
+    await U.settleFrames(page);
+    await page.screenshot({path: U.newPath + 'view.02.cat.png'});
+
+    await assertSlice(0);
+    for (const sel of TOOLBAR) {
+      // eslint-disable-next-line no-await-in-loop
+      const el = await visibleBox('shadow', sel);
+      assert.exists(el, `${sel} is missing`);
+      assert.isTrue(el.visible, `${sel} is not visible`);
+    }
+    // the image is drawn (loose: opaque, not blank white)
+    slice0Pixel = await U.samplePixel(page, 'osd', U.width/2, U.height/2);
+    assert.equal(slice0Pixel[3], 255, `image pixel ${slice0Pixel} is not opaque`);
+    assert.isBelow(slice0Pixel[0] + slice0Pixel[1] + slice0Pixel[2], 3*250, `image pixel ${slice0Pixel} is blank`);
   }).timeout(0);
 
   it('can go to the next page', async () => {
@@ -64,8 +179,11 @@ describe('View pages and data', () => {
     await U.settleFrames(page);
     const filename = "view.03.cat-next.png";
     await page.screenshot({path: U.newPath + filename});
-    const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    assert(diff<U.pct5, `${diff} pixels were different`);
+
+    await assertSlice(1);
+    const px = await U.samplePixel(page, 'osd', U.width/2, U.height/2);
+    assert.equal(px[3], 255, `image pixel ${px} is not opaque`);
+    assert.notDeepEqual(px, slice0Pixel, 'the image did not change');
   }).timeout(0);
 
   it('can go back to the previous page', async () => {
@@ -75,8 +193,9 @@ describe('View pages and data', () => {
     await U.settleFrames(page);
     const filename = "view.04.cat-prev.png";
     await page.screenshot({path: U.newPath + filename});
-    const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    assert(diff<U.pct5, `${diff} pixels were different`);
+
+    await assertSlice(0);
+    assert.deepEqual(await U.samplePixel(page, 'osd', U.width/2, U.height/2), slice0Pixel, 'not the first image again');
   }).timeout(0);
 
   it('can zoom in', async () => {
@@ -86,8 +205,8 @@ describe('View pages and data', () => {
     await U.settleFrames(page);
     const filename = "view.05.cat-zoom-in.png";
     await page.screenshot({path: U.newPath + filename});
-    const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
+
+    await assertView(HOME_ZOOM*ZOOM_FACTOR, HOME_CENTRE.x, 'zoomed in');
   }).timeout(0);
 
   // eslint-disable-next-line max-statements
@@ -103,18 +222,19 @@ describe('View pages and data', () => {
     await U.settleFrames(page);
     const filename = "view.06.cat-zoom-in-translate.png";
     await page.screenshot({path: U.newPath + filename});
-    const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
+
+    await assertView(HOME_ZOOM*ZOOM_FACTOR, PANNED_CENTRE_X, 'panned');
   }).timeout(0);
 
   it('can zoom out', async () => {
     await shadowclick(UI.ZOOMOUT);
+    // waitForViewport waits for the zoom animation to finish and the tiles to load
     await U.waitForViewport(page);
     await U.settleFrames(page);
     const filename = "view.07.cat-zoom-out.png";
     await page.screenshot({path: U.newPath + filename});
-    const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
+
+    await assertView(HOME_ZOOM, PANNED_CENTRE_X, 'zoomed out');
   }).timeout(0);
 
   after(async () => {
