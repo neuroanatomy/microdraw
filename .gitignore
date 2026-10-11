@@ -1,3 +1,4 @@
+.gitignore
 _old
 _rsrc
 _test
@@ -33,3 +34,7 @@ whitelist.json
 app/public/js/pages/*.js
 app/views/scripts/dist
 diff
+F2417_orientation_hsv
+F2417_retardance
+F2417_transmittance
+p16-electroporated
