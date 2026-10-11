@@ -23,6 +23,8 @@ jobs:
         timeout-minutes: 8
         env:
           PUPPETEER_SKIP_DOWNLOAD: 1
+      - name: Lint
+        run: npm run lint
       # puppeteer 21 cannot download its Chrome on Node 26 (yargs ESM, D20; run
       # through nyc it produced a corrupt binary on Linux). Install the same
       # Chrome for Testing build puppeteer 21.1.0 expects, point puppeteer at it,
@@ -84,6 +86,8 @@ jobs:
         timeout-minutes: 8
         env:
           PUPPETEER_SKIP_DOWNLOAD: 1
+      - name: Lint
+        run: npm run lint
       # puppeteer 21 cannot download its Chrome on Node 26 (yargs ESM, D20; run
       # through nyc it produced a corrupt binary on Linux). Install the same
       # Chrome for Testing build puppeteer 21.1.0 expects, point puppeteer at it,

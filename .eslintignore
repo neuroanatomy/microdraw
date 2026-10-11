@@ -1,2 +1,10 @@
 /app/public/**/*.min.js
 /app/public/lib/
+# vendored third-party: schteppe/doc.js documentation viewer
+app/public/doc/
+# webpack output (npm run build-pages), gitignored
+app/public/js/pages/
+app/views/scripts/dist/
+# test coverage output (nyc), gitignored
+coverage/
+.nyc_output/
