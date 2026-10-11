@@ -5,6 +5,9 @@ const path = require('path');
 // data sanitisation
 const createDOMPurify = require('dompurify');
 const {JSDOM} = require('jsdom');
+// var http = require('http');
+const WebSocket = require('ws');
+
 const {window} = (new JSDOM('', {
   features: {
     FetchExternalResources: false, // disables resource loading over HTTP / filesystem
@@ -16,38 +19,34 @@ const DOMPurify = createDOMPurify(window);
 // Get whitelist and blacklist
 const useWhitelist = false;
 const useBlacklist = true;
-const whitelist = JSON.parse(fs.readFileSync(path.join(__dirname, "whitelist.json")));
-const blacklist = JSON.parse(fs.readFileSync(path.join(__dirname, "blacklist.json")));
+const whitelist = JSON.parse(fs.readFileSync(path.join(__dirname, 'whitelist.json')));
+const blacklist = JSON.parse(fs.readFileSync(path.join(__dirname, 'blacklist.json')));
 
-// var http = require('http');
-const WebSocket = require('ws');
 const WebSocketServer = WebSocket.Server;
-var websocketserver;
+let websocketserver;
 
 const microdrawWebsocketServer = (function () {
   const me = {
     dataDirectory: '',
 
-    _handleUserWebSocketMessage: ({data, ws}) => {
+    _handleUserWebSocketMessage: ({data}) => {
       switch(data.type) {
       default:
         break;
       }
     },
 
-    _fitsBroadcastExclusionCriteria: ({data}) => {
-      return false;
-    },
-    
+    _fitsBroadcastExclusionCriteria: (/* {data} */) => false,
+
     _fitsBroadcastInclusionCriteria: ({data}) => {
       let include = false;
-      if (data.type === "chat") {
+      if (data.type === 'chat') {
         include = true;
       }
 
       return include;
     },
-    
+
     _handleBroadcastWebSocketMessage: function ({data, ws}) {
       // scan through connected users
       websocketserver.clients.forEach((client) => {
@@ -69,14 +68,23 @@ const microdrawWebsocketServer = (function () {
           try {
             client.send(cleanData);
           } catch (err) {
-            console.log("ERROR:", err);
+            console.log('ERROR:', err);
           }
         }
       });
     },
 
     _handleWebSocketMessage: ({msg, ws}) => {
-      const data = JSON.parse(msg);
+      let data;
+
+      try {
+        // Attempt to parse the message
+        data = JSON.parse(msg);
+      } catch (error) {
+        console.error('Invalid JSON received:', msg.toString(), error);
+
+        return;
+      }
 
       // handle single user messages
       me._handleUserWebSocketMessage({data, ws});
@@ -85,12 +93,12 @@ const microdrawWebsocketServer = (function () {
       me._handleBroadcastWebSocketMessage({data, ws});
     },
 
-    _handleWebSocketConnection: (ws, req) => {
+    _handleWebSocketConnection: (ws) => {
       ws.on('message', function (msg) {
         me._handleWebSocketMessage({msg, ws});
       });
-      ws.on('close', async () => {
-        console.log("disconnect user");
+      ws.on('close', () => {
+        console.log('disconnect user');
       });
     },
 
@@ -103,26 +111,26 @@ free memory: ${os.freemem()}
 ===================================
 `);
 
-      me.server.on("upgrade", (req, socket) => {
+      me.server.on('upgrade', (req, socket) => {
         let ip = req.ip
           || req.connection.remoteAddress
           || req.socket.remoteAddress
           || req.connection.socket.remoteAddress;
-        ip = ip.split(":").pop();
-        console.log("Upgrading server with IP:", ip);
+        ip = ip.split(':').pop();
+        console.log('Upgrading server with IP:', ip);
 
         if(useWhitelist && !whitelist[ip]) {
-          console.log("------------------------------> not in whitelist", ip);
+          console.log('------------------------------> not in whitelist', ip);
           setTimeout(function() {
-            console.log("not in whitelist: end");
+            console.log('not in whitelist: end');
             socket.destroy();
           }, 5000);
         }
 
         if (useBlacklist && blacklist[ip]) {
-          console.log("------------------------------> blacklist", ip);
+          console.log('------------------------------> blacklist', ip);
           setTimeout(function() {
-            console.log("blacklist: end");
+            console.log('blacklist: end');
             socket.destroy();
           }, 5000);
         }
@@ -131,17 +139,17 @@ free memory: ${os.freemem()}
       // Init WS connection
       try {
         websocketserver = new WebSocketServer({
-          server: me.server,
+          server: me.server
           // verifyClient: me.verifyClient
         });
-        websocketserver.on("connection", me._handleWebSocketConnection);
+        websocketserver.on('connection', me._handleWebSocketConnection);
       } catch (ex) {
-        console.log("ERROR: Unable to create a Web socket server", ex);
+        console.log('ERROR: Unable to create a Web socket server', ex);
       }
     }
   };
 
   return me;
-} () );
+}() );
 
 module.exports = microdrawWebsocketServer;

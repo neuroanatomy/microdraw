@@ -1,10 +1,10 @@
 /* eslint-disable max-lines */
+const fs = require('fs');
+
 const express = require('express');
 const router = new express.Router();
 const multer = require('multer');
 const { AccessControlService } = require('neuroweblab');
-
-const fs = require('fs');
 
 const {TMP_DIR} = process.env;
 const storage = TMP_DIR
@@ -21,8 +21,8 @@ const buildFileID = function ({ source, slice }) {
 
 // eslint-disable-next-line max-statements
 router.get('/', async function (req, res) {
-  console.warn("call to GET api");
-  console.warn(req.query);
+  console.log('call to GET api');
+  console.log(req.query);
 
   // current user
   const username = (req.user && req.user.username) || 'anyone';
@@ -52,14 +52,14 @@ router.get('/', async function (req, res) {
   }
 
   // include backups
-  const backup = typeof req.query.backup !== "undefined";
+  const backup = typeof req.query.backup !== 'undefined';
 
   const query = {
     fileID: buildFileID(req.query),
     // user: { $in: [...users, username] },
     project: project
   };
-  console.log("api get query", query);
+  console.log('api get query', query);
 
   const annotations = await req.app.db.findAnnotations(query, backup);
   console.log(`found ${annotations.length} annotations`);
@@ -187,24 +187,24 @@ const saveFromGUI = async function (req, res) {
 // eslint-disable-next-line max-statements
 const jsonIsValid = function (obj) {
   if(typeof obj === 'undefined') {
-    return {valid:false, msg: "json object undefined"};
+    return {valid:false, msg: 'json object undefined'};
   }
 
   if(obj.constructor !== Array) {
-    return {valid: false, msg: "json object is not an array"};
+    return {valid: false, msg: 'json object is not an array'};
   }
 
   if(!obj.every((item) => item.annotation)) {
-    return {valid: false, msg: "items do not have an `annotation` property"};
+    return {valid: false, msg: 'items do not have an `annotation` property'};
   }
   if(!obj.every((item) => item.annotation.path)) {
-    return {valid: false, msg: "items do not have a `path` property"};
+    return {valid: false, msg: 'items do not have a `path` property'};
   }
   if(!obj.every((item) => item.annotation.name)) {
-    return {valid: false, msg: "items do not have a `name` property"};
+    return {valid: false, msg: 'items do not have a `name` property'};
   }
   if(!obj.every((item) => item.annotation.uid)) {
-    return {valid: false, msg: "items do not have a `uid` property"};
+    return {valid: false, msg: 'items do not have a `uid` property'};
   }
 
   return {valid: true};
@@ -242,7 +242,7 @@ const saveFromAPI = async function (req, res) {
 
   // validate and submit
   if (typeof project === 'undefined') {
-    res.status(401).json({msg: "Invalid project"});
+    res.status(401).json({msg: 'Invalid project'});
   } else if(!jsonIsValid(json).valid) {
     res.status(401).json({
       msg: `Invalid annotation file: ${jsonIsValid(json).msg}`
@@ -274,13 +274,13 @@ const saveFromAPI = async function (req, res) {
         Regions: Regions.concat(json.map((v) => v.annotation))
       })
     })
-      .then(() => res.status(200).send({msg: "Annotation successfully saved"}))
+      .then(() => res.status(200).send({msg: 'Annotation successfully saved'}))
       .catch((e) => res.status(500).send({ err: e.message}));
   }
 };
 
 router.post('/', function (req, res) {
-  console.warn("call to POST from GUI");
+  console.log('call to POST from GUI');
 
   if(req.body.action === 'save') {
     saveFromGUI(req, res);
@@ -300,7 +300,7 @@ const filterAuthorizedUserOnly = (req, res, next) => {
 };
 
 router.post('/upload', filterAuthorizedUserOnly, multer({ storage }).array('data'), function (req, res) {
-  console.warn("call to POST from API");
+  console.log('call to POST from API');
 
   const { action } = req.query;
   switch(action) {
@@ -309,7 +309,7 @@ router.post('/upload', filterAuthorizedUserOnly, multer({ storage }).array('data
     saveFromAPI(req, res);
     break;
   default:
-    return res.status(500).send({err: `actions other than save and append are no longer supported`});
+    return res.status(500).send({err: 'actions other than save and append are no longer supported'});
   }
 });
 
