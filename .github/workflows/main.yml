@@ -22,11 +22,12 @@ jobs:
         run: npm install --loglevel=verbose --foreground-scripts
         timeout-minutes: 8
       # puppeteer 21's postinstall fails to download Chrome on Node 26 (yargs
-      # ESM, D20) but exits 0. Download it through nyc and fail if it is missing.
+      # ESM, D20) but exits 0. Download it through nyc, then launch it once with
+      # Chrome's output shown, so a browser that cannot start fails here, loudly.
       - name: Download Chrome for puppeteer
         run: |
           npx nyc --silent node node_modules/puppeteer/install.js
-          npx nyc --silent node -e "require('fs').accessSync(require('puppeteer').executablePath())"
+          npx nyc --silent node scripts/check-browser.js
       - run: npm run build-pages
       - name: Instantiate github-keys.json
         run: |
@@ -72,11 +73,12 @@ jobs:
         run: npm install --loglevel=verbose --foreground-scripts
         timeout-minutes: 8
       # puppeteer 21's postinstall fails to download Chrome on Node 26 (yargs
-      # ESM, D20) but exits 0. Download it through nyc and fail if it is missing.
+      # ESM, D20) but exits 0. Download it through nyc, then launch it once with
+      # Chrome's output shown, so a browser that cannot start fails here, loudly.
       - name: Download Chrome for puppeteer
         run: |
           npx nyc --silent node node_modules/puppeteer/install.js
-          npx nyc --silent node -e "require('fs').accessSync(require('puppeteer').executablePath())"
+          npx nyc --silent node scripts/check-browser.js
       - run: npm run build-pages
       - name: Instantiate github-keys.json
         run: |
