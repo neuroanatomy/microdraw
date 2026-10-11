@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- long tool file, not split in a lint-only change; 2026-10-11 */
 /* global Microdraw */
 
 window.ToolLayers = { layers : (function() {
@@ -286,6 +287,7 @@ window.ToolLayers = { layers : (function() {
     _offsetX: 0,
     _offsetY: 0,
     _handleStart: (obj) => {
+      // eslint-disable-next-line max-statements -- existing handler, not refactored in a lint-only change; 2026-10-11
       const _start = (e) => {
         if (e.target.id !== "layers-header") { return; }
 
@@ -296,6 +298,7 @@ window.ToolLayers = { layers : (function() {
         const {top, left, width, height} = obj.getBoundingClientRect();
 
         if (e.type === "touchstart") {
+          // eslint-disable-next-line prefer-destructuring -- array destructuring would iterate the TouchList; keep index access; 2026-10-11
           e = e.touches[0];
         }
 
@@ -312,6 +315,7 @@ window.ToolLayers = { layers : (function() {
         if (!tool._isDragging) { return; }
 
         if (e.type === "touchmove") {
+          // eslint-disable-next-line prefer-destructuring -- array destructuring would iterate the TouchList; keep index access; 2026-10-11
           e = e.touches[0];
         }
         obj.style.left = (e.clientX - tool._offsetX) + 'px';

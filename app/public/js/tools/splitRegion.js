@@ -95,10 +95,10 @@ window.ToolSplitRegion = {splitRegion: (function() {
       return overlap;
     },
 
-    // eslint-disable-next-line max-statements
+    // eslint-disable-next-line max-statements, no-unused-vars -- prevColor is used only by the commented-out line below; 2026-10-11
     _addRegionsFromNewPath(newPath, prevColor) {
       const obj = JSON.parse(newPath.exportJSON());
-      const {children} = obj[1];
+      const [, {children}] = obj;
       const overlap = tool._overlaps(children);
 
       Microdraw.newRegionFlag = false;

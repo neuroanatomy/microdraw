@@ -11,6 +11,7 @@ window.ToolSelect = {select: (function() {
          * @param {object} dpoint The movement of the point
          * @return {void}
         */
+    // eslint-disable-next-line no-unused-vars -- keeps the tool interface (microdraw.js calls mouseDrag(point, dpoint)); body is commented out; 2026-10-11
     mouseDrag: function mouseDrag(point, dpoint) {
 
       // event.stopHandlers = true;

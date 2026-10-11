@@ -28,17 +28,15 @@ const microdrawWebsocketServer = (function () {
   const me = {
     dataDirectory: '',
 
-    _handleUserWebSocketMessage: ({data, ws}) => {
+    _handleUserWebSocketMessage: ({data}) => {
       switch(data.type) {
       default:
         break;
       }
     },
 
-    _fitsBroadcastExclusionCriteria: ({data}) => {
-      return false;
-    },
-    
+    _fitsBroadcastExclusionCriteria: () => false,
+
     _fitsBroadcastInclusionCriteria: ({data}) => {
       let include = false;
       if (data.type === "chat") {
@@ -47,7 +45,7 @@ const microdrawWebsocketServer = (function () {
 
       return include;
     },
-    
+
     _handleBroadcastWebSocketMessage: function ({data, ws}) {
       // scan through connected users
       websocketserver.clients.forEach((client) => {
@@ -85,11 +83,11 @@ const microdrawWebsocketServer = (function () {
       me._handleBroadcastWebSocketMessage({data, ws});
     },
 
-    _handleWebSocketConnection: (ws, req) => {
+    _handleWebSocketConnection: (ws) => {
       ws.on('message', function (msg) {
         me._handleWebSocketMessage({msg, ws});
       });
-      ws.on('close', async () => {
+      ws.on('close', () => {
         console.log("disconnect user");
       });
     },
@@ -131,7 +129,7 @@ free memory: ${os.freemem()}
       // Init WS connection
       try {
         websocketserver = new WebSocketServer({
-          server: me.server,
+          server: me.server
           // verifyClient: me.verifyClient
         });
         websocketserver.on("connection", me._handleWebSocketConnection);
@@ -142,6 +140,6 @@ free memory: ${os.freemem()}
   };
 
   return me;
-} () );
+}());
 
 module.exports = microdrawWebsocketServer;

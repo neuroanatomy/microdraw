@@ -29,6 +29,7 @@ window.ToolColor = { color : (function() {
         const {top, left, width, height} = obj.getBoundingClientRect();
 
         if (e.type === "touchstart") {
+          // eslint-disable-next-line prefer-destructuring -- array destructuring would iterate the TouchList; keep index access; 2026-10-11
           e = e.touches[0];
         }
 
@@ -46,6 +47,7 @@ window.ToolColor = { color : (function() {
         if (!tool._isDragging) { return; }
 
         if (e.type === "touchmove") {
+          // eslint-disable-next-line prefer-destructuring -- array destructuring would iterate the TouchList; keep index access; 2026-10-11
           e = e.touches[0];
         }
         obj.style.left = (e.clientX - tool._offsetX) + 'px';

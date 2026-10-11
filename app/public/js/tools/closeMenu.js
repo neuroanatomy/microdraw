@@ -2,7 +2,7 @@
 /* global Microdraw */
 /* global paper */
 
-var ToolCloseMenu = { closeMenu : (function() {
+window.ToolCloseMenu = { closeMenu : (function() {
   var tool = {
 
     /**
