@@ -61,7 +61,7 @@ describe('Editing tools: order', () => {
     await shadowclick(UI.SELECT);
     await page.mouse.click(500, 100);
 
-    await U.waitUntilHTMLRendered(page);
+    await U.settleFrames(page);
     const filename = "order.02.triangles.png";
     await page.screenshot({path: U.newPath + filename});
 
@@ -93,7 +93,8 @@ describe('Editing tools: order', () => {
     await shadowclick(UI.SELECT);
     await page.mouse.click(500, 100);
 
-    await U.waitUntilHTMLRendered(page);
+    await U.waitForTools(page);
+    await U.settleFrames(page);
     const filename = "order.03.invert.png";
     await page.screenshot({path: U.newPath + filename});
 
@@ -125,7 +126,7 @@ describe('Editing tools: order', () => {
     await shadowclick(UI.SELECT);
     await page.mouse.click(500, 100);
 
-    await U.waitUntilHTMLRendered(page);
+    await U.settleFrames(page);
     const filename = "order.04.invert-again.png";
     await page.screenshot({path: U.newPath + filename});
 

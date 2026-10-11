@@ -176,7 +176,7 @@ describe('Editing tools: draw polygons and curves', () => {
       }
     }
     await page.mouse.up();
-    await U.waitUntilHTMLRendered(page);
+    await U.settleFrames(page);
 
     const filename = "draw.06.cat-draw-circle.png";
     await page.screenshot({path: U.newPath + filename});
@@ -206,7 +206,7 @@ describe('Editing tools: draw polygons and curves', () => {
     const x = o[0] + r*Math.cos(a*Math.PI/180);
     const y = o[1] + r*Math.sin(a*Math.PI/180);
     await page.mouse.click(x, y);
-    await U.waitUntilHTMLRendered(page);
+    await U.settleFrames(page);
 
     const filename = "draw.07.cat-draw-addPoint.png";
     await page.screenshot({path: U.newPath + filename});
@@ -235,7 +235,7 @@ describe('Editing tools: draw polygons and curves', () => {
     const x = o[0] + r*Math.cos(a*Math.PI/180);
     const y = o[1] + r*Math.sin(a*Math.PI/180);
     await page.mouse.click(x, y);
-    await U.waitUntilHTMLRendered(page);
+    await U.settleFrames(page);
 
     const filename = "draw.08.cat-draw-deletePoint.png";
     await page.screenshot({path: U.newPath + filename});

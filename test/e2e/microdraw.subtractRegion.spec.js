@@ -55,7 +55,7 @@ describe('Editing tools: subtract regions', () => {
     await page.mouse.click(400, 500);
     await page.mouse.click(400, 400);
 
-    await U.waitUntilHTMLRendered(page);
+    await U.settleFrames(page);
     const filename = "subtractRegion.02.cat-square-C.png";
     await page.screenshot({path: U.newPath + filename});
 
@@ -82,7 +82,7 @@ describe('Editing tools: subtract regions', () => {
     await page.mouse.click(450, 550);
     await page.mouse.click(450, 450);
 
-    await U.waitUntilHTMLRendered(page);
+    await U.settleFrames(page);
     const filename = "subtractRegion.03.cat-square-D.png";
     await page.screenshot({path: U.newPath + filename});
 
@@ -106,7 +106,7 @@ describe('Editing tools: subtract regions', () => {
     // click on square C (square D is already selected)
     await page.mouse.click(405, 405);
 
-    await U.waitUntilHTMLRendered(page);
+    await U.settleFrames(page);
     const filename = "subtractRegion.04.cat-subtraction.png";
     await page.screenshot({path: U.newPath + filename});
 

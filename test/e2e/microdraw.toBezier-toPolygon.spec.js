@@ -50,7 +50,7 @@ describe('Editing tools: convert polygons to bézier and vice-versa', () => {
       await page.mouse.click(x, y);
     }
 
-    await U.waitUntilHTMLRendered(page);
+    await U.settleFrames(page);
     const filename = "toBezierPolygon.02.cat-star.png";
     await page.screenshot({path: U.newPath + filename});
     const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
@@ -60,7 +60,8 @@ describe('Editing tools: convert polygons to bézier and vice-versa', () => {
   it('converts the star polygon to a bézier curve', async () => {
     await shadowclick(UI.TOBEZIER);
 
-    await U.waitUntilHTMLRendered(page);
+    await U.waitForTools(page);
+    await U.settleFrames(page);
     const filename = "toBezierPolygon.03.cat-star-toBezier.png";
     await page.screenshot({path: U.newPath + filename});
     const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
@@ -75,7 +76,7 @@ describe('Editing tools: convert polygons to bézier and vice-versa', () => {
 
     await shadowclick(UI.TOPOLYGON);
 
-    await U.waitUntilHTMLRendered(page);
+    await U.settleFrames(page);
     const filename = "toBezierPolygon.04.cat-star-toPolygon.png";
     await page.screenshot({path: U.newPath + filename});
     const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);

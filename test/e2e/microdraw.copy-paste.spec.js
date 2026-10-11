@@ -54,7 +54,7 @@ describe('Editing tools: Copy and paste', () => {
     await page.mouse.click(400, 500);
     await page.mouse.click(400, 400);
 
-    await U.waitUntilHTMLRendered(page);
+    await U.settleFrames(page);
     const filename = "copyPaste.02.cat-square.png";
     await page.screenshot({path: U.newPath + filename});
 
@@ -89,7 +89,7 @@ describe('Editing tools: Copy and paste', () => {
 
     await shadowclick(UI.PASTE);
 
-    await U.waitUntilHTMLRendered(page);
+    await U.settleFrames(page);
     const filename = "copyPaste.03.cat-paste.png";
     await page.screenshot({path: U.newPath + filename});
 

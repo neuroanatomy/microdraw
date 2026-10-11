@@ -54,7 +54,7 @@ describe('Editing tools: Add regions', () => {
     await page.mouse.click(400, 500);
     await page.mouse.click(400, 400);
 
-    await U.waitUntilHTMLRendered(page);
+    await U.settleFrames(page);
     const filename = "addRegion.02.cat-square-A.png";
     await page.screenshot({path: U.newPath + filename});
 
@@ -81,7 +81,7 @@ describe('Editing tools: Add regions', () => {
     await page.mouse.click(450, 550);
     await page.mouse.click(450, 450);
 
-    await U.waitUntilHTMLRendered(page);
+    await U.settleFrames(page);
     const filename = "addRegion.03.cat-square-B.png";
     await page.screenshot({path: U.newPath + filename});
 
@@ -111,7 +111,7 @@ describe('Editing tools: Add regions', () => {
     // click on square B (square A is already selected)
     await page.mouse.click(540, 540);
 
-    await U.waitUntilHTMLRendered(page);
+    await U.settleFrames(page);
     const filename = "addRegion.04.cat-union.png";
     await page.screenshot({path: U.newPath + filename});
 

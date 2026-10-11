@@ -55,7 +55,7 @@ describe('Editing tools: Translate, rotate, flip', () => {
     await page.mouse.click(400, 500);
     await page.mouse.click(400, 400);
 
-    await U.waitUntilHTMLRendered(page);
+    await U.settleFrames(page);
     const filename = "transform.02.cat-square.png";
     await page.screenshot({path: U.newPath + filename});
 
@@ -120,7 +120,7 @@ describe('Editing tools: Translate, rotate, flip', () => {
     await page.mouse.move(450, 300, {steps: 10});
     await page.mouse.up();
 
-    await U.waitUntilHTMLRendered(page);
+    await U.settleFrames(page);
     const filename = "transform.04.cat-rotate.png";
     await page.screenshot({path: U.newPath + filename});
 
