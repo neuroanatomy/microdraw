@@ -21,13 +21,23 @@ jobs:
       - name: Install dependencies
         run: npm install --loglevel=verbose --foreground-scripts
         timeout-minutes: 8
-      # puppeteer 21's postinstall fails to download Chrome on Node 26 (yargs
-      # ESM, D20) but exits 0. Download it through nyc, then launch it once with
-      # Chrome's output shown, so a browser that cannot start fails here, loudly.
-      - name: Download Chrome for puppeteer
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 1
+      # puppeteer 21 cannot download its Chrome on Node 26 (yargs ESM, D20; run
+      # through nyc it produced a corrupt binary on Linux). Install the same
+      # Chrome for Testing build puppeteer 21.1.0 expects, point puppeteer at it,
+      # and launch it once with its output shown so a broken browser fails here.
+      - name: Install Chrome for puppeteer
+        id: setup-chrome
+        uses: browser-actions/setup-chrome@v2
+        with:
+          chrome-version: 116.0.5845.96
+          install-dependencies: true
+      - name: Check the e2e browser starts
         run: |
-          npx nyc --silent node node_modules/puppeteer/install.js
-          npx nyc --silent node scripts/check-browser.js
+          echo "PUPPETEER_EXECUTABLE_PATH=${{ steps.setup-chrome.outputs.chrome-path }}" >> "$GITHUB_ENV"
+          PUPPETEER_EXECUTABLE_PATH="${{ steps.setup-chrome.outputs.chrome-path }}" npx nyc --silent node scripts/check-browser.js
+        timeout-minutes: 2
       - run: npm run build-pages
       - name: Instantiate github-keys.json
         run: |
@@ -72,13 +82,23 @@ jobs:
       - name: Install dependencies
         run: npm install --loglevel=verbose --foreground-scripts
         timeout-minutes: 8
-      # puppeteer 21's postinstall fails to download Chrome on Node 26 (yargs
-      # ESM, D20) but exits 0. Download it through nyc, then launch it once with
-      # Chrome's output shown, so a browser that cannot start fails here, loudly.
-      - name: Download Chrome for puppeteer
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 1
+      # puppeteer 21 cannot download its Chrome on Node 26 (yargs ESM, D20; run
+      # through nyc it produced a corrupt binary on Linux). Install the same
+      # Chrome for Testing build puppeteer 21.1.0 expects, point puppeteer at it,
+      # and launch it once with its output shown so a broken browser fails here.
+      - name: Install Chrome for puppeteer
+        id: setup-chrome
+        uses: browser-actions/setup-chrome@v2
+        with:
+          chrome-version: 116.0.5845.96
+          install-dependencies: true
+      - name: Check the e2e browser starts
         run: |
-          npx nyc --silent node node_modules/puppeteer/install.js
-          npx nyc --silent node scripts/check-browser.js
+          echo "PUPPETEER_EXECUTABLE_PATH=${{ steps.setup-chrome.outputs.chrome-path }}" >> "$GITHUB_ENV"
+          PUPPETEER_EXECUTABLE_PATH="${{ steps.setup-chrome.outputs.chrome-path }}" npx nyc --silent node scripts/check-browser.js
+        timeout-minutes: 2
       - run: npm run build-pages
       - name: Instantiate github-keys.json
         run: |
