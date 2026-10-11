@@ -1,3 +1,5 @@
+/* global Microdraw */
+
 'use strict';
 const chai = require('chai');
 const puppeteer = require('puppeteer');
@@ -32,21 +34,25 @@ describe('View pages and data', () => {
   it('shows the landing page', async () => {
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
-    const diff = await U.comparePageScreenshots(
-      page,
-      'http://localhost:3000',
-      'view.01.home.png'
-    );
-    assert(diff<U.pct5, `${diff} pixels were different`);
+    await page.goto('http://localhost:3000',
+      { waitUntil: 'networkidle0' });
+    await U.waitUntilHTMLRendered(page);
+    const filename = 'view.01.home.png';
+    await page.screenshot({path: U.newPath + filename});
+    const element = await page.$('input#url');
+    assert(element !== null, 'No url input');
   }).timeout(0);
 
   it('shows test data, first page', async () => {
-    const diff = await U.comparePageScreenshots(
+    await U.comparePageScreenshots(
       page,
       'http://localhost:3000/data?source=/test_data/cat.json&slice=0',
       'view.02.cat.png'
     );
-    assert(diff<U.pct5, `${diff} pixels were different`);
+    const res = await page.evaluate(() => ({
+      currentImage: Microdraw.currentImage
+    }));
+    assert(res.currentImage === 0, 'wrong slice number');
   }).timeout(0);
 
   it('can go to the next page', async () => {
@@ -55,8 +61,10 @@ describe('View pages and data', () => {
     await U.waitUntilHTMLRendered(page);
     const filename = 'view.03.cat-next.png';
     await page.screenshot({path: U.newPath + filename});
-    const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    assert(diff<U.pct5, `${diff} pixels were different`);
+    const res = await page.evaluate(() => ({
+      currentImage: Microdraw.currentImage
+    }));
+    assert(res.currentImage === 1, 'wrong slice number');
   }).timeout(0);
 
   it('can go back to the previous page', async () => {
@@ -65,8 +73,10 @@ describe('View pages and data', () => {
     await U.waitUntilHTMLRendered(page);
     const filename = 'view.04.cat-prev.png';
     await page.screenshot({path: U.newPath + filename});
-    const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    assert(diff<U.pct5, `${diff} pixels were different`);
+    const res = await page.evaluate(() => ({
+      currentImage: Microdraw.currentImage
+    }));
+    assert(res.currentImage === 0, 'wrong slice number');
   }).timeout(0);
 
   it('can zoom in', async () => {

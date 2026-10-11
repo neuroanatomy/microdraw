@@ -58,7 +58,7 @@ export default function useVisualization() {
 
   const setupEventListeners = () => {
     window.addEventListener('brainImageConfigured', (e) => {
-      state.title = `Slice ${e.detail.currentSlice}`;
+      state.title = `Slice ${Microdraw.imageOrder[e.detail.currentSlice]}`;
       state.currentSlice = e.detail.currentSlice;
       state.totalSlices = e.detail.totalSlices;
     });

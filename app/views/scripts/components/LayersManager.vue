@@ -224,7 +224,7 @@ const addLayerUI = async () => {
 
 const deleteLayer = (index) => {
   layers.value.splice(index, 1);
-  const currentImageIndex = Microdraw.imageOrder.indexOf(Microdraw.currentImage);
+  const currentImageIndex = Microdraw.currentImage;
   Microdraw.loadImage(currentImageIndex);
 };
 

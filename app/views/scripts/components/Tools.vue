@@ -525,7 +525,7 @@ const {
 } = useVisualization();
 
 const sliceChange = (slice) => {
-  title.value = `Slice ${slice}`;
+  title.value = `Slice ${Microdraw.imageOrder[slice]}`;
   currentSlice.value = slice;
   Microdraw.sliderOnChange(slice);
 };

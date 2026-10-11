@@ -37,11 +37,11 @@ const Microdraw = (function () {
     wshostname: `${window.location.hostname}:8080`,
     secure: window.location.protocol === 'https:',
 
-    ImageInfo: {},               // regions for each sections, can be accessed by the section name. (e.g. me.ImageInfo[me.imageOrder[viewer.current_page()]])
+    ImageInfo: {},               // regions for each sections, can be accessed by the section index. (e.g. me.ImageInfo[viewer.current_page()])
     ImageInfos: {},              // image infos of the previously loaded json
     // regions contain a paper.js path, a unique ID and a name
-    imageOrder: [],              // names of sections ordered by their openseadragon page numbers
-    currentImage: null,          // name of the current image
+    imageOrder: [],              // display name of each section, indexed by slice index; the slice index is the identity of a section
+    currentImage: null,          // index of the current image
     totalImages: 0,              // total slices
     prevImage: null,             // name of the last image
     currentLabelIndex: 0,        // current label to use
@@ -911,15 +911,14 @@ const Microdraw = (function () {
        */
     setImage: function (imageNumber) {
       if( me.debug>1 ) { console.log('> setImage'); }
-      const index = me.imageOrder.indexOf(imageNumber);
 
       // // update image slider
       // me.updateSliderValue(index);
 
       //update url
-      me.updateURL(index);
+      me.updateURL(imageNumber);
 
-      me.loadImage(me.imageOrder[index]);
+      me.loadImage(imageNumber);
     },
 
     /**
@@ -1235,11 +1234,11 @@ const Microdraw = (function () {
       */
 
     /**
-       * @param {string} imageName The image name
+       * @param {number} imageNumber The image number
        * @returns {void}
        */
-    loadImage: function (imageName) {
-      if( me.debug>1 ) { console.log('> loadImage(' + imageName + ')'); }
+    loadImage: function (imageNumber) {
+      if( me.debug>1 ) { console.log('> loadImage(' + imageNumber + ')'); }
 
       // when loading a new image, deselect any currently selected regions
       // n.b. this needs to be called before me.currentImage is set
@@ -1249,12 +1248,12 @@ const Microdraw = (function () {
       me.prevImage = me.currentImage;
 
       // set current image to new image
-      me.currentImage = imageName;
+      me.currentImage = imageNumber;
 
       window.dispatchEvent(new CustomEvent('brainImageConfigured', { detail :
         {
           totalSlices: me.totalImages,
-          currentSlice: me.imageOrder.indexOf(imageName)
+          currentSlice: me.currentImage
         }
       }));
 
@@ -1270,13 +1269,13 @@ const Microdraw = (function () {
        */
     loadNextImage: function () {
       if( me.debug>1 ) { console.log('> loadNextImage'); }
-      const index = me.imageOrder.indexOf(me.currentImage);
+      const index = me.currentImage;
       const nextIndex = (index + 1) % me.imageOrder.length;
 
       // update URL
       me.updateURL(nextIndex);
 
-      me.loadImage(me.imageOrder[nextIndex]);
+      me.loadImage(nextIndex);
     },
 
     /**
@@ -1284,13 +1283,13 @@ const Microdraw = (function () {
        */
     loadPreviousImage: function () {
       if(me.debug>1) { console.log('> loadPrevImage'); }
-      const index = me.imageOrder.indexOf(me.currentImage);
+      const index = me.currentImage;
       const previousIndex = ((index - 1 >= 0)? index - 1 : me.imageOrder.length - 1 );
 
       // update URL
       me.updateURL(previousIndex);
 
-      me.loadImage(me.imageOrder[previousIndex]);
+      me.loadImage(previousIndex);
     },
 
 
@@ -1584,8 +1583,7 @@ const Microdraw = (function () {
        */
     sliderOnChange: function (newImageNumber) {
       if( me.debug>1 ) { console.log('> sliderOnChange promise'); }
-      const imageName = me.imageOrder[newImageNumber];
-      me.loadImage(imageName);
+      me.loadImage(newImageNumber);
       me.updateURL(newImageNumber);
     },
 
@@ -1643,7 +1641,7 @@ const Microdraw = (function () {
         const index = me.findSectionNumber(sectionNumber);
         if( index > -1 ) { // if section number exists
           me.updateSliderValue(index);
-          me.loadImage(me.imageOrder[index]);
+          me.loadImage(index);
           me.updateURL(index);
         }
       }
@@ -2033,18 +2031,19 @@ const Microdraw = (function () {
         json.tileSources = json.tileCodeY;
       }
 
+      // name is either the index of the tileSource or a name specified in the json file
+      const names = json.tileSources.map((_tileSource, i) =>
+        ((json.names && json.names[i]) ? String(json.names[i]) : String(i)));
+
       if (me.params.source in me.ImageInfos) {
         me.ImageInfo = me.ImageInfos[me.params.source];
-        me.imageOrder = Object.keys(me.ImageInfo);
+        me.imageOrder = names;
       } else {
         // set up the ImageInfo array and me.imageOrder array
         me.ImageInfo = {};
-        me.imageOrder = [];
+        me.imageOrder = names;
         for( let i = 0; i < json.tileSources.length; i += 1 ) {
-          // name is either the index of the tileSource or a named specified in the json file
-          const name = ((json.names && json.names[i]) ? String(json.names[i]) : String(i));
-          me.imageOrder.push(name);
-          me.ImageInfo[name] = {
+          me.ImageInfo[i] = {
             source: json.tileSources[i],
             Regions: [],
             RegionsToRemove: []
@@ -2052,7 +2051,7 @@ const Microdraw = (function () {
           // if getTileUrl is specified, we might need to eval it to get the function
           if( json.tileSources[i].getTileUrl && typeof json.tileSources[i].getTileUrl === 'string' ) {
             // eslint-disable-next-line no-eval
-            eval(`me.ImageInfo[name].source.getTileUrl = ${json.tileSources[i].getTileUrl}`);
+            eval(`me.ImageInfo[i].source.getTileUrl = ${json.tileSources[i].getTileUrl}`);
           }
         }
       }
@@ -2093,7 +2092,7 @@ const Microdraw = (function () {
           currentSlice
         }
       }));
-      me.currentImage = me.imageOrder[currentSlice];
+      me.currentImage = currentSlice;
 
       me.params.tileSources = json.tileSources;
       if (typeof json.fileID !== 'undefined') {

@@ -4,7 +4,7 @@ const fadeOut = function (el) {
 
   (function fade() {
     if ((el.style.opacity -= 0.1) < 0) {
-      el.style.display = "none";
+      el.style.display = 'none';
     } else {
       requestAnimationFrame(fade);
     }
@@ -13,10 +13,10 @@ const fadeOut = function (el) {
 
 const fadeIn = function (el) {
   el.style.opacity = 0;
-  el.style.display = "block";
+  el.style.display = 'block';
 
   (function fade() {
-    var val = parseFloat(el.style.opacity);
+    let val = parseFloat(el.style.opacity);
     if (!((val += 0.1) > 1)) {
       el.style.opacity = val;
       requestAnimationFrame(fade);
@@ -24,8 +24,8 @@ const fadeIn = function (el) {
   }());
 };
 
-const _dialog = async ({el, message, doFadeOut=true, delay=2000, background="#333"}) => {
-  if(typeof doFadeOut === "undefined") {
+const _dialog = async ({el, message, doFadeOut=true, delay=2000, background='#333'}) => {
+  if(typeof doFadeOut === 'undefined') {
     doFadeOut = true;
   }
 
@@ -48,7 +48,7 @@ window.ToolSave = { save: (function() {
     const sl = query.slice;
 
     const res = await fetch('/api', {
-      method: "POST",
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(query)
     });
@@ -65,25 +65,25 @@ window.ToolSave = { save: (function() {
 
   const _savingFeedback = async function (savedSections) {
     const el = Microdraw.dom.querySelector('#saveDialog');
-    let message = "";
+    let message = '';
 
     if(savedSections.length === 0) {
-      message = "No changes to save";
+      message = 'No changes to save';
       await _dialog({el, message});
     } else {
-      message = "Saving sections: " + savedSections.join(" ");
+      message = 'Saving sections: ' + savedSections.join(' ');
       await _dialog({el, message, doFadeOut: false});
     }
   };
 
   const _successFeedback = function () {
     const el = Microdraw.dom.querySelector('#saveDialog');
-    _dialog({el, message: "Successfully saved", delay: 1000, background: "#2a3"});
+    _dialog({el, message: 'Successfully saved', delay: 1000, background: '#2a3'});
   };
 
   const _errorFeedback = function (err) {
     const el = Microdraw.dom.querySelector('#saveDialog');
-    _dialog({el, message: "Unable to save, try again later", background: "#d34"});
+    _dialog({el, message: 'Unable to save, try again later', background: '#d34'});
     console.log(err);
   };
 
@@ -92,25 +92,25 @@ window.ToolSave = { save: (function() {
      * @desc Save SVG overlay to microdrawDB
      * @returns {void}
      */
-  var microdrawDBSave = async function () {
+  const microdrawDBSave = async function () {
     if( Microdraw.debug ) {
-      console.log("> save promise");
+      console.log('> save promise');
     }
 
-    var promiseArray = [];
-    var savedSections = [];
+    const promiseArray = [];
+    const savedSections = [];
 
     Object.keys(Microdraw.ImageInfo).forEach((sl) => {
-      if ((Microdraw.config.multiImageSave) || (sl === Microdraw.currentImage)) {
+      if ((Microdraw.config.multiImageSave) || (Number(sl) === Microdraw.currentImage)) {
         // configure value to be saved
-        var section = Microdraw.ImageInfo[sl];
+        const section = Microdraw.ImageInfo[sl];
         const value = Microdraw.sectionValueForHashing(section);
         const h = Microdraw.hash(JSON.stringify(value)).toString(16);
 
         // check if the section annotations have changed since loaded by computing a hash
         // if the section hash is undefined, this section has not yet been loaded.
         // Do not save anything for this section
-        if (typeof section.Hash !== "undefined" && h !== section.Hash) {
+        if (typeof section.Hash !== 'undefined' && h !== section.Hash) {
           value.Hash = h;
           const query = {
             action: 'save',
@@ -121,7 +121,7 @@ window.ToolSave = { save: (function() {
             annotation: JSON.stringify(value)
           };
 
-          console.log("pushing POST promise");
+          console.log('pushing POST promise');
           promiseArray.push(_processOneSection(query));
           savedSections.push(sl);
         }
@@ -141,7 +141,7 @@ window.ToolSave = { save: (function() {
     }
   };
 
-  var tool = {
+  const tool = {
 
     /**
          * @function click
