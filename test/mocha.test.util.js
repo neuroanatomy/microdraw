@@ -232,6 +232,7 @@ const regionState = (page) => page.evaluate(() => {
       segments: p.segments.length,
       curvedSegments: p.segments.filter((s) => !s.handleIn.isZero() || !s.handleOut.isZero()).length,
       closed: p.closed,
+      area: Math.abs(p.area),
       bounds: rect(p.bounds),
       viewBounds: { x: tl.x + offset.left, y: tl.y + offset.top, width: br.x - tl.x, height: br.y - tl.y },
       fill: p.fillColor ? p.fillColor.toCSS(true) : null,
@@ -264,6 +265,28 @@ const viewportState = (page) => page.evaluate(() => {
     paperZoom: window.paper.view.zoom
   };
 });
+
+/**
+ * The pixel expected where the given regions overlap, drawn bottom to top with
+ * their own fill colour and alpha (source-over compositing).
+ * @param {Array} regions Entries of regionState, bottom first
+ * @returns {Array} [r, g, b, a], each 0-255
+ */
+const expectedFillPixel = (regions) => {
+  let [r, g, b, a] = [0, 0, 0, 0];
+  regions.forEach((reg) => {
+    const hex = reg.fill.replace('#', '');
+    const [cr, cg, cb] = [0, 2, 4].map((i) => parseInt(hex.substr(i, 2), 16));
+    const ca = reg.fillAlpha;
+    const na = ca + a*(1 - ca);
+    if (na > 0) {
+      [r, g, b] = [[cr, r], [cg, g], [cb, b]].map(([c, o]) => ((c*ca) + (o*a*(1 - ca)))/na);
+    }
+    a = na;
+  });
+
+  return [r, g, b, a*255].map(Math.round);
+};
 
 /**
  * Read one pixel of a canvas at page coordinates (x, y), with getImageData.
@@ -499,6 +522,7 @@ module.exports = {
   regionState,
   viewportState,
   samplePixel,
+  expectedFillPixel,
   waitForMicrodraw,
   waitForSave,
   waitForViewport,
