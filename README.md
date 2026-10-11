@@ -15,7 +15,6 @@ As of July 2018
 
 ### Basic Steps
 
-#### Without docker
 * Install nodejs
 * Install mongo
 
@@ -33,14 +32,6 @@ As of July 2018
   * in one terminal window start `mongod` database and leave it run
   * in another terminal: cd into microdraw folder: `npm start`
 * open http://localhost:3000 to see MicroDraws landing page and click any of the data links provided
-* test data can be viewed at http://localhost:3000/data?source=/test_data/cat.json
-
-#### With docker
-* checkout the repository `git clone https://github.com/neuroanatomy/microdraw.git`
-* `cd microdraw`
-* `docker-compose build`
-* `docker-compose up`
-* open http://localhost:3000 to see MicroDraw's landing page and click any of the data links provided
 * test data can be viewed at http://localhost:3000/data?source=/test_data/cat.json
 
 ### Users management
