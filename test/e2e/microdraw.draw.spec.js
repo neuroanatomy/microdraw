@@ -29,11 +29,8 @@ describe('Editing tools: draw polygons and curves', () => {
     browser = await launchBrowser();
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
-    await page.goto( // load test page
-      U.url('/data?source=/test_data/cat.json&slice=0'),
-      { waitUntil: 'networkidle0' }
-    );
-    await U.waitUntilHTMLRendered(page);
+    await U.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
+    await U.settleFrames(page);
     const filename = 'draw.01.cat.png';
     await page.screenshot({path: U.newPath + filename});
     // const diff = await U.comparePageScreenshots(

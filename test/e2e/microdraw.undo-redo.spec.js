@@ -106,7 +106,7 @@ describe('Editing tools: undo and redo', () => {
   it('can undo an annotation from a different layer', async () => {
     // reload
     await page.reload();
-    await U.waitUntilHTMLRendered(page);
+    await U.waitForMicrodraw(page, 0);
 
     // draw a triangle
     await shadowclick(UI.DRAWPOLYGON);
@@ -120,7 +120,7 @@ describe('Editing tools: undo and redo', () => {
 
     // go to the next image
     await shadowclick(UI.NEXT);
-    await U.waitUntilHTMLRendered(page);
+    await U.waitForMicrodraw(page, 1);
 
     // undo
     await shadowclick(UI.UNDO);

@@ -31,9 +31,8 @@ describe('Editing tools: Translate, rotate, flip', () => {
   it('opens a data page', async () => {
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
-    await page.goto(U.url('/data?source=/test_data/cat.json&slice=0'),
-      { waitUntil: 'networkidle0' });
-    await U.waitUntilHTMLRendered(page);
+    await U.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
+    await U.settleFrames(page);
 
     const filename = 'transform.01.cat.png';
     await page.screenshot({path: U.newPath + filename});

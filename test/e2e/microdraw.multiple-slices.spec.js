@@ -29,10 +29,8 @@ describe('Editing tools: draw in multiple slices', () => {
     //   console.log(`${message.type().substr(0, 3)
     //     .toUpperCase()} ${message.text()}`));
 
-    await page.goto(
-      U.url('/data?source=/test_data/cat.json&slice=0'),
-      { waitUntil: 'networkidle0' }
-    );
+    await U.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
+    await U.settleFrames(page);
 
     const filename = "multiple-slices.01.slice1.png";
     await page.screenshot({path: U.newPath + filename});
@@ -46,8 +44,8 @@ describe('Editing tools: draw in multiple slices', () => {
     await page.mouse.click(500, 200);
     await page.mouse.click(400, 200);
     await page.mouse.click(400, 100);
-    await shadowclick(UI.SAVE, page);
-    await U.delay(1000);
+    await U.waitForSave(page, () => shadowclick(UI.SAVE, page));
+    await U.settleFrames(page);
 
     const filename = "multiple-slices.02.slice1-square.png";
     await page.screenshot({path: U.newPath + filename});
@@ -72,7 +70,8 @@ describe('Editing tools: draw in multiple slices', () => {
   // eslint-disable-next-line max-statements
   it('move to the 2nd slice and draw and save a triangle', async () => {
     await shadowclick(UI.NEXT, page);
-    await U.waitUntilHTMLRendered(page);
+    await U.waitForMicrodraw(page, 1);
+    await U.settleFrames(page);
 
     let filename = "multiple-slices.03.slice2.png";
     await page.screenshot({path: U.newPath + filename});
@@ -82,8 +81,8 @@ describe('Editing tools: draw in multiple slices', () => {
     await page.mouse.click(400, 100);
     await page.mouse.click(350, 200);
     await page.mouse.click(300, 100);
-    await shadowclick(UI.SAVE, page);
-    await U.delay(1000);
+    await U.waitForSave(page, () => shadowclick(UI.SAVE, page));
+    await U.settleFrames(page);
 
     filename = "multiple-slices.04.slice2-triangle.png";
     await page.screenshot({path: U.newPath + filename});
@@ -131,9 +130,10 @@ describe('Editing tools: draw in multiple slices', () => {
   // eslint-disable-next-line max-statements
   it('triangle is still present after reloading 2nd slice', async () => {
     await page.reload();
-    await U.waitUntilHTMLRendered(page);
+    await U.waitForMicrodraw(page, 0);
     await shadowclick(UI.NEXT, page);
-    await U.waitUntilHTMLRendered(page);
+    await U.waitForMicrodraw(page, 1);
+    await U.settleFrames(page);
 
     const res = await page.evaluate(() => ({
       sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
@@ -154,33 +154,28 @@ describe('Editing tools: draw in multiple slices', () => {
 
   // eslint-disable-next-line max-statements
   it('clean up the 2 slices', async () => {
-    await page.goto(
-      U.url('/data?source=/test_data/cat.json&slice=0'),
-      { waitUntil: 'networkidle0' }
-    );
+    await U.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
 
     // cleanup 1st slice
-    await U.waitUntilHTMLRendered(page);
     await shadowclick(UI.SELECT, page);
     await page.mouse.click(450, 150);
     await shadowclick(UI.DELETE, page);
-    await shadowclick(UI.SAVE, page);
-    await U.delay(1000);
+    await U.waitForSave(page, () => shadowclick(UI.SAVE, page));
 
     // cleanup 2nd slice
     await shadowclick(UI.NEXT, page);
-    await U.waitUntilHTMLRendered(page);
+    await U.waitForMicrodraw(page, 1);
     await shadowclick(UI.SELECT, page);
     await page.mouse.click(350, 150);
     await shadowclick(UI.DELETE, page);
-    await shadowclick(UI.SAVE, page);
-    await U.delay(1000);
+    await U.waitForSave(page, () => shadowclick(UI.SAVE, page));
     await page.reload();
-    await U.waitUntilHTMLRendered(page);
+    await U.waitForMicrodraw(page, 1);
 
     // check 1st slice is clean
     await shadowclick(UI.PREVIOUS, page);
-    await U.waitUntilHTMLRendered(page);
+    await U.waitForMicrodraw(page, 0);
+    await U.settleFrames(page);
 
     let filename = "multiple-slices.07.slice1-cleanup.png";
     await page.screenshot({path: U.newPath + filename});
@@ -197,7 +192,8 @@ describe('Editing tools: draw in multiple slices', () => {
 
     // check 2nd slice is clean
     await shadowclick(UI.NEXT, page);
-    await U.waitUntilHTMLRendered(page);
+    await U.waitForMicrodraw(page, 1);
+    await U.settleFrames(page);
     const res2 = await page.evaluate(() => ({
       sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
       regionsExists: typeof (Microdraw.ImageInfo[1].Regions) !== 'undefined',
