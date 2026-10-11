@@ -29,8 +29,8 @@ const shadowclick = async function (sel) {
 
   Splitting E with F divides E into the part outside F (6 segments, three
   quarters of E) and the part inside F (4 segments, one quarter), and removes
-  both E and F. So after the split nothing covers the F-only area: F is used up
-  as the cutting shape rather than kept.
+  both E and F. F is used as a knife: removing it is intended (maintainer,
+  2026-10-11, D23), so after the split nothing covers the F-only area.
 */
 const HOME_ZOOM = 0.92;
 // Bounds on the page, in px: [x, y, width, height]
@@ -179,7 +179,7 @@ describe('Editing tools: split regions', () => {
     await assertPixelShows('eOnly', [outside]);
     // a single layer now: the overlap belongs to one piece, not to E and F stacked
     await assertPixelShows('overlap', [inside]);
-    // F was used up by the split (see the comment at the top)
+    // F was the knife and is removed by the split (see the comment at the top)
     await assertPixelShows('fOnly', []);
     await assertPixelShows('outside', []);
   }).timeout(0);
