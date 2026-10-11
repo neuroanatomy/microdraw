@@ -13,6 +13,7 @@ var {assert} = chai;
 //   process.exit(1);
 // }
 const { launchBrowser } = require('./browser');
+const H = require('./helpers');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
@@ -31,16 +32,8 @@ describe('Editing tools: Add regions', () => {
   it('opens a data page', async () => {
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
-    await U.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
-    await U.settleFrames(page);
-    const filename = 'addRegion.01.cat.png';
-    await page.screenshot({path: U.newPath + filename});
-    // const diff = await U.comparePageScreenshots(
-    //   page,
-    //   U.url('/data?source=/test_data/cat.json&slice=0'),
-    //   'addRegion.01.cat.png'
-    // );
-    // assert(diff<1000, `${diff} pixels were different`);
+    await H.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
+    await H.settleFrames(page);
   }).timeout(0);
 
   // eslint-disable-next-line max-statements
@@ -54,9 +47,7 @@ describe('Editing tools: Add regions', () => {
     await page.mouse.click(400, 500);
     await page.mouse.click(400, 400);
 
-    await U.settleFrames(page);
-    const filename = "addRegion.02.cat-square-A.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.settleFrames(page);
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -68,8 +59,6 @@ describe('Editing tools: Add regions', () => {
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
     assert(res.pathSegments === 4, `Path has ${res.pathSegments} segments instead of 4`);
 
-    // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
 
   // eslint-disable-next-line max-statements
@@ -81,9 +70,7 @@ describe('Editing tools: Add regions', () => {
     await page.mouse.click(450, 550);
     await page.mouse.click(450, 450);
 
-    await U.settleFrames(page);
-    const filename = "addRegion.03.cat-square-B.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.settleFrames(page);
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -97,8 +84,6 @@ describe('Editing tools: Add regions', () => {
     assert(res.path1Segments === 4, `1st path has ${res.path1Segments} segments instead of 4`);
     assert(res.path2Segments === 4, `2nd path ${res.path2Segments} segments instead of 4`);
 
-    // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
 
   it('does the union of the 2 squares', async () => {
@@ -111,9 +96,7 @@ describe('Editing tools: Add regions', () => {
     // click on square B (square A is already selected)
     await page.mouse.click(540, 540);
 
-    await U.settleFrames(page);
-    const filename = "addRegion.04.cat-union.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.settleFrames(page);
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -125,8 +108,6 @@ describe('Editing tools: Add regions', () => {
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
     assert(res.pathSegments === 8, `Path has ${res.pathSegments} segments instead of 4`);
 
-    // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
 
   after(async () => {

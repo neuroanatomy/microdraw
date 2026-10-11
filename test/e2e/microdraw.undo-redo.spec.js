@@ -11,6 +11,7 @@ var {assert} = chai;
 //     process.exit(1)
 // }
 const { launchBrowser } = require('./browser');
+const H = require('./helpers');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
@@ -25,7 +26,7 @@ const shadowclick = async function(sel) {
 /*
   Expected values, recorded on 2026-10-11 by running these exact steps in a
   scratch probe (Chrome 116.0.5845.96, 800x600 viewport, cat.json slice 0) and
-  reading U.regionState; identical across two probe runs.
+  reading H.regionState; identical across two probe runs.
 
   The three shapes take 10 undo steps (4 triangle clicks, 5 square clicks, 1
   freehand stroke), so 10 undos remove everything and 10 redos restore it.
@@ -67,8 +68,8 @@ const assertShape = (region, want, what) => {
 
 // The pixel at `where` shows `regions` (bottom first) with their own fills; [] means transparent.
 const assertPixelShows = async (where, regions) => {
-  const px = await U.samplePixel(page, 'paper', ...AT[where]);
-  const expected = U.expectedFillPixel(regions);
+  const px = await H.samplePixel(page, 'paper', ...AT[where]);
+  const expected = H.expectedFillPixel(regions);
   px.forEach((v, i) => {
     assert.approximately(v, expected[i], 3, `${where}: pixel ${px}, expected ${expected}`);
   });
@@ -87,7 +88,7 @@ const stacks = () => page.evaluate(() => {
 
 // eslint-disable-next-line max-statements
 const assertThreeShapes = async (what) => {
-  const regions = await U.regionState(page);
+  const regions = await H.regionState(page);
   assert.lengthOf(regions, 3, what);
   const [triangle, square, circle] = regions;
   assertShape(triangle, TRIANGLE, `${what}, triangle`);
@@ -107,19 +108,18 @@ describe('Editing tools: undo and redo', () => {
     browser = await launchBrowser();
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
-    await U.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
-    await U.settleFrames(page);
-    await page.screenshot({path: U.newPath + 'undo.01.cat.png'});
+    await H.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
+    await H.settleFrames(page);
 
-    const vp = await U.viewportState(page);
+    const vp = await H.viewportState(page);
     assert.equal(vp.slice, 0);
     assert.equal(vp.sliceCount, 2);
     assert.isTrue(vp.fullyLoaded, 'image tiles not fully loaded');
     assert.approximately(vp.zoom, HOME_ZOOM, 1e-6);
-    assert.lengthOf(await U.regionState(page), 0);
+    assert.lengthOf(await H.regionState(page), 0);
 
     // the image is drawn (loose: opaque, not blank white); no annotation over it
-    const img = await U.samplePixel(page, 'osd', ...AT.triangle);
+    const img = await H.samplePixel(page, 'osd', ...AT.triangle);
     assert.equal(img[3], 255, `image pixel ${img} is not opaque`);
     assert.isBelow(img[0] + img[1] + img[2], 3*250, `image pixel ${img} is blank`);
     await assertPixelShows('triangle', []);
@@ -158,10 +158,7 @@ describe('Editing tools: undo and redo', () => {
       }
     }
     await page.mouse.up();
-    await U.settleFrames(page);
-
-    const filename = "undo.02.cat-triangle-square-circle.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.settleFrames(page);
 
     drawn = await assertThreeShapes('drawn');
     assert.deepEqual(await stacks(), { undo: UNDO_STEPS, redo: 0, slice: 0, perSlice: [3, 0] });
@@ -172,13 +169,10 @@ describe('Editing tools: undo and redo', () => {
       // eslint-disable-next-line no-await-in-loop
       await shadowclick(UI.UNDO);
     }
-    await U.waitForTools(page);
-    await U.settleFrames(page);
+    await H.waitForTools(page);
+    await H.settleFrames(page);
 
-    const filename = "undo.03.undo.png";
-    await page.screenshot({path: U.newPath + filename});
-
-    assert.lengthOf(await U.regionState(page), 0, 'regions left after undoing everything');
+    assert.lengthOf(await H.regionState(page), 0, 'regions left after undoing everything');
     assert.deepEqual(await stacks(), { undo: 0, redo: UNDO_STEPS, slice: 0, perSlice: [0, 0] });
     for (const where of Object.keys(AT)) {
       // eslint-disable-next-line no-await-in-loop
@@ -191,10 +185,7 @@ describe('Editing tools: undo and redo', () => {
       // eslint-disable-next-line no-await-in-loop
       await shadowclick(UI.REDO);
     }
-    await U.settleFrames(page);
-
-    const filename = "undo.04.redo.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.settleFrames(page);
 
     const regions = await assertThreeShapes('after redo');
     assert.deepEqual(await stacks(), { undo: UNDO_STEPS, redo: 0, slice: 0, perSlice: [3, 0] });
@@ -210,7 +201,7 @@ describe('Editing tools: undo and redo', () => {
   it('can undo an annotation from a different layer', async () => {
     // reload
     await page.reload();
-    await U.waitForMicrodraw(page, 0);
+    await H.waitForMicrodraw(page, 0);
 
     // draw a triangle
     await shadowclick(UI.DRAWPOLYGON);
@@ -224,26 +215,22 @@ describe('Editing tools: undo and redo', () => {
 
     // go to the next image
     await shadowclick(UI.NEXT);
-    await U.waitForMicrodraw(page, 1);
+    await H.waitForMicrodraw(page, 1);
 
     // undo: goes back to slice 0, where the deletion happened
     await shadowclick(UI.UNDO);
-    await U.waitForMicrodraw(page, 0);
-    await U.settleFrames(page);
-
-    const filename = "undo.05.undo-different-page.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.waitForMicrodraw(page, 0);
+    await H.settleFrames(page);
 
     const st = await stacks();
     assert.equal(st.slice, 0, 'undo did not go back to slice 0');
     assert.deepEqual(st.perSlice, [1, 0], 'the deleted triangle is not back on slice 0');
     assert.equal(st.redo, 1);
-    const [triangle] = await U.regionState(page);
+    const [triangle] = await H.regionState(page);
     assertShape(triangle, TRIANGLE, 'restored triangle');
     await assertPixelShows('triangle', [triangle]);
     await assertPixelShows('circleOnly', []);
   }).timeout(0);
-
 
   after(async () => {
     await browser.close();

@@ -7,6 +7,7 @@ const chai = require('chai');
 const {assert} = chai;
 
 const { launchBrowser } = require('./browser');
+const H = require('./helpers');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
@@ -27,11 +28,8 @@ describe('OME-Zarr tile source', () => {
   it('opens the zarr source with correct dimensions, no webgl taint, and the webgl drawer', async () => {
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
-    await U.openData(page, U.url('/data?source=/test_data/cat-zarr.json&slice=0'));
-    await U.settleFrames(page);
-
-    const filename = "zarr.01.cat-zarr.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.openData(page, U.url('/data?source=/test_data/cat-zarr.json&slice=0'));
+    await H.settleFrames(page);
 
     const res = await page.evaluate(() => ({
       width: Microdraw.viewer.source.width,
@@ -59,11 +57,8 @@ describe('OME-Zarr tile source', () => {
     await page.mouse.click(500, 200);
     await page.mouse.click(400, 200);
     await page.mouse.click(400, 100);
-    await U.waitForSave(page, () => shadowclick(UI.SAVE, page));
-    await U.settleFrames(page);
-
-    const filename = "zarr.02.cat-zarr-square.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.waitForSave(page, () => shadowclick(UI.SAVE, page));
+    await H.settleFrames(page);
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -77,11 +72,8 @@ describe('OME-Zarr tile source', () => {
   }).timeout(0);
 
   it('the region round-trips through a reload', async () => {
-    await U.openData(page, U.url('/data?source=/test_data/cat-zarr.json&slice=0'));
-    await U.settleFrames(page);
-
-    const filename = "zarr.03.cat-zarr-reload.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.openData(page, U.url('/data?source=/test_data/cat-zarr.json&slice=0'));
+    await H.settleFrames(page);
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -97,11 +89,8 @@ describe('OME-Zarr tile source', () => {
   // eslint-disable-next-line max-statements
   it('the slice slider moves across z planes without a webgl taint', async () => {
     await shadowclick(UI.NEXT, page);
-    await U.waitForMicrodraw(page, 1);
-    await U.settleFrames(page);
-
-    let filename = "zarr.04.cat-zarr-z1.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.waitForMicrodraw(page, 1);
+    await H.settleFrames(page);
 
     let res = await page.evaluate(() => ({
       sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
@@ -111,11 +100,8 @@ describe('OME-Zarr tile source', () => {
     assert(Object.keys(res.issues).length === 0, `z=1 has webgl issues: ${JSON.stringify(res.issues)}`);
 
     await shadowclick(UI.NEXT, page);
-    await U.waitForMicrodraw(page, 2);
-    await U.settleFrames(page);
-
-    filename = "zarr.05.cat-zarr-z2.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.waitForMicrodraw(page, 2);
+    await H.settleFrames(page);
 
     res = await page.evaluate(() => ({
       sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
@@ -127,18 +113,15 @@ describe('OME-Zarr tile source', () => {
 
   // eslint-disable-next-line max-statements
   it('clean up the region', async () => {
-    await U.openData(page, U.url('/data?source=/test_data/cat-zarr.json&slice=0'));
+    await H.openData(page, U.url('/data?source=/test_data/cat-zarr.json&slice=0'));
 
     await shadowclick(UI.SELECT, page);
     await page.mouse.click(450, 150);
     await shadowclick(UI.DELETE, page);
-    await U.waitForSave(page, () => shadowclick(UI.SAVE, page));
+    await H.waitForSave(page, () => shadowclick(UI.SAVE, page));
     await page.reload();
-    await U.waitForMicrodraw(page, 0);
-    await U.settleFrames(page);
-
-    const filename = "zarr.06.cat-zarr-cleanup.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.waitForMicrodraw(page, 0);
+    await H.settleFrames(page);
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',

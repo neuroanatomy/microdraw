@@ -13,6 +13,7 @@ var {assert} = chai;
 //     process.exit(1)
 // }
 const { launchBrowser } = require('./browser');
+const H = require('./helpers');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
@@ -31,17 +32,9 @@ describe('Editing tools: subtract regions', () => {
   it('opens a data page', async () => {
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
-    await U.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
-    await U.settleFrames(page);
+    await H.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
+    await H.settleFrames(page);
 
-    const filename = 'subtractRegion.01.cat.png';
-    await page.screenshot({path: U.newPath + filename});
-    // const diff = await U.comparePageScreenshots(
-    //   page,
-    //   U.url('/data?source=/test_data/cat.json&slice=0'),
-    //   'subtractRegion.01.cat.png'
-    // );
-    // assert(diff<1000, `${diff} pixels were different`);
   }).timeout(0);
 
   // eslint-disable-next-line max-statements
@@ -55,9 +48,7 @@ describe('Editing tools: subtract regions', () => {
     await page.mouse.click(400, 500);
     await page.mouse.click(400, 400);
 
-    await U.settleFrames(page);
-    const filename = "subtractRegion.02.cat-square-C.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.settleFrames(page);
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -69,8 +60,6 @@ describe('Editing tools: subtract regions', () => {
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
     assert(res.pathSegments === 4, `Path has ${res.pathSegments} segments instead of 4`);
 
-    // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
 
   // eslint-disable-next-line max-statements
@@ -82,9 +71,7 @@ describe('Editing tools: subtract regions', () => {
     await page.mouse.click(450, 550);
     await page.mouse.click(450, 450);
 
-    await U.settleFrames(page);
-    const filename = "subtractRegion.03.cat-square-D.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.settleFrames(page);
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -96,8 +83,6 @@ describe('Editing tools: subtract regions', () => {
     assert(res.regionsLength === 2, `Regions.length is ${res.regionsLength} instead of 2`);
     assert(res.pathSegments === 4, `New path has ${res.pathSegments} segments instead of 4`);
 
-    // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
 
   it('subtract 2nd square from 1st square', async () => {
@@ -106,9 +91,7 @@ describe('Editing tools: subtract regions', () => {
     // click on square C (square D is already selected)
     await page.mouse.click(405, 405);
 
-    await U.settleFrames(page);
-    const filename = "subtractRegion.04.cat-subtraction.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.settleFrames(page);
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -120,8 +103,6 @@ describe('Editing tools: subtract regions', () => {
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
     assert(res.pathSegments === 6, `Resulting path has ${res.pathSegments} segments instead of 6`);
 
-    // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
 
   after(async () => {

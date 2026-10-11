@@ -13,6 +13,7 @@ var {assert} = chai;
 //   process.exit(1);
 // }
 const { launchBrowser } = require('./browser');
+const H = require('./helpers');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
@@ -29,16 +30,8 @@ describe('Editing tools: draw polygons and curves', () => {
     browser = await launchBrowser();
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
-    await U.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
-    await U.settleFrames(page);
-    const filename = 'draw.01.cat.png';
-    await page.screenshot({path: U.newPath + filename});
-    // const diff = await U.comparePageScreenshots(
-    //   page,
-    //   U.url('/data?source=/test_data/cat.json&slice=0'),
-    //   'draw.01.cat.png'
-    // );
-    // assert(diff<U.pct5, `${diff} pixels were different`);
+    await H.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
+    await H.settleFrames(page);
   }).timeout(0);
 
   // eslint-disable-next-line max-statements
@@ -50,9 +43,6 @@ describe('Editing tools: draw polygons and curves', () => {
     await page.mouse.click(400, 100);
     await page.mouse.click(350, 200);
     await page.mouse.click(300, 100);
-
-    const filename = "draw.02.cat-triangle.png";
-    await page.screenshot({path: U.newPath + filename});
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -71,9 +61,6 @@ describe('Editing tools: draw polygons and curves', () => {
       { waitUntil: 'networkidle0' }
     );
 
-    const filename = 'draw.03.cat-empty-reload.png';
-    await page.screenshot({path: U.newPath + filename});
-
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
       regionsLength: Microdraw.ImageInfo[0].Regions.length
@@ -82,12 +69,6 @@ describe('Editing tools: draw polygons and curves', () => {
     assert(res.regionsExists === true, 'No Regions object');
     assert(res.regionsLength === 0, `Regions.length is ${res.regionsLength} instead of 0`);
 
-    // const diff = await U.comparePageScreenshots(
-    //   page,
-    //   U.url('/data?source=/test_data/cat.json&slice=0'),
-    //   'draw.03.cat-empty-reload.png'
-    // );
-    // assert(diff<U.pct5, `${diff} pixels were different`);
   }).timeout(0);
 
   // eslint-disable-next-line max-statements
@@ -106,9 +87,6 @@ describe('Editing tools: draw polygons and curves', () => {
       { waitUntil: 'networkidle0' }
     );
 
-    const filename = 'draw.04.cat-triangle-reload.png';
-    await page.screenshot({path: U.newPath + filename});
-
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
       regionsLength: Microdraw.ImageInfo[0].Regions.length,
@@ -119,12 +97,6 @@ describe('Editing tools: draw polygons and curves', () => {
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
     assert(res.pathSegments === 3, `Path has ${res.pathSegments} segments instead of 3`);
 
-    // const diff = await U.comparePageScreenshots(
-    //   page,
-    //   U.url('/data?source=/test_data/cat.json&slice=0'),
-    //   'draw.04.cat-triangle-reload.png'
-    // );
-    // assert(diff<U.pct5, `${diff} pixels were different`);
   }).timeout(0);
 
   // eslint-disable-next-line max-statements
@@ -139,9 +111,6 @@ describe('Editing tools: draw polygons and curves', () => {
       { waitUntil: 'networkidle0' }
     );
 
-    const filename = 'draw.05.cat-empty-reload.png';
-    await page.screenshot({path: U.newPath + filename});
-
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
       regionsLength: Microdraw.ImageInfo[0].Regions.length
@@ -150,12 +119,6 @@ describe('Editing tools: draw polygons and curves', () => {
     assert(res.regionsExists === true, 'No Regions object');
     assert(res.regionsLength === 0, `Regions.length is ${res.regionsLength} instead of 0`);
 
-    // const diff = await U.comparePageScreenshots(
-    //   page,
-    //   U.url('/data?source=/test_data/cat.json&slice=0'),
-    //   'draw.05.cat-empty-reload.png'
-    // );
-    // assert(diff<U.pct5, `${diff} pixels were different`);
   }).timeout(0);
 
   // eslint-disable-next-line max-statements
@@ -176,10 +139,7 @@ describe('Editing tools: draw polygons and curves', () => {
       }
     }
     await page.mouse.up();
-    await U.settleFrames(page);
-
-    const filename = "draw.06.cat-draw-circle.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.settleFrames(page);
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -192,8 +152,6 @@ describe('Editing tools: draw polygons and curves', () => {
     // "Draw" simplifies on mouse up, so the original 72 vertices become 11
     assert(res.pathSegments === 11, `Path has ${res.pathSegments} segments instead of 11`);
 
-    // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
 
   // eslint-disable-next-line max-statements
@@ -206,10 +164,7 @@ describe('Editing tools: draw polygons and curves', () => {
     const x = o[0] + r*Math.cos(a*Math.PI/180);
     const y = o[1] + r*Math.sin(a*Math.PI/180);
     await page.mouse.click(x, y);
-    await U.settleFrames(page);
-
-    const filename = "draw.07.cat-draw-addPoint.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.settleFrames(page);
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -221,8 +176,6 @@ describe('Editing tools: draw polygons and curves', () => {
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 0`);
     assert(res.pathSegments === 12, `Path has ${res.pathSegments} segments instead of 12`);
 
-    // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    // assert(diff<U.pct1, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
 
   // eslint-disable-next-line max-statements
@@ -235,10 +188,7 @@ describe('Editing tools: draw polygons and curves', () => {
     const x = o[0] + r*Math.cos(a*Math.PI/180);
     const y = o[1] + r*Math.sin(a*Math.PI/180);
     await page.mouse.click(x, y);
-    await U.settleFrames(page);
-
-    const filename = "draw.08.cat-draw-deletePoint.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.settleFrames(page);
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -250,8 +200,6 @@ describe('Editing tools: draw polygons and curves', () => {
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 0`);
     assert(res.pathSegments === 11, `Path has ${res.pathSegments} segments instead of 11`);
 
-    // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    // assert(diff<U.pct1, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
 
   after(async () => {

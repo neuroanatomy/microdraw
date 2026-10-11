@@ -58,12 +58,15 @@ jobs:
         run: npm run mocha
       - name: Run e2e tests
         run: npm run test-e2e
-      - name: Archive screenshots
-        if: always()
+        env:
+          DEBUG_SCREENSHOTS: 1
+      - name: Archive screenshots of failed e2e tests
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: screenshots
-          path: test/e2e/screenshots/
+          name: debug-screenshots
+          path: test/e2e/debug-screenshots/
+          if-no-files-found: ignore
 
   # Canary: same steps on the next Node major (NODE-POLICY.md). Non-blocking;
   # breakage here is an early warning, not a release gate.
@@ -121,12 +124,15 @@ jobs:
         run: npm run mocha
       - name: Run e2e tests
         run: npm run test-e2e
-      - name: Archive screenshots
-        if: always()
+        env:
+          DEBUG_SCREENSHOTS: 1
+      - name: Archive screenshots of failed e2e tests
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: screenshots-canary
-          path: test/e2e/screenshots/
+          name: debug-screenshots-canary
+          path: test/e2e/debug-screenshots/
+          if-no-files-found: ignore
   
   deploy:
     needs: test

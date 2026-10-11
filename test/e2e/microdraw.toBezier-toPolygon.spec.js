@@ -11,6 +11,7 @@ var {assert} = chai;
 //     process.exit(1)
 // }
 const { launchBrowser } = require('./browser');
+const H = require('./helpers');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
@@ -25,7 +26,7 @@ const shadowclick = async function (sel) {
 /*
   Expected values, recorded on 2026-10-11 by running these exact steps in a
   scratch probe (Chrome 116.0.5845.96, 800x600 viewport, cat.json slice 0) and
-  reading U.regionState; identical across two probe runs.
+  reading H.regionState; identical across two probe runs.
 
   The star here closes normally: 11 clicks 36 degrees apart, the last one on
   the first point, give one closed 10-segment polygon.
@@ -65,15 +66,15 @@ const assertBounds = (actual, expected, what) => {
 
 // The pixel at [x, y] shows `regions` (bottom first) with their own fills; [] means transparent.
 const assertPixelShows = async ([x, y], regions, where) => {
-  const px = await U.samplePixel(page, 'paper', x, y);
-  const expected = U.expectedFillPixel(regions);
+  const px = await H.samplePixel(page, 'paper', x, y);
+  const expected = H.expectedFillPixel(regions);
   px.forEach((v, i) => {
     assert.approximately(v, expected[i], 3, `${where} at ${x},${y}: pixel ${px}, expected ${expected}`);
   });
 };
 
 const onlyRegion = async () => {
-  const regions = await U.regionState(page);
+  const regions = await H.regionState(page);
   assert.lengthOf(regions, 1);
   const [star] = regions;
   assert.equal(star.segments, STAR_SEGMENTS);
@@ -100,19 +101,18 @@ describe('Editing tools: convert polygons to bézier and vice-versa', () => {
     browser = await launchBrowser();
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
-    await U.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
-    await U.settleFrames(page);
-    await page.screenshot({path: U.newPath + 'toBezierPolygon.01.cat.png'});
+    await H.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
+    await H.settleFrames(page);
 
-    const vp = await U.viewportState(page);
+    const vp = await H.viewportState(page);
     assert.equal(vp.slice, 0);
     assert.equal(vp.sliceCount, 2);
     assert.isTrue(vp.fullyLoaded, 'image tiles not fully loaded');
     assert.approximately(vp.zoom, HOME_ZOOM, 1e-6);
-    assert.lengthOf(await U.regionState(page), 0);
+    assert.lengthOf(await H.regionState(page), 0);
 
     // the image is drawn (loose: opaque, not blank white); no annotation over it
-    const img = await U.samplePixel(page, 'osd', ...o);
+    const img = await H.samplePixel(page, 'osd', ...o);
     assert.equal(img[3], 255, `image pixel ${img} is not opaque`);
     assert.isBelow(img[0] + img[1] + img[2], 3*250, `image pixel ${img} is blank`);
     await assertPixelShows(o, [], 'annotation canvas');
@@ -131,9 +131,7 @@ describe('Editing tools: convert polygons to bézier and vice-versa', () => {
       await page.mouse.click(x, y);
     }
 
-    await U.settleFrames(page);
-    const filename = "toBezierPolygon.02.cat-star.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.settleFrames(page);
 
     const star = await onlyRegion();
     assert.equal(star.fillAlpha, 0.5);
@@ -145,10 +143,8 @@ describe('Editing tools: convert polygons to bézier and vice-versa', () => {
   it('converts the star polygon to a bézier curve', async () => {
     await shadowclick(UI.TOBEZIER);
 
-    await U.waitForTools(page);
-    await U.settleFrames(page);
-    const filename = "toBezierPolygon.03.cat-star-toBezier.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.waitForTools(page);
+    await H.settleFrames(page);
 
     const star = await onlyRegion();
     assert.equal(star.curvedSegments, STAR_SEGMENTS, 'every segment should have handles');
@@ -170,9 +166,7 @@ describe('Editing tools: convert polygons to bézier and vice-versa', () => {
 
     await shadowclick(UI.TOPOLYGON);
 
-    await U.settleFrames(page);
-    const filename = "toBezierPolygon.04.cat-star-toPolygon.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.settleFrames(page);
 
     const star = await onlyRegion();
     assert.approximately(star.area/starArea, 1, 1e-6, 'toPolygon should give back the original polygon');

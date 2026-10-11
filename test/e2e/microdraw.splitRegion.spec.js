@@ -11,6 +11,7 @@ var {assert} = chai;
 //     process.exit(1)
 // }
 const { launchBrowser } = require('./browser');
+const H = require('./helpers');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
@@ -25,7 +26,7 @@ const shadowclick = async function (sel) {
 /*
   Expected values, recorded on 2026-10-11 by running these exact steps in a
   scratch probe (Chrome 116.0.5845.96, 800x600 viewport, cat.json slice 0) and
-  reading U.regionState; identical across two probe runs.
+  reading H.regionState; identical across two probe runs.
 
   Splitting E with F divides E into the part outside F (6 segments, three
   quarters of E) and the part inside F (4 segments, one quarter), and removes
@@ -67,8 +68,8 @@ const assertSquare = (region, bounds, what) => {
 
 // The pixel at `where` shows `regions` (bottom first) with their own fills; [] means transparent.
 const assertPixelShows = async (where, regions) => {
-  const px = await U.samplePixel(page, 'paper', ...AT[where]);
-  const expected = U.expectedFillPixel(regions);
+  const px = await H.samplePixel(page, 'paper', ...AT[where]);
+  const expected = H.expectedFillPixel(regions);
   px.forEach((v, i) => {
     assert.approximately(v, expected[i], 3, `${where}: pixel ${px}, expected ${expected}`);
   });
@@ -80,19 +81,18 @@ describe('Editing tools: split regions', () => {
     browser = await launchBrowser();
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
-    await U.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
-    await U.settleFrames(page);
-    await page.screenshot({path: U.newPath + 'split.01.cat.png'});
+    await H.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
+    await H.settleFrames(page);
 
-    const vp = await U.viewportState(page);
+    const vp = await H.viewportState(page);
     assert.equal(vp.slice, 0);
     assert.equal(vp.sliceCount, 2);
     assert.isTrue(vp.fullyLoaded, 'image tiles not fully loaded');
     assert.approximately(vp.zoom, HOME_ZOOM, 1e-6);
-    assert.lengthOf(await U.regionState(page), 0);
+    assert.lengthOf(await H.regionState(page), 0);
 
     // the image is drawn (loose: opaque, not blank white); no annotation over it
-    const img = await U.samplePixel(page, 'osd', ...AT.overlap);
+    const img = await H.samplePixel(page, 'osd', ...AT.overlap);
     assert.equal(img[3], 255, `image pixel ${img} is not opaque`);
     assert.isBelow(img[0] + img[1] + img[2], 3*250, `image pixel ${img} is blank`);
     await assertPixelShows('overlap', []);
@@ -107,11 +107,9 @@ describe('Editing tools: split regions', () => {
     await page.mouse.click(400, 500);
     await page.mouse.click(400, 400);
 
-    await U.settleFrames(page);
-    const filename = "split.02.cat-square-E.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.settleFrames(page);
 
-    const regions = await U.regionState(page);
+    const regions = await H.regionState(page);
     assert.lengthOf(regions, 1);
     const [e] = regions;
     assertSquare(e, SQUARE_E, 'square E');
@@ -133,11 +131,9 @@ describe('Editing tools: split regions', () => {
     await page.mouse.click(450, 550);
     await page.mouse.click(450, 450);
 
-    await U.settleFrames(page);
-    const filename = "split.03.cat-square-F.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.settleFrames(page);
 
-    const regions = await U.regionState(page);
+    const regions = await H.regionState(page);
     assert.lengthOf(regions, 2);
     const [e, f] = regions;
     assertSquare(e, SQUARE_E, 'square E');
@@ -159,11 +155,9 @@ describe('Editing tools: split regions', () => {
     // click on square E (square F is already selected)
     await page.mouse.click(405, 405);
 
-    await U.settleFrames(page);
-    const filename = "split.04.cat-split.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.settleFrames(page);
 
-    const regions = await U.regionState(page);
+    const regions = await H.regionState(page);
     assert.lengthOf(regions, 2, 'E should become two pieces, and F should be gone');
     const outside = regions.find((reg) => reg.segments === E_OUTSIDE_F.segments);
     const inside = regions.find((reg) => reg.segments === E_INSIDE_F.segments);

@@ -13,6 +13,7 @@ var {assert} = chai;
 //     process.exit(1)
 // }
 const { launchBrowser } = require('./browser');
+const H = require('./helpers');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
@@ -29,18 +30,9 @@ describe('Editing tools: order', () => {
     browser = await launchBrowser();
     page = await browser.newPage();
     await page.setViewport({width: U.width, height: U.height});
-    await U.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
-    await U.settleFrames(page);
+    await H.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
+    await H.settleFrames(page);
 
-    const filename = 'order.01.cat.png';
-    await page.screenshot({path: U.newPath + filename});
-
-  //   const diff = await U.comparePageScreenshots(
-  //     page,
-  //     U.url('/data?source=/test_data/cat.json&slice=0'),
-  //     'order.01.cat.png'
-  //   );
-  //   assert(diff<U.pct5, `${diff} pixels were different`);
   }).timeout(0);
 
   // eslint-disable-next-line max-statements
@@ -61,9 +53,7 @@ describe('Editing tools: order', () => {
     await shadowclick(UI.SELECT);
     await page.mouse.click(500, 100);
 
-    await U.settleFrames(page);
-    const filename = "order.02.triangles.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.settleFrames(page);
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -76,8 +66,6 @@ describe('Editing tools: order', () => {
     assert(res.regionsLength === 4, `Regions.length is ${res.regionsLength} instead of 4`);
     assert(res.firstRegionX < res.lastRegionX, `X-coord of 1st region is not smaller than that of the last region`);
 
-    // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    // assert(diff<1000, `${diff} pixels were different`);
   }).timeout(0);
 
   // eslint-disable-next-line max-statements
@@ -93,10 +81,8 @@ describe('Editing tools: order', () => {
     await shadowclick(UI.SELECT);
     await page.mouse.click(500, 100);
 
-    await U.waitForTools(page);
-    await U.settleFrames(page);
-    const filename = "order.03.invert.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.waitForTools(page);
+    await H.settleFrames(page);
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -109,8 +95,6 @@ describe('Editing tools: order', () => {
     assert(res.regionsLength === 4, `Regions.length is ${res.regionsLength} instead of 4`);
     assert(res.lastRegionX < res.firstRegionX, `X-coord of last region is not smaller than that of the 1st region`);
 
-    // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
 
   // eslint-disable-next-line max-statements
@@ -126,9 +110,7 @@ describe('Editing tools: order', () => {
     await shadowclick(UI.SELECT);
     await page.mouse.click(500, 100);
 
-    await U.settleFrames(page);
-    const filename = "order.04.invert-again.png";
-    await page.screenshot({path: U.newPath + filename});
+    await H.settleFrames(page);
 
     const res = await page.evaluate(() => ({
       regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
@@ -141,8 +123,6 @@ describe('Editing tools: order', () => {
     assert(res.regionsLength === 4, `Regions.length is ${res.regionsLength} instead of 4`);
     assert(res.firstRegionX < res.lastRegionX, `X-coord of 1st region is not smaller than that of the last region`);
 
-    // const diff = await U.compareImages(U.newPath + filename, U.refPath + filename);
-    // assert(diff<U.pct5, `${diff} pixels were different - more than 5%`);
   }).timeout(0);
 
   after(async () => {

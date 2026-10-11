@@ -17,13 +17,12 @@ npm-debug.log
 php/base.php
 vervet
 vervet.zip
-test/*.png
 .DS_Store
 .vscode/*
 !.vscode/settings.json
 access.log
 app/controller/api/tmp
-test/e2e/screenshots/*.png
+test/e2e/debug-screenshots/
 .gitignore
 cert.pem
 cfg.json
