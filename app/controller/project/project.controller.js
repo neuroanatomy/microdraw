@@ -11,6 +11,18 @@ const validator = function (req, res, next) {
   next();
 };
 
+// The username of the requester (session or API token), or 'anyone'.
+const getLoggedUser = (req) => {
+  if (req.isAuthenticated()) {
+    return req.user.username;
+  }
+  if (req.isTokenAuthenticated) {
+    return req.tokenUsername;
+  }
+
+  return 'anyone';
+};
+
 // eslint-disable-next-line max-statements -- existing handler, not refactored in a lint-only change; 2026-10-11
 const project = async function (req, res) {
   const login = (req.user) ?
@@ -237,22 +249,37 @@ const apiProject = async function (req, res) {
   }
 };
 
-const apiProjectAll = function (req, res) {
-  console.log('api_projectAll');
+// Shortnames of all the projects the requester may view.
+const viewableProjectNames = async (req) => {
+  const loggedUser = getLoggedUser(req);
+  const projects = await req.appConfig.db.mongoDB().get('projects')
+    .find({backup: {$exists: false}}, {fields: {_id: 0, shortname: 1, owner: 1, collaborators: 1}});
+
+  return projects
+    .filter((o) => AccessControlService.canViewFiles(o, loggedUser))
+    .map((o) => o.shortname);
+};
+
+// Lists the shortnames of the projects the requester may view, 20 per page.
+// As BrainBox's getProjectsSlice: fetch, filter for view access, then page,
+// so that a page never holds projects the requester may not see.
+const apiProjectAll = async function (req, res) {
   if (!req.query.page) {
     res.json({error: 'The \'pages\' parameter has to be specified'});
 
     return;
   }
 
-  const page = parseInt(req.query.page);
+  const page = Math.max(0, parseInt(req.query.page) || 0);
   const nItemsPerPage = 20;
 
-  req.appConfig.db.queryAllProjects({backup: {$exists: false}}, {skip: page * nItemsPerPage, limit: nItemsPerPage, fields: {_id: 0}})
-    .then((array) => {
-      console.log('array of projects', array);
-      res.send(array.map((o) => o.shortname ));
-    });
+  try {
+    const names = await viewableProjectNames(req);
+    res.send(names.slice(page * nItemsPerPage, (page + 1) * nItemsPerPage));
+  } catch (err) {
+    console.log('ERROR:', err);
+    res.status(500).json({error: 'Server error'});
+  }
 };
 
 /**
