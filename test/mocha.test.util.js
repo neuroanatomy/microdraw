@@ -44,6 +44,9 @@ const closeResources = async () => {
 
 const getServer = () => appServer;
 
+// The Monk database of the running app (the test DB), for fixtures.
+const getDB = () => db;
+
 const width = 800;
 const height = 600;
 
@@ -246,6 +249,7 @@ module.exports = {
   initResources,
   closeResources,
   getServer,
+  getDB,
   parseCookies,
   url,
   testingCredentials,

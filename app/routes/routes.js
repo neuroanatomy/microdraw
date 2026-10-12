@@ -45,6 +45,8 @@ module.exports = (app) => {
 
   app.use('/search', require('../controller/search/'));
 
+  app.use('/admin', require('../controller/admin/'));
+
   app.get('/image', getHttpImg);
 
   app.get('/microdraw', (req, res /*, next*/) => {
