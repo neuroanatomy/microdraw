@@ -87,6 +87,13 @@ const removeProject = function (shortname) {
   return db.get('projects').remove({ shortname });
 };
 
+// Annotations saved for a source, all slices and versions (test data only).
+const removeAnnotations = function (source) {
+  const escaped = source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  return db.get('annotations').remove({ fileID: new RegExp(`^${escaped}&slice=`) });
+};
+
 const parseCookies = (str) => str
   .split(';')
   .map((v) => v.split('='))
@@ -199,6 +206,7 @@ module.exports = {
   removeLocalUser,
   insertProject,
   removeProject,
+  removeAnnotations,
   queryProject,
   createProjectWithPermission,
   initResources,
