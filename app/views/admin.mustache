@@ -102,6 +102,36 @@
         </Table>
       </template>
     </section>
+    <section id="project-tools">
+      <h2>Projects</h2>
+      <p class="help">
+        Find a project by shortname or name. <b>Delete</b> does what the owner's delete does: the
+        project's annotations become backups (nothing is erased) and the project is kept in the log,
+        so it can be restored with its annotations. <b>Transfer ownership</b> gives the project to
+        another user, who gets every right on it; the previous owner keeps only what the
+        collaborators list gives him. Both can be undone with <b>Restore</b>.
+      </p>
+      <form class="toolbar" @submit.prevent="searchProjects()">
+        <input v-model="projectQuery" class="project-search" type="text" placeholder="Project shortname or name">
+        <Button class="do-search" :disabled="projectSearching">[[projectSearching ? 'Searching…' : 'Search']]</Button>
+      </form>
+      <p v-if="actionError" class="error">[[actionError]]</p>
+      <p v-if="actionResult && actionResult.where === 'search'" :class="actionResult.error ? 'error' : 'result'">
+        [[actionResult.error || actionResult.text]]
+        <Button v-if="actionResult.restore || actionResult.restoreDeleted" class="restore-action" @click="restoreAction(actionResult)">Restore</Button>
+      </p>
+      <p v-if="projectSearched && !projectSearching && foundProjects.length === 0" class="none">No project found.</p>
+      <div v-for="p in foundProjects" :key="p.shortname" class="project" :data-shortname="p.shortname">
+        <h3>
+          <code>[[p.shortname]]</code> [[p.name]]
+          <span class="owner">owner: [[p.owner]] <span v-if="!p.ownerExists" class="tag">does not exist</span></span>
+          <a class="settings" :href="'/project/' + encodeURIComponent(p.shortname) + '/settings'" target="_blank">Settings</a>
+        </h3>
+        <p class="counts">[[countsText(p.counts)]]</p>
+        <ProjectActions :project="p" where="search"></ProjectActions>
+      </div>
+      <p v-if="foundMore" class="help">More projects match: refine the search.</p>
+    </section>
     <section id="invalid-projects">
       <h2>Projects that don't validate</h2>
       <p class="help">
@@ -117,6 +147,10 @@
       <p v-if="projectsResult" class="result">
         [[projectsResult.text]]
         <Button v-if="projectsResult.restore" class="restore" @click="restoreProject(projectsResult)">Restore</Button>
+      </p>
+      <p v-if="actionResult && actionResult.where === 'invalid'" :class="actionResult.error ? 'error' : 'result action-result'">
+        [[actionResult.error || actionResult.text]]
+        <Button v-if="actionResult.restore || actionResult.restoreDeleted" class="restore-action" @click="restoreAction(actionResult)">Restore</Button>
       </p>
       <p v-if="projectsSummary" class="summary">
         [[projectsSummary.invalid]] of [[projectsSummary.total]] projects have problems;
@@ -144,6 +178,7 @@
         <p class="fixes">
           <Button v-if="blankCount(p) > 0" class="remove-blank" @click="removeBlankRows(p)">Remove blank rows ([[blankCount(p)]])</Button>
         </p>
+        <ProjectActions :project="p" where="invalid"></ProjectActions>
         <form v-if="p.unnamedLayers.length > 0" class="name-layers" @submit.prevent="nameLayers(p)">
           <p>Name unnamed layers:</p>
           <label v-for="l in p.unnamedLayers" :key="l.index">
@@ -157,6 +192,21 @@
   </main>
   <Footer/>
 </Wrapper>
+</script>
+<script type="text/html" id="project-actions-template">
+  <div class="project-actions">
+    <Button className="danger" class="delete-project" @click="remove()">Delete…</Button>
+    <Button class="transfer" @click="toggle()">Transfer ownership…</Button>
+    <div v-if="open" class="transfer-form">
+      <label>New owner: <input v-model="q" class="user-search" type="text" placeholder="Search users by username" @input="findUsers()"></label>
+      <span v-for="u in users" :key="u.username">
+        <Button :class="'pick-user' + (chosen === u.username ? ' chosen' : '')" :data-username="u.username" @click="chosen = u.username">[[u.username]]<span v-if="u.name"> ([[u.name]])</span></Button>
+      </span>
+      <p v-if="q.trim() && users.length === 0" class="help">No user found.</p>
+      <Button class="do-transfer" :disabled="!chosen" @click="transfer()">Give [[project.shortname]] to [[chosen || '…']]</Button>
+      <Button @click="toggle()">Cancel</Button>
+    </div>
+  </div>
 </script>
 <style>
 main {
@@ -267,6 +317,22 @@ ul.problems {
 .kind-warning .tag, .kind-shortname .tag, .kind-missing-user .tag {
     color: #fc6;
     border-color: #a83;
+}
+div.project .counts {
+    color: #aaa;
+    margin: 0 0 6px;
+}
+div.project-actions {
+    margin: 6px 0;
+}
+div.transfer-form {
+    margin-top: 6px;
+    padding: 6px;
+    background: #2a2a2a;
+}
+div.transfer-form button.chosen {
+    border-color: #8d8;
+    color: #8d8;
 }
 form.name-layers label {
     display: block;

@@ -1,8 +1,9 @@
 /* global loggedUser */
-// Admin page (A1, A2). Same structure as BrainBox view/brainbox/src/pages/admin-page.js.
+// Admin page (A1, A2, A3). Same structure as BrainBox view/brainbox/src/pages/admin-page.js.
 import 'nwl-components/dist/style.css';
 import { Button, Footer, Header, Table, Wrapper } from 'nwl-components';
-import { createApp, ref } from 'vue';
+import { ProjectActions, useProjectActions } from './admin-project-actions';
+import { createApp, provide, ref } from 'vue';
 import config from './nwl-components-config';
 import { useInvalidProjects } from './admin-projects';
 
@@ -179,6 +180,10 @@ const AdminPage = {
 
     load();
 
+    const invalidProjects = useInvalidProjects({ fetchJSON, postJSON });
+    const projectActions = useProjectActions({ fetchJSON, postJSON, reloadInvalid: invalidProjects.loadProjects });
+    provide('projectActions', projectActions);
+
     return {
       list,
       total,
@@ -199,7 +204,8 @@ const AdminPage = {
       viewerLink,
       formatDate,
       targetOf,
-      ...useInvalidProjects({ fetchJSON, postJSON })
+      ...invalidProjects,
+      ...projectActions
     };
   },
   compilerOptions: {
@@ -213,6 +219,7 @@ app.component('Header', Header);
 app.component('Footer', Footer);
 app.component('Table', Table);
 app.component('Button', Button);
+app.component('ProjectActions', ProjectActions);
 app.provide('config', config);
 app.provide('user', loggedUser);
 app.provide('displaySettings', false);
