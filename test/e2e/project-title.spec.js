@@ -80,6 +80,7 @@ const focusTitleEnd = (page) => page.$eval('span.title[contenteditable]', (span)
   selection.addRange(range);
 });
 
+// eslint-disable-next-line max-statements -- setup, helpers and six tests
 describe('Project title and settings pages (M7)', () => {
   let context;
   let page;
@@ -110,6 +111,16 @@ describe('Project title and settings pages (M7)', () => {
   it('the settings page shows the existing project name', async () => {
     await openSettings(EXISTING);
     assert.equal(await titleOf(page), 'Initial Name');
+  }).timeout(U.mediumTimeout);
+
+  // nwl-components 1.3.19 adds an "Embed Project" button with no option to
+  // hide it; microdraw has no embed route, so projectSettings-style.css hides it.
+  it('the settings page does not show the Embed Project button', async () => {
+    await openSettings(EXISTING);
+    const buttons = await page.$$eval('.description .actions button', (bs) => bs
+      .filter((b) => b.offsetParent !== null)
+      .map((b) => b.textContent.trim()));
+    assert.deepEqual(buttons, ['Save Changes', 'Delete Project', 'Go to Project']);
   }).timeout(U.mediumTimeout);
 
   it('typing in an empty title writes left to right', async () => {

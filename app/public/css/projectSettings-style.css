@@ -179,3 +179,13 @@ td {
     opacity: 0.4;
     pointer-events: none;
 }
+
+/*
+  Hide the "Embed Project" button (4th button of the project info actions).
+  nwl-components 1.3.19 has no option to hide it, and microdraw has no
+  /project/:p/embed route yet. Remove this rule when embedding is added
+  (T002 stage 3.7), or use the config flag requested from nwl-components.
+*/
+.description > .actions > button:nth-of-type(4) {
+    display: none;
+}
