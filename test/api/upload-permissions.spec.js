@@ -53,11 +53,7 @@ describe('POST /api/upload checks the annotation edit permission (H2a)', functio
   const agents = {};
 
   const login = async (user) => {
-    await chai.request(U.serverURL).post('/localSignup')
-      .send(user);
-    const agent = chai.request.agent(U.getServer());
-    await agent.post('/localLogin').redirects(0)
-      .send(user);
+    const agent = await U.logIn(user);
     const { token } = (await agent.get('/token')).body;
     assert.isNotEmpty(token);
     agents[user.username] = agent;

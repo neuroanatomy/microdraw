@@ -27,11 +27,7 @@ describe('Annotation upload and load_last', function () {
 
   before(async function () {
     await U.insertProject(project);
-    await chai.request(U.serverURL).post('/localSignup')
-      .send(credentials);
-    const agent = chai.request.agent(U.getServer());
-    await agent.post('/localLogin').redirects(0)
-      .send(credentials);
+    const agent = await U.logIn(credentials);
     ({ token } = (await agent.get('/token')).body);
     assert.isNotEmpty(token);
   });

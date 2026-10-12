@@ -4,7 +4,7 @@
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 chai.use(chaiHttp);
-const { assert, expect } = chai;
+const { assert } = chai;
 const _ = require('lodash');
 const U = require('../mocha.test.util');
 const { plainText } = require('../../app/controller/project/project.validation');
@@ -34,17 +34,8 @@ const newProject = (shortname, extra = {}) => ({
   ...extra
 });
 
-const login = async (credentials) => {
-  const agent = chai.request.agent(U.getServer());
-  await agent.post('/localSignup').send(credentials);
-  // /localSignup answers before its insert has finished.
-  await U.delay(500);
-  const res = await agent.post('/localLogin').redirects(0)
-    .send(credentials);
-  expect(res).to.have.cookie('connect.sid');
-
-  return agent;
-};
+// Signs up, waits until the user is stored, and logs in (U.logIn).
+const login = (credentials) => U.logIn(credentials);
 
 const isJSON = (res) => assert.match(res.headers['content-type'], /^application\/json/);
 

@@ -3,7 +3,7 @@
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 chai.use(chaiHttp);
-const { assert, expect } = chai;
+const { assert } = chai;
 const U = require('../mocha.test.util');
 
 // M3: the project page (GET /project/:name) puts into the page only what the
@@ -11,17 +11,8 @@ const U = require('../mocha.test.util');
 // 'anyone' collaborator has no public access, and never answers 500.
 const member = { username: 'm3c-member', password: 'm3c-member-password' };
 
-const login = async (credentials) => {
-  const agent = chai.request.agent(U.getServer());
-  await agent.post('/localSignup').send(credentials);
-  // /localSignup answers before its insert has finished.
-  await U.delay(500);
-  const res = await agent.post('/localLogin').redirects(0)
-    .send(credentials);
-  expect(res).to.have.cookie('connect.sid');
-
-  return agent;
-};
+// Signs up, waits until the user is stored, and logs in (U.logIn).
+const login = (credentials) => U.logIn(credentials);
 
 // The value of `const <name>=…;` in a rendered page.
 const inlineValue = (html, name) => {

@@ -23,8 +23,7 @@ describe('Project, user and search JSON routes', function () {
   });
 
   before(async function () {
-    await chai.request(U.serverURL).post('/localSignup')
-      .send({ username, password: 'routes-password' });
+    await U.signUp({ username, password: 'routes-password' });
     await Promise.all([U.insertProject(publicProject), U.insertProject(privateProject)]);
   });
 

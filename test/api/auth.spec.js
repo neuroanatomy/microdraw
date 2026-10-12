@@ -11,8 +11,8 @@ describe('Local login and tokens', function () {
   const credentials = { username: 'api-auth-user', password: 'correct-password' };
 
   before(async function () {
-    const res = await chai.request(U.serverURL).post('/localSignup')
-      .send(credentials);
+    // waits until the user is stored: /localSignup answers before its insert
+    const res = await U.signUp(credentials);
     assert.equal(res.status, 200);
   });
 

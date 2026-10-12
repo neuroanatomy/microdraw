@@ -42,11 +42,7 @@ describe('Saving annotations requires a project (H3b)', function () {
     .attach('data', Buffer.from(JSON.stringify([{ annotation: { name: 'upload', path } }])), 'annotation.json');
 
   before(async function () {
-    await chai.request(U.serverURL).post('/localSignup')
-      .send(user);
-    agent = chai.request.agent(U.getServer());
-    await agent.post('/localLogin').redirects(0)
-      .send(user);
+    agent = await U.logIn(user);
     ({ token } = (await agent.get('/token')).body);
     assert.isNotEmpty(token);
   });

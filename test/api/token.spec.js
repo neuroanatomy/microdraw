@@ -3,7 +3,7 @@
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 chai.use(chaiHttp);
-const { assert, expect } = chai;
+const { assert } = chai;
 const U = require('../mocha.test.util');
 
 // M1: the /project JSON routes accept an API token (?token=), as /api does
@@ -24,14 +24,8 @@ describe('Token authentication on /project routes (M1)', function () {
     // eslint-disable-next-line no-invalid-this -- mocha passes the hook context as this
     this.timeout(U.mediumTimeout);
     await U.insertProject(project);
-    const agent = chai.request.agent(U.getServer());
-    await agent.post('/localSignup').send(member);
-    // /localSignup answers before its insert has finished.
-    await U.delay(500);
-    let res = await agent.post('/localLogin').redirects(0)
-      .send(member);
-    expect(res).to.have.cookie('connect.sid');
-    res = await agent.get('/token');
+    const agent = await U.logIn(member);
+    const res = await agent.get('/token');
     ({ token } = res.body);
     assert.isNotEmpty(token);
   });

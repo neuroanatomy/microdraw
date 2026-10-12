@@ -120,10 +120,9 @@ const removeAnnotations = function (source) {
 // Sign up a local user and wait until it is stored. NWL's /localSignup
 // answers before its insert has finished (auth/local.js does not wait for
 // addUser), so a login sent at once sometimes finds no user: that was the
-// "no session cookie" flake of permissions.spec (M3). Polls instead of a
-// fixed delay.
+// "no session cookie" flake of permissions.spec (M3); polls, no fixed delay.
 const signUp = async (credentials) => {
-  await chai.request(serverOrigin()).post('/localSignup')
+  const res = await chai.request(serverOrigin()).post('/localSignup')
     .send(credentials);
   const deadline = Date.now() + shortTimeout;
   /* eslint-disable no-await-in-loop -- polls until the user is stored */
@@ -134,6 +133,20 @@ const signUp = async (credentials) => {
     await delay(20);
   }
   /* eslint-enable no-await-in-loop */
+
+  return res;
+};
+
+// Sign up (waiting until the user is stored), log in, and return an agent
+// with the session cookie. A login sent before the insert fails (no connect.sid).
+const logIn = async (credentials) => {
+  await signUp(credentials);
+  const agent = chai.request.agent(getServer());
+  const res = await agent.post('/localLogin').redirects(0)
+    .send(credentials);
+  chai.expect(res, `login as ${credentials.username}`).to.have.cookie('connect.sid');
+
+  return agent;
 };
 
 const parseCookies = (str) => str
@@ -261,6 +274,7 @@ module.exports = {
   removeUser,
   removeLocalUser,
   signUp,
+  logIn,
   insertProject,
   removeProject,
   removeAnnotations,

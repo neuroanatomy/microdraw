@@ -3,7 +3,7 @@
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 chai.use(chaiHttp);
-const { assert, expect } = chai;
+const { assert } = chai;
 const U = require('../mocha.test.util');
 
 // M1: GET /user/json/:userName/projects lists the projects the visitor may
@@ -34,13 +34,7 @@ describe('Route access checks: user projects (M1)', function () {
     // eslint-disable-next-line no-invalid-this -- mocha passes the hook context as this
     this.timeout(U.mediumTimeout);
     await U.insertProject(project);
-    agent = chai.request.agent(U.getServer());
-    await agent.post('/localSignup').send(member);
-    // /localSignup answers before its insert has finished.
-    await U.delay(500);
-    const res = await agent.post('/localLogin').redirects(0)
-      .send(member);
-    expect(res).to.have.cookie('connect.sid');
+    agent = await U.logIn(member);
   });
 
   after(async function () {

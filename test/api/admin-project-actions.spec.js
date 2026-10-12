@@ -117,8 +117,8 @@ describe('Admin: delete a project, transfer ownership (A3)', function () {
 
   before(async function () {
     this.timeout(U.mediumTimeout); // eslint-disable-line no-invalid-this
-    await Promise.all([admin, other, owner].map(login));
     previousAdmins = admins.getAdmins();
+    await Promise.all([admin, other, owner].map(login));
     admins.setAdmins([admin.username]);
   });
 

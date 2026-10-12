@@ -39,11 +39,7 @@ const privateProject = {
 };
 
 const tokenOf = async (user) => {
-  await chai.request(U.serverURL).post('/localSignup')
-    .send(user);
-  const agent = chai.request.agent(U.getServer());
-  await agent.post('/localLogin').redirects(0)
-    .send(user);
+  const agent = await U.logIn(user);
   const { token } = (await agent.get('/token')).body;
   assert.isNotEmpty(token);
 

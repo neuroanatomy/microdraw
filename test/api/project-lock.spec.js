@@ -4,7 +4,7 @@
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 chai.use(chaiHttp);
-const { assert, expect } = chai;
+const { assert } = chai;
 const U = require('../mocha.test.util');
 const lock = require('../../app/controller/projectLock');
 const adminAnnotations = require('../../app/controller/admin/admin.annotations');
@@ -15,17 +15,8 @@ const adminAnnotations = require('../../app/controller/admin/admin.annotations')
 const owner = { username: 'm3b-owner', password: 'm3b-owner-password' };
 const stranger = { username: 'm3b-stranger', password: 'm3b-stranger-password' };
 
-const login = async (credentials) => {
-  const agent = chai.request.agent(U.getServer());
-  await agent.post('/localSignup').send(credentials);
-  // /localSignup answers before its insert has finished.
-  await U.delay(500);
-  const res = await agent.post('/localLogin').redirects(0)
-    .send(credentials);
-  expect(res).to.have.cookie('connect.sid');
-
-  return agent;
-};
+// Signs up, waits until the user is stored, and logs in (U.logIn).
+const login = (credentials) => U.logIn(credentials);
 
 const project = (shortname, sources = ['/test_data/cat.json']) => ({
   name: `M3b ${shortname}`,

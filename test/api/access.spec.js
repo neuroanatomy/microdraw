@@ -3,7 +3,7 @@
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 chai.use(chaiHttp);
-const { assert, expect } = chai;
+const { assert } = chai;
 const U = require('../mocha.test.util');
 
 // M1: the project list and the searches only return what the requester may
@@ -27,17 +27,8 @@ ownedProject.owner = collaborator.username;
 ownedProject.collaborators.list[1].username = 'api-access-somebody-else';
 ownedProject.collaborators.list[1].userID = 'api-access-somebody-else';
 
-const login = async (credentials) => {
-  const agent = chai.request.agent(U.getServer());
-  await agent.post('/localSignup').send(credentials);
-  // /localSignup answers before its insert has finished.
-  await U.delay(500);
-  const res = await agent.post('/localLogin').redirects(0)
-    .send(credentials);
-  expect(res).to.have.cookie('connect.sid');
-
-  return agent;
-};
+// Signs up, waits until the user is stored, and logs in (U.logIn).
+const login = (credentials) => U.logIn(credentials);
 
 // All the shortnames GET /project/json returns, following its pages.
 const listAllProjects = async (request) => {

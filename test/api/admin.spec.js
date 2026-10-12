@@ -72,11 +72,7 @@ describe('Admin: orphan annotations (A1)', function () {
   ];
 
   const login = async (user) => {
-    await chai.request(U.serverURL).post('/localSignup')
-      .send(user);
-    const agent = chai.request.agent(U.getServer());
-    await agent.post('/localLogin').redirects(0)
-      .send(user);
+    const agent = await U.logIn(user);
     const { token } = (await agent.get('/token')).body;
     assert.isNotEmpty(token);
     agents[user.username] = agent;
@@ -108,8 +104,8 @@ describe('Admin: orphan annotations (A1)', function () {
 
   before(async function () {
     this.timeout(U.mediumTimeout); // eslint-disable-line no-invalid-this
-    await Promise.all([admin, other].map(login));
     previousAdmins = admins.getAdmins();
+    await Promise.all([admin, other].map(login));
     admins.setAdmins([admin.username]);
   });
 

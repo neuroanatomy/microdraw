@@ -151,8 +151,8 @@ describe('Admin: projects that don\'t validate (A2)', function () {
 
   before(async function () {
     this.timeout(U.mediumTimeout); // eslint-disable-line no-invalid-this
-    await Promise.all([admin, other, owner].map(login));
     previousAdmins = admins.getAdmins();
+    await Promise.all([admin, other, owner].map(login));
     admins.setAdmins([admin.username]);
   });
 

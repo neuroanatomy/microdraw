@@ -38,11 +38,8 @@ describe('Public user data (/user/json/:userName, /user/:userName)', function ()
   before(async function () {
     // eslint-disable-next-line no-invalid-this -- mocha passes the hook context as this
     this.timeout(U.shortTimeout);
-    const res = await chai.request(U.serverURL).post('/localSignup')
-      .send(credentials);
+    const res = await U.signUp(credentials);
     assert.equal(res.status, 200);
-    // /localSignup answers before its insert has finished.
-    await U.delay(500);
   });
 
   after(async function () {
