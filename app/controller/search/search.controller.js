@@ -21,14 +21,40 @@ const validator = function (req, res, next) {
   next();
 };
 
+// The search text, escaped so that it matches literally: the raw text went
+// into a MongoDB $regex, so a crafted one could make the database backtrack
+// for a long time (ReDoS), and an invalid one made the query fail. As
+// BrainBox's escapeRegex (controller/api/api.controller.js).
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// The escaped search text of the request, or undefined (and a 400 answer) if
+// q is not a string (e.g. ?q[$ne]=).
+const searchText = (req, res) => {
+  const { q } = req.query;
+  if (typeof q !== 'string') {
+    res.status(400).json({ error: 'Provide the text to search for in q' });
+
+    return;
+  }
+
+  return escapeRegex(q);
+};
+
+const serverError = (res, err) => {
+  console.log('ERROR: search', err);
+  res.status(500).json({ error: 'Server error' });
+};
+
 // Users found by a search go out through the public-field allow-list of
 // T004: username and name only (the user page exposes the same fields).
 const api_searchUsers = function (req, res) {
-  req.appConfig.db.searchUsers({q: req.query.q})
-    .then((o) => { res.send(JSON.stringify(o.map(({username, name}) => ({username, name})))); })
-    .catch((e) => res.send(e)
-      .status(403)
-      .end());
+  const q = searchText(req, res);
+  if (typeof q === 'undefined') {
+    return;
+  }
+  req.appConfig.db.searchUsers({q})
+    .then((o) => { res.json(o.map(({username, name}) => ({username, name}))); })
+    .catch((err) => serverError(res, err));
 };
 
 const maxProjectsFound = 10;
@@ -36,10 +62,14 @@ const maxProjectsFound = 10;
 // Projects found by a search are filtered for view access, as BrainBox's
 // project lists are, before keeping the first 10.
 const api_searchProjects = function (req, res) {
+  const q = searchText(req, res);
+  if (typeof q === 'undefined') {
+    return;
+  }
   const loggedUser = req.isAuthenticated() ? req.user.username : 'anyone';
   req.appConfig.db.mongoDB().get('projects')
     .find(
-      {shortname: {$regex: req.query.q}, backup: {$exists: false}},
+      {shortname: {$regex: q}, backup: {$exists: false}},
       {fields: {_id: 0, shortname: 1, name: 1, owner: 1, collaborators: 1}}
     )
     .then((projects) => {
@@ -47,14 +77,13 @@ const api_searchProjects = function (req, res) {
         .filter((p) => AccessControlService.canViewFiles(p, loggedUser))
         .slice(0, maxProjectsFound)
         .map(({shortname, name}) => ({shortname, name}));
-      res.send(JSON.stringify(found));
+      res.json(found);
     })
-    .catch((e) => res.send(e)
-      .status(403)
-      .end());
+    .catch((err) => serverError(res, err));
 };
 
 module.exports = {
+  escapeRegex,
   validator,
   api_searchUsers,
   api_searchProjects

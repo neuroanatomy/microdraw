@@ -103,10 +103,13 @@ describe('Public user data (/user/json/:userName, /user/:userName)', function ()
   describe('user routes fixed in M2', function () {
     // M2: ?var= used to index the path segments with their own values, so it
     // never returned the field it named.
-    it('?var=username returns the username', async function () {
+    // M3: as JSON (it was text/html: a GitHub name holding markup was served
+    // as an HTML page)
+    it('?var=username returns the username, as JSON', async function () {
       const res = await get(`/user/json/${credentials.username}?var=username`);
       assert.equal(res.status, 200);
-      assert.equal(res.text, credentials.username);
+      assert.match(res.headers['content-type'], /^application\/json/);
+      assert.equal(JSON.parse(res.text), credentials.username);
     }).timeout(U.shortTimeout);
 
     // M2: GET /user/json called NWL queryAllUsers, which NWL's db.js does not

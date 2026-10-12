@@ -65,8 +65,14 @@ const user = function (req, res) {
       }
     })
     .catch((err) => {
+      // NWL's queryUser rejects when there is no such user
+      if (err && err.message === 'error find one user') {
+        res.status(404).send('User Not Found');
+
+        return;
+      }
       console.log('ERROR:', err);
-      res.status(400).send('Error');
+      res.status(500).send('Error');
     });
 };
 
@@ -80,9 +86,10 @@ const api_user = function (req, res) {
             json = json[key];
           }
         }
-        res.send(json);
+        // JSON, also when ?var= selects a string (res.send would send it as HTML)
+        res.json(json);
       } else {
-        res.send();
+        res.status(404).json({error: 'User not found'});
       }
     })
     .catch((err) => {
