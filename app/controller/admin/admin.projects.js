@@ -16,6 +16,9 @@
  * Shortnames that are not alphanumeric and users that don't exist are listed
  * only: renaming a project would break its URLs and the annotations that name
  * it, and removing a collaborator could revoke someone's access.
+ *
+ * A3 (decisions D31, admin.projectActions.js) uses changeProject for the
+ * transfer of a project's ownership, and restoreProject to undo it.
  */
 const _ = require('lodash');
 const monk = require('monk');
@@ -26,7 +29,7 @@ const {
 } = require('../project/project.check');
 
 const current = { backup: { $exists: false } };
-const fixKeys = ['adminRemoveBlankRows', 'adminNameLayers'];
+const fixKeys = ['adminRemoveBlankRows', 'adminNameLayers', 'adminTransferOwner'];
 
 const log = (db, key, value) => {
   console.log(`ADMIN ${key}`, JSON.stringify(_.omit(value, ['project'])));
@@ -42,17 +45,30 @@ const log = (db, key, value) => {
  */
 const findInvalidProjects = (db) => checkStoredProjects(db);
 
+// The default way changeProject stores a change: the validation of a
+// settings save (rows stored unchanged are accepted), then NWL's upsertProject
+const validatedSave = async (appDb, stored, data) => {
+  const { project, error } = await checkProject({ data, shortname: stored.shortname, oldProject: stored, owner: stored.owner, db: appDb.mongoDB() });
+  if (error) {
+    return { status: 400, error: `The project would not validate after this change: ${error}` };
+  }
+
+  return { write: () => appDb.upsertProject(project) };
+};
+
 /**
  * Change a project holding its lock, if its version is still `version`:
- * `change` returns the new data (or { status, error }); it is validated and
- * stored as a settings save is; the previous document is logged first.
+ * `change` returns the new data (or { status, error }); `save` checks it and
+ * returns how to write it (default: validated and stored as a settings save
+ * is); the previous document is logged first.
  * @param {object} appDb NWL database (mongoDB(), upsertProject)
  * @param {object} params { shortname, version, username, key: log key,
- *   change: (stored copy) => { data, details } | { status, error } }
+ *   change: (stored copy) => { data, details } | { status, error },
+ *   save: (appDb, stored, data) => Promise<{ write } | { status, error }> }
  * @returns {Promise<object>} { ...details, version, log } or { status, error }
  */
 // eslint-disable-next-line max-statements
-const changeProject = (appDb, { shortname, version, username, key, change }) => withProjectLock(shortname, async () => {
+const changeProject = (appDb, { shortname, version, username, key, change, save = validatedSave }) => withProjectLock(shortname, async () => {
   const db = appDb.mongoDB();
   const stored = await db.get('projects').findOne({ shortname, ...current });
   if (!stored) {
@@ -65,13 +81,12 @@ const changeProject = (appDb, { shortname, version, username, key, change }) => 
   if (changed.error) {
     return changed;
   }
-  // the validation of a settings save (rows stored unchanged are accepted)
-  const { project, error } = await checkProject({ data: changed.data, shortname, oldProject: stored, owner: stored.owner, db });
-  if (error) {
-    return { status: 400, error: `The project would not validate after this change: ${error}` };
+  const saving = await save(appDb, stored, changed.data);
+  if (saving.error) {
+    return saving;
   }
   const entry = await log(db, key, { username, shortname, before: version, ...changed.details, project: _.omit(stored, ['_id']) });
-  await appDb.upsertProject(project);
+  await saving.write();
   const after = projectVersion(await db.get('projects').findOne({ _id: stored._id }));
   await db.get('log').update({ _id: entry._id }, { $set: { 'value.after': after } });
 
@@ -207,6 +222,7 @@ const restoreProject = async (appDb, { logId, username }) => {
 };
 
 module.exports = {
+  changeProject,
   findInvalidProjects,
   removeBlankRows,
   nameLayers,

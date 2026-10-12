@@ -9,6 +9,7 @@ const _ = require('lodash');
 const { AccessControlService, AccessLevel, AccessType } = require('neuroweblab');
 const { checkProject, collaboratorName } = require('./project.validation');
 const { withProjectLock } = require('../projectLock');
+const { deleteStoredProject } = require('./project.delete');
 const { visibleProjectParts } = require('./visibleProject');
 const { catchErrors } = require('../catchErrors');
 const { scriptJSON, escapeHTML } = require('../escape');
@@ -410,8 +411,9 @@ const postProject = catchErrors(postProjectUnsafe);
 /**
  * Delete a project and mark its annotations as backups (never deleted). The
  * project document is kept in the `log` collection, and the annotations it
- * marks carry the id of that log entry, so the deletion can be undone by hand
- * (decisions D28). Runs holding the project's lock.
+ * marks carry the id of that log entry, so an admin can restore it (decisions
+ * D28, D31; project.delete.js, shared with the admin delete). Runs holding the
+ * project's lock.
  * @param {object} req Request object
  * @param {object} res Response object
  * @param {string} loggedUser The user deleting
@@ -433,17 +435,8 @@ const removeProject = async function (req, res, loggedUser) {
     return;
   }
 
-  const db = req.appConfig.db.mongoDB();
-  const current = { project: shortname, backup: { $exists: false } };
-  const entry = await db.get('log').insert({
-    key: 'deleteProject',
-    value: { username: loggedUser, shortname, project: _.omit(projectToDelete, ['_id']), annotations: await db.get('annotations').count(current) },
-    date: (new Date()).toJSON()
-  });
-  await db.get('annotations').update(current, { $set: { backup: true, deletedWithProject: String(entry._id) } }, { multi: true });
-  await req.appConfig.db.deleteProject({shortname});
-  console.log('DELETE Project', shortname, 'log', String(entry._id));
-  res.json({success: true, message: 'Project deleted', log: String(entry._id)});
+  const { log } = await deleteStoredProject(req.appConfig.db, { project: projectToDelete, username: loggedUser });
+  res.json({success: true, message: 'Project deleted', log});
 };
 
 const deleteProjectUnsafe = async function (req, res) {

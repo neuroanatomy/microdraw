@@ -16,5 +16,9 @@ router.get('/json/projects/invalid', authTokenMiddleware, controller.requireAdmi
 router.post('/json/projects/remove-blank-rows', authTokenMiddleware, controller.requireAdmin, controller.removeBlankRows);
 router.post('/json/projects/name-layers', authTokenMiddleware, controller.requireAdmin, controller.nameLayers);
 router.post('/json/projects/restore', authTokenMiddleware, controller.requireAdmin, controller.restoreProject);
+router.get('/json/projects/search', authTokenMiddleware, controller.requireAdmin, controller.searchProjects);
+router.post('/json/projects/delete', authTokenMiddleware, controller.requireAdmin, controller.deleteProject);
+router.post('/json/projects/restore-deleted', authTokenMiddleware, controller.requireAdmin, controller.restoreDeletedProject);
+router.post('/json/projects/transfer', authTokenMiddleware, controller.requireAdmin, controller.transferProject);
 
 module.exports = router;

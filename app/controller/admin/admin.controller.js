@@ -1,6 +1,8 @@
+/* eslint-disable max-lines -- one handler per admin route; 2026-10-12 */
 const { isAdmin, requestUsername } = require('./admins');
 const annotations = require('./admin.annotations');
 const projects = require('./admin.projects');
+const projectActions = require('./admin.projectActions');
 const { scriptJSON } = require('../escape');
 
 // Follows BrainBox controller/admin/admin.controller.js (requireAdmin,
@@ -249,6 +251,66 @@ const restoreProject = (req, res) => {
   sendResult(res, projects.restoreProject(req.app.db, { logId: log, username: requestUsername(req) }));
 };
 
+/**
+ * Find projects by shortname or name (A3). Query: q
+ * @param {object} req Request object
+ * @param {object} res Response object
+ * @returns {void}
+ */
+const searchProjects = (req, res) => {
+  const { q } = req.query;
+  if (typeof q !== 'string' || q.trim() === '') {
+    return res.status(400).json({ success: false, error: 'Provide the text to search for in q' });
+  }
+  sendResult(res, projectActions.searchProjects(db(req), q.trim()));
+};
+
+/**
+ * Delete a project, as its owner would (A3). Body: { project, version }
+ * @param {object} req Request object
+ * @param {object} res Response object
+ * @returns {void}
+ */
+const deleteProject = (req, res) => {
+  const { shortname, version, error } = projectFromBody(req.body || {});
+  if (error) {
+    return res.status(400).json({ success: false, error });
+  }
+  sendResult(res, projectActions.deleteProject(req.app.db, { shortname, version, username: requestUsername(req) }));
+};
+
+/**
+ * Undo a project delete (an admin's or an owner's). Body: { log }
+ * @param {object} req Request object
+ * @param {object} res Response object
+ * @returns {void}
+ */
+const restoreDeletedProject = (req, res) => {
+  const { log } = req.body || {};
+  if (typeof log !== 'string' || log === '') {
+    return res.status(400).json({ success: false, error: 'Provide the log id of the delete' });
+  }
+  sendResult(res, projectActions.restoreDeleted(req.app.db, { logId: log, username: requestUsername(req) }));
+};
+
+/**
+ * Give a project to another existing user (A3). Body: { project, version, owner }
+ * @param {object} req Request object
+ * @param {object} res Response object
+ * @returns {void}
+ */
+const transferProject = (req, res) => {
+  const body = req.body || {};
+  const { shortname, version, error } = projectFromBody(body);
+  if (error) {
+    return res.status(400).json({ success: false, error });
+  }
+  if (typeof body.owner !== 'string' || body.owner.trim() === '') {
+    return res.status(400).json({ success: false, error: 'Provide the username of the new owner' });
+  }
+  sendResult(res, projectActions.transferProject(req.app.db, { shortname, version, owner: body.owner, username: requestUsername(req) }));
+};
+
 module.exports = {
   requireAdmin,
   adminPage,
@@ -260,5 +322,9 @@ module.exports = {
   getInvalidProjects,
   removeBlankRows,
   nameLayers,
-  restoreProject
+  restoreProject,
+  searchProjects,
+  deleteProject,
+  restoreDeletedProject,
+  transferProject
 };
