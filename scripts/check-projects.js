@@ -2,94 +2,44 @@
 'use strict';
 
 // Dry run of the project validation of M3 (POST /project/json/:projectName,
-// decisions D27) over the projects stored in a database: lists the projects
-// that their owner could not save again unchanged from the settings page,
-// and why. Read-only: it
+// decisions D27, D27a) over the projects stored in a database: lists the
+// projects that their owner could not save again unchanged from the settings
+// page, and why, with the warnings (stored rows that would be refused if they
+// were new, sanitising, shortnames, users that do not exist). Read-only: it
 // never writes to the database.
+//
+// The check itself is app/controller/project/project.check.js, the same code
+// as the admin section "Projects that don't validate" (A2, decisions D29).
 //
 // Run it on a copy of the production database, never on production itself:
 //   node scripts/check-projects.js --db 127.0.0.1:27017/microdraw-copy
 // There is no default database, so that it cannot run on one by accident.
 
 const monk = require('monk');
-const _ = require('lodash');
-const { asFileObject, sanitize, storedRows, structureError, rowProblems, collaboratorName, isAnyone } = require('../app/controller/project/project.validation');
+const { checkStoredProjects, formatProblem } = require('../app/controller/project/project.check');
 
-const dbArg = process.argv.indexOf('--db');
-if (dbArg < 0 || !process.argv[dbArg + 1]) {
-  console.error('Usage: node scripts/check-projects.js --db <host:port/database>');
-  process.exitCode = 2;
-}
-
-// The project as the settings page sends it back: nwl-components turns files
-// stored as plain strings into {source, name} (asFileObject, as the server's
-// matching of stored rows does).
-const asSentBySettingsPage = (project) => {
-  const files = project.files && Array.isArray(project.files.list) ?
-    { ...project.files, list: project.files.list.map(asFileObject) } :
-    project.files;
-
-  return { ..._.omit(project, ['_id', 'backup']), files };
-};
-
-// What re-saving the stored project unchanged would refuse, plus warnings:
-// rows that would be refused if they were new (stored rows are accepted
-// unchanged since M3a2), what the sanitising would change, and the users that
-// do not exist (allowed for a stored project, refused for a new one).
-// eslint-disable-next-line max-statements
-const report = (project, users) => {
-  const problems = [];
-  // as the server does (M3a2): rows stored unchanged are accepted as they are
-  const sent = sanitize(asSentBySettingsPage(project));
-  const { stored } = storedRows(sent, project);
-  const error = structureError(sent, { shortname: project.shortname, isNew: false, stored });
-  if (error) {
-    problems.push(`refused: ${error}`);
-  }
-  for (const rowProblem of rowProblems(sanitize(asSentBySettingsPage(project)))) {
-    problems.push(`warning (stored row, accepted unchanged; refused if new or changed): ${rowProblem}`);
-  }
-  if (!_.isEqual(sanitize(project), project)) {
-    problems.push('sanitising would change some strings (markup removed)');
-  }
-  if (typeof project.shortname !== 'string' || !(/^[a-zA-Z0-9]+$/).test(project.shortname)) {
-    problems.push('shortname is not alphanumeric (accepted for a stored project, refused for a new one)');
-  }
-  const list = project.collaborators && Array.isArray(project.collaborators.list) ? project.collaborators.list : [];
-  const names = [project.owner, ...list.filter((c) => _.isPlainObject(c) && !isAnyone(c)).map(collaboratorName)];
-  const missing = _.uniq(names.filter((name) => !users.has(name)));
-  if (missing.length > 0) {
-    problems.push(`users that do not exist (kept on save): ${missing.join(', ')}`);
-  }
-
-  return problems;
-};
-
-// eslint-disable-next-line max-statements
-const main = async () => {
-  const db = monk(process.argv[dbArg + 1]);
+const main = async (dbURL) => {
+  const db = monk(dbURL);
   try {
-    const users = new Set(await db.get('users').distinct('username'));
-    const projects = await db.get('projects').find({ backup: { $exists: false } });
-    let refused = 0;
-    for (const project of projects) {
-      const problems = report(project, users);
-      if (problems.some((p) => p.startsWith('refused'))) {
-        refused += 1;
-      }
-      if (problems.length > 0) {
-        console.log(`${project.shortname} (owner ${project.owner}):\n  - ${problems.join('\n  - ')}`);
-      }
+    const { total, refused, list } = await checkStoredProjects(db);
+    for (const project of list) {
+      console.log(`${project.shortname} (owner ${project.owner}):\n  - ${project.problems.map(formatProblem).join('\n  - ')}`);
     }
-    console.log(`\n${projects.length} projects, ${refused} cannot be saved again unchanged.`);
+    console.log(`\n${total} projects, ${refused} cannot be saved again unchanged.`);
   } finally {
     await db.close();
   }
 };
 
-if (!process.exitCode) {
-  main().catch((err) => {
-    console.error(err);
-    process.exitCode = 1;
-  });
+if (require.main === module) {
+  const dbArg = process.argv.indexOf('--db');
+  if (dbArg < 0 || !process.argv[dbArg + 1]) {
+    console.error('Usage: node scripts/check-projects.js --db <host:port/database>');
+    process.exitCode = 2;
+  } else {
+    main(process.argv[dbArg + 1]).catch((err) => {
+      console.error(err);
+      process.exitCode = 1;
+    });
+  }
 }

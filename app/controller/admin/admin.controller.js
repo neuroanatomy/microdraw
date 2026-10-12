@@ -1,5 +1,6 @@
 const { isAdmin, requestUsername } = require('./admins');
 const annotations = require('./admin.annotations');
+const projects = require('./admin.projects');
 const { scriptJSON } = require('../escape');
 
 // Follows BrainBox controller/admin/admin.controller.js (requireAdmin,
@@ -179,6 +180,75 @@ const assignOrphans = (req, res) => {
   }));
 };
 
+/**
+ * List the stored projects that don't validate (A2), as
+ * scripts/check-projects.js does
+ * @param {object} req Request object
+ * @param {object} res Response object
+ * @returns {void}
+ */
+const getInvalidProjects = (req, res) => {
+  sendResult(res, projects.findInvalidProjects(db(req)));
+};
+
+// { project, version } from the body of a fix, or the reason it is invalid
+const projectFromBody = (body) => {
+  if (typeof body.project !== 'string' || body.project === '') {
+    return { error: 'Provide the project shortname' };
+  }
+  if (typeof body.version !== 'string' || body.version === '') {
+    return { error: 'Provide the version of the project, as listed' };
+  }
+
+  return { shortname: body.project, version: body.version };
+};
+
+/**
+ * Remove the blank rows of a project. Body: { project, version }
+ * @param {object} req Request object
+ * @param {object} res Response object
+ * @returns {void}
+ */
+const removeBlankRows = (req, res) => {
+  const { shortname, version, error } = projectFromBody(req.body || {});
+  if (error) {
+    return res.status(400).json({ success: false, error });
+  }
+  sendResult(res, projects.removeBlankRows(req.app.db, { shortname, version, username: requestUsername(req) }));
+};
+
+/**
+ * Name the unnamed layers of a project. Body: { project, version, names: { index: name } }
+ * @param {object} req Request object
+ * @param {object} res Response object
+ * @returns {void}
+ */
+const nameLayers = (req, res) => {
+  const body = req.body || {};
+  const { shortname, version, error } = projectFromBody(body);
+  if (error) {
+    return res.status(400).json({ success: false, error });
+  }
+  if (!body.names || typeof body.names !== 'object' || Array.isArray(body.names) || Object.keys(body.names).length === 0) {
+    return res.status(400).json({ success: false, error: 'Provide the names: { index: name }' });
+  }
+  sendResult(res, projects.nameLayers(req.app.db, { shortname, version, names: body.names, username: requestUsername(req) }));
+};
+
+/**
+ * Undo a project fix. Body: { log } (the id returned by the fix)
+ * @param {object} req Request object
+ * @param {object} res Response object
+ * @returns {void}
+ */
+const restoreProject = (req, res) => {
+  const { log } = req.body || {};
+  if (typeof log !== 'string' || log === '') {
+    return res.status(400).json({ success: false, error: 'Provide the log id of the fix' });
+  }
+  sendResult(res, projects.restoreProject(req.app.db, { logId: log, username: requestUsername(req) }));
+};
+
 module.exports = {
   requireAdmin,
   adminPage,
@@ -186,5 +256,9 @@ module.exports = {
   removeOrphans,
   restoreOrphans,
   getOrphanProjects,
-  assignOrphans
+  assignOrphans,
+  getInvalidProjects,
+  removeBlankRows,
+  nameLayers,
+  restoreProject
 };

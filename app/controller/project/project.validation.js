@@ -367,19 +367,20 @@ const checkProject = async ({ data, shortname, oldProject, owner, db }) => {
 };
 
 /**
- * Every problem of the rows of a project, as if they were all new (for
- * scripts/check-projects.js: stored rows are accepted unchanged on save)
+ * Every problem of the rows of a project, as if they were all new (for the
+ * stored-project check, project.check.js: stored rows are accepted unchanged
+ * on save)
  * @param {object} project A sanitised project
- * @returns {Array<string>} The problems
+ * @returns {Array<object>} The problems: { list, row (index), message }
  */
-const rowProblems = (project) => {
+const rowProblemList = (project) => {
   const problems = [];
   const checks = { files: fileError, collaborators: collaboratorError, annotations: annotationError };
   for (const type of listTypes) {
     listOf(project, type).forEach((row, i) => {
       const error = checks[type](row, i);
       if (error) {
-        problems.push(error);
+        problems.push({ list: type, row: i, message: error });
       }
     });
   }
@@ -393,9 +394,11 @@ module.exports = {
   collaboratorName,
   checkProject,
   isAnyone,
+  isBlank,
+  listOf,
   parseProjectData,
   plainText,
-  rowProblems,
+  rowProblemList,
   sanitize,
   storedRows,
   structureError

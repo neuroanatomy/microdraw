@@ -12,5 +12,9 @@ router.get('/json/orphans/projects', authTokenMiddleware, controller.requireAdmi
 router.post('/json/orphans/remove', authTokenMiddleware, controller.requireAdmin, controller.removeOrphans);
 router.post('/json/orphans/restore', authTokenMiddleware, controller.requireAdmin, controller.restoreOrphans);
 router.post('/json/orphans/assign', authTokenMiddleware, controller.requireAdmin, controller.assignOrphans);
+router.get('/json/projects/invalid', authTokenMiddleware, controller.requireAdmin, controller.getInvalidProjects);
+router.post('/json/projects/remove-blank-rows', authTokenMiddleware, controller.requireAdmin, controller.removeBlankRows);
+router.post('/json/projects/name-layers', authTokenMiddleware, controller.requireAdmin, controller.nameLayers);
+router.post('/json/projects/restore', authTokenMiddleware, controller.requireAdmin, controller.restoreProject);
 
 module.exports = router;
