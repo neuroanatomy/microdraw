@@ -126,8 +126,14 @@ var settingsUnsafe = async function(req, res) {
   // @todo empty the files.list because it will be filled progressively from the client
   // json.files.list = [];
 
+  // only what the visitor may see goes into the page, as on the project page
+  // (M3c, S2): no annotation layers without annotations view rights, no
+  // collaborators but 'anyone' without collaborators view rights
+  const canViewCollaborators = AccessControlService.canViewCollaborators(json, loggedUser);
+  json = visibleProjectParts(json, loggedUser);
+
   // find username and name for each of the collaborators in the project
-  if (AccessControlService.canViewCollaborators(json, loggedUser)) {
+  if (canViewCollaborators) {
     const arr1 = [];
     for(let j=0; j<json.collaborators.list.length; j++) {
       if (Object.keys(json.collaborators.list[j]).includes("username") === false) {
@@ -150,8 +156,6 @@ var settingsUnsafe = async function(req, res) {
     } catch(e) {
       console.error(e);
     }
-  } else {
-    json.collaborators.list = json.collaborators.list.filter((collaborator) => collaborator.username === 'anyone');
   }
 
   var context = {
