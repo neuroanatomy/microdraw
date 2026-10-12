@@ -143,6 +143,26 @@ const updateAnnotation = async (req, {
   await req.app.db.insertAnnotations(arrayTobeSaved);
 };
 
+// Why `username` may not edit annotations in `project`: {status, error}, or
+// undefined when it may. An empty project name ('') belongs to no project and
+// is not checked. Shared by the editor save (POST /api) and the API upload
+// (POST /api/upload, H2a).
+const annotationEditRefusal = async (req, project, username) => {
+  if (!project) {
+    return;
+  }
+  const result = await req.app.db.queryProject({shortname: project});
+  if (!result) {
+    return {status: 404, error: 'Project not found'};
+  }
+  if (!AccessControlService.canEditAnnotations(result, username)) {
+    return {
+      status: 403,
+      error: `User ${username} does not have permission to edit annotations on project ${project}`
+    };
+  }
+};
+
 // eslint-disable-next-line max-statements
 const saveFromGUI = async function (req, res) {
   const { Hash, annotation } = req.body;
@@ -155,30 +175,15 @@ const saveFromGUI = async function (req, res) {
   const project = (req.body.project) || '';
   console.log(`current project: ${project}`);
 
-  // project owner and project users
-  if(project) {
-    const result = await req.app.db.queryProject({shortname: project});
-    const owner = result
-        && result.owner;
-    const users = result
-        && result.collaborators
-        && result.collaborators.list
-        && result.collaborators.list.map((u) => u.username);
-    console.log(`project owner: ${owner}, users: ${users}`);
-
-    if (!result) {
-      res.status(404).json({error: 'Project not found'});
-
-      return;
+  const refusal = await annotationEditRefusal(req, project, username);
+  if (refusal) {
+    if (refusal.status === 404) {
+      res.status(404).json({error: refusal.error});
+    } else {
+      res.status(refusal.status).send(refusal.error);
     }
 
-    // check if user has edit permission
-    if(!AccessControlService.canEditAnnotations(result, username)) {
-      res.status(403).send(`User ${username} does not have permission to edit annotations on project ${project}`);
-
-
-      return;
-    }
+    return;
   }
 
   const fileID = buildFileID(req.body);
@@ -264,6 +269,7 @@ const saveFromAPIUnsafe = async function (req, res) {
   const username = req.user && req.user.username;
   const { project, Hash } = req.query;
   const json = await readUploadedJSON(req);
+  let refusal;
   if (typeof json === 'undefined' || json === null) {
     res.status(400).json({msg: 'Invalid annotation file: no file, or not JSON'});
 
@@ -287,8 +293,8 @@ const saveFromAPIUnsafe = async function (req, res) {
     res.status(401).json({
       msg: `Invalid annotation file: ${jsonIsValid(json).msg}`
     });
-  } else if (project && !(await req.app.db.queryProject({shortname: project}))) {
-    res.status(404).json({msg: 'Project not found'});
+  } else if ((refusal = await annotationEditRefusal(req, project, username))) {
+    res.status(refusal.status).json({msg: refusal.error});
   } else {
     const { action } = req.query;
 
