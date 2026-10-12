@@ -8,6 +8,7 @@
 const _ = require('lodash');
 const { AccessControlService, AccessLevel, AccessType } = require('neuroweblab');
 const { checkProject, collaboratorName } = require('./project.validation');
+const { withProjectLock } = require('../projectLock');
 const { catchErrors } = require('../catchErrors');
 const { scriptJSON, escapeHTML } = require('../escape');
 const validator = function (req, res, next) {
@@ -340,15 +341,16 @@ const droppedMessage = (dropped) => {
 
 const sendError = (res, status, message) => res.status(status).json({ success: false, error: 'error', message });
 
+/**
+ * Validate and store a project. Runs holding the project's lock: the stored
+ * version it reads is still the current one when it writes.
+ * @param {object} req Request object
+ * @param {object} res Response object
+ * @param {string} loggedUser The user saving
+ * @returns {Promise<void>} Resolves once answered
+ */
 // eslint-disable-next-line max-statements
-const postProjectUnsafe = async function (req, res) {
-  const loggedUser = getLoggedUser(req);
-  if (loggedUser === 'anyone') {
-    sendError(res, 401, 'User not authenticated');
-
-    return;
-  }
-
+const saveProject = async function (req, res, loggedUser) {
   const shortname = req.params.projectName;
   const oldProject = await req.appConfig.db.queryProject({shortname, backup: {$exists: false}});
   if (!_.isNil(oldProject) && !AccessControlService.hasFilesAccess(AccessLevel.EDIT, oldProject, loggedUser)) {
@@ -391,54 +393,68 @@ const postProjectUnsafe = async function (req, res) {
   }
 };
 
+const postProjectUnsafe = async function (req, res) {
+  const loggedUser = getLoggedUser(req);
+  if (loggedUser === 'anyone') {
+    sendError(res, 401, 'User not authenticated');
+
+    return;
+  }
+
+  await withProjectLock(req.params.projectName, () => saveProject(req, res, loggedUser));
+};
+
 // Any other error (e.g. the database) answers 500.
 const postProject = catchErrors(postProjectUnsafe);
 
-// eslint-disable-next-line max-statements -- existing handler, not refactored in a lint-only change; 2026-10-11
+/**
+ * Delete a project and mark its annotations as backups (never deleted). The
+ * project document is kept in the `log` collection, and the annotations it
+ * marks carry the id of that log entry, so the deletion can be undone by hand
+ * (decisions D28). Runs holding the project's lock.
+ * @param {object} req Request object
+ * @param {object} res Response object
+ * @param {string} loggedUser The user deleting
+ * @returns {Promise<void>} Resolves once answered
+ */
+// eslint-disable-next-line max-statements
+const removeProject = async function (req, res, loggedUser) {
+  const shortname = req.params.projectName;
+  const projectToDelete = await req.appConfig.db.queryProject({shortname, backup: {$exists: false}});
+  if (_.isNil(projectToDelete)) {
+    res.status(404).json({ success: false, message: 'Project not found' });
+
+    return;
+  }
+  if (!AccessControlService.hasFilesAccess(AccessLevel.REMOVE, projectToDelete, loggedUser)) {
+    console.log('WARNING: user does not have remove rights');
+    res.status(403).json({ success: false, message: 'The user is not allowed to delete this project' });
+
+    return;
+  }
+
+  const db = req.appConfig.db.mongoDB();
+  const current = { project: shortname, backup: { $exists: false } };
+  const entry = await db.get('log').insert({
+    key: 'deleteProject',
+    value: { username: loggedUser, shortname, project: _.omit(projectToDelete, ['_id']), annotations: await db.get('annotations').count(current) },
+    date: (new Date()).toJSON()
+  });
+  await db.get('annotations').update(current, { $set: { backup: true, deletedWithProject: String(entry._id) } }, { multi: true });
+  await req.appConfig.db.deleteProject({shortname});
+  console.log('DELETE Project', shortname, 'log', String(entry._id));
+  res.json({success: true, message: 'Project deleted', log: String(entry._id)});
+};
+
 const deleteProjectUnsafe = async function (req, res) {
-  console.log("DELETE Project");
+  const loggedUser = getLoggedUser(req);
+  if (loggedUser === 'anyone') {
+    res.status(401).json({ success: false, message: 'Log in required' });
 
-  let loggedUser = 'anonymous';
-  if(req.isAuthenticated()) {
-    loggedUser = req.user.username;
-  } else if(req.isTokenAuthenticated) {
-    loggedUser = req.tokenUsername;
+    return;
   }
 
-  // Store return path in case of login
-  req.session.returnTo = req.originalUrl;
-
-  if(loggedUser === 'anonymous') {
-    res
-      .status(403)
-      .send({message: "Log in required"})
-      .end();
-  } else {
-    const {projectName} = req.params;
-
-    const projectToDelete = await req.appConfig.db.queryProject({shortname: projectName});
-    if (_.isNil(projectToDelete)) {
-      res.status(404).json({ success: false, message: 'Project not found' });
-
-      return;
-    }
-    if (!AccessControlService.hasFilesAccess(AccessLevel.REMOVE, projectToDelete, loggedUser)) {
-      console.log('WARNING: user does not have remove rights');
-      res.status(403).json({ success: false, message: 'The user is not allowed to delete this project' });
-
-      return;
-    }
-
-    req.appConfig.db.deleteProject({shortname: projectName})
-      .then((o) => {
-        console.log('DELETE Project', o);
-        res.send({success: true, response: o});
-      })
-      .catch((e) => res
-        .send(e)
-        .status(403)
-        .end());
-  }
+  await withProjectLock(req.params.projectName, () => removeProject(req, res, loggedUser));
 };
 
 const deleteProject = catchErrors(deleteProjectUnsafe);

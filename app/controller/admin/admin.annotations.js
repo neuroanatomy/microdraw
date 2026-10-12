@@ -17,6 +17,7 @@
  * be undone. Every action is logged, as in BrainBox.
  */
 const monk = require('monk');
+const { withProjectLock } = require('../projectLock');
 
 const isProjectName = (name) => typeof name === 'string' && name !== '';
 
@@ -281,15 +282,17 @@ const candidateProjects = async (db, { fileID, user }) => {
  * are separate documents, and the viewer shows both. With addImage, a project
  * that does not list the image gets it added to its file list first.
  *
- * There is no project lock yet (M3): a settings page saved at the same time
- * rewrites the whole project ($set) and can drop the image added here.
+ * Runs holding the target project's lock (M3), as the settings save does, so
+ * that a save cannot read the project before the image is added and write it
+ * back after. A settings page loaded earlier still sends the file list it
+ * had: saving it drops the image again (no versions yet, T002 step 2.1).
  * @param {object} db Monk database
  * @param {object} params { group, target, addImage, username }
  * @returns {Promise<object>} { assigned, addedImage, existing, existingByUser, log }
  *   or { status, error }
  */
 // eslint-disable-next-line max-statements
-const assignOrphans = async (db, { group, target, addImage, username }) => {
+const assignOrphansUnlocked = async (db, { group, target, addImage, username }) => {
   const project = await db.get('projects').findOne({ shortname: target, ...current });
   if (!project) {
     return { status: 404, error: `Project ${target} not found` };
@@ -327,6 +330,8 @@ const assignOrphans = async (db, { group, target, addImage, username }) => {
 
   return { assigned: ids.length, addedImage, ...existing, log: String(entry._id) };
 };
+
+const assignOrphans = (db, params) => withProjectLock(params.target, () => assignOrphansUnlocked(db, params));
 
 module.exports = {
   splitFileID,
