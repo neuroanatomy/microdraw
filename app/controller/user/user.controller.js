@@ -186,11 +186,23 @@ const api_userAtlas = function (req, res) {
     */
 };
 
-/**
- * @todo Check access rights for this route
- */
+// A project as GET /project/json/:name shows it to loggedUser: collaborators
+// other than 'anyone' and the annotations list are hidden unless loggedUser
+// may view them.
+const visibleProjectParts = (project, loggedUser) => {
+  if (!AccessControlService.canViewCollaborators(project, loggedUser)) {
+    project.collaborators.list = project.collaborators.list.filter((collaborator) => collaborator.username === 'anyone');
+  }
+  if (!AccessControlService.canViewAnnotations(project, loggedUser)) {
+    project.annotations.list = [];
+  }
+
+  return project;
+};
 
 /**
+ * Projects of a user that the visitor may view, each with only the parts the
+ * visitor may view.
  * @param {object} req Request object
  * @param {object} res Response object
  * @returns {void}
@@ -201,15 +213,20 @@ const api_userProjects = function (req, res) {
   // const length = parseInt(req.query.length);
   const loggedUser = req.user ? req.user.username : 'anyone';
 
-  req.appConfig.db.queryUserProjects(userName).then((result) => {
-    const filteredList = result.filter((project) =>
-      AccessControlService.canViewFiles(project, loggedUser)
-    );
-    res.send({
-      successful: true,
-      list: filteredList
+  req.appConfig.db.queryUserProjects(userName)
+    .then((result) => {
+      const filteredList = result
+        .filter((project) => AccessControlService.canViewFiles(project, loggedUser))
+        .map((project) => visibleProjectParts(project, loggedUser));
+      res.send({
+        successful: true,
+        list: filteredList
+      });
+    })
+    .catch((err) => {
+      console.log('ERROR:', err);
+      res.status(500).send({successful: false, list: []});
     });
-  });
 };
 
 module.exports = {
