@@ -17,6 +17,8 @@ describe('TESTING PERMISSIONS (HTTP)', function () {
   before(async () => {
     agent = chai.request.agent(U.getServer());
     await U.insertProject(U.privateProjectTest);
+    // the collaborator the tests add: since M3 a project only names users that exist
+    await U.insertUser({ username: 'foo', name: 'Foo' });
     await agent.post('/localSignup')
       .send(U.testingCredentials);
     let res = await agent.post('/localLogin').redirects(0)
@@ -32,6 +34,7 @@ describe('TESTING PERMISSIONS (HTTP)', function () {
   after(async function () {
     await U.removeProject(U.privateProjectTest.shortname);
     await U.removeLocalUser(U.testingCredentials.username);
+    await U.removeLocalUser('foo');
   });
 
   const get = function(url, logged) {

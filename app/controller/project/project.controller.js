@@ -6,7 +6,8 @@
 // const checkAccess = require('../checkAccess/checkAccess.js');
 // const dataSlices = require('../dataSlices/dataSlices.js');
 const _ = require('lodash');
-const { AccessControlService, AccessLevel } = require('neuroweblab');
+const { AccessControlService, AccessLevel, AccessType } = require('neuroweblab');
+const { checkProject, collaboratorName } = require('./project.validation');
 const { catchErrors } = require('../catchErrors');
 const { scriptJSON, escapeHTML } = require('../escape');
 const validator = function (req, res, next) {
@@ -236,7 +237,8 @@ const apiProjectUnsafe = async function (req, res) {
       }
     }
   }
-  res.send(json);
+  // JSON, also when ?var= selects a string (res.send would send it as HTML)
+  res.json(json);
 };
 
 // Any error in apiProjectUnsafe (a db failure, a ?var= path that does not
@@ -293,71 +295,93 @@ const apiProjectFiles = function (req, res) {
   res.send({});
 };
 
-// The project sent in the body (data, as an object or a JSON string), or
-// undefined if it is not an object with a shortname.
-const parseProjectData = (data) => {
-  let newProject = data;
-  if (typeof data === 'string') {
-    try {
-      newProject = JSON.parse(data);
-    } catch (err) {
-      return;
-    }
-  }
-  if (_.isPlainObject(newProject) && typeof newProject.shortname === 'string') {
-    return newProject;
-  }
+const listTypes = [AccessType.COLLABORATORS, AccessType.FILES, AccessType.ANNOTATIONS];
+
+// What two versions of a list are compared on: a collaborator's name and
+// access (the settings page adds a display name), the whole entry otherwise.
+const comparableEntry = {
+  collaborators: (c) => ({ user: collaboratorName(c), access: c.access }),
+  files: (f) => f,
+  annotations: (a) => a
 };
 
-// eslint-disable-next-line max-statements -- existing handler, not refactored in a lint-only change; 2026-10-11
+/**
+ * Keep the stored version of each list that the user may not edit (M3). NWL's
+ * preventUnauthorizedUpdates only compares the lengths of the lists, so a
+ * collaborator who may edit the files could otherwise change the access
+ * values of the collaborators (their own included) or the annotation layers.
+ * @param {object} newProject The project sent (changed in place)
+ * @param {object} oldProject The stored project
+ * @param {string} loggedUser The user saving
+ * @returns {Array<string>} The lists whose changes were ignored
+ */
+const keepListsWithoutEditRights = (newProject, oldProject, loggedUser) => {
+  const ignored = [];
+  for (const type of listTypes) {
+    const oldList = (oldProject[type] && Array.isArray(oldProject[type].list)) ? oldProject[type].list : [];
+    const changed = !_.isEqual(newProject[type].list.map(comparableEntry[type]), oldList.map(comparableEntry[type]));
+    if (changed && !AccessControlService.hasAccess(type, AccessLevel.EDIT, oldProject, loggedUser)) {
+      newProject[type].list = oldList;
+      ignored.push(type);
+    }
+  }
+
+  return ignored;
+};
+
+const sendError = (res, status, message) => res.status(status).json({ success: false, error: 'error', message });
+
+// eslint-disable-next-line max-statements
 const postProjectUnsafe = async function (req, res) {
-  let loggedUser = 'anonymous';
-  if(req.isAuthenticated()) {
-    loggedUser = req.user.username;
-  } else if(req.isTokenAuthenticated) {
-    loggedUser = req.tokenUsername;
-  }
-
-  if (loggedUser === 'anonymous') {
-    res.status(403).json({ error: 'error', message: 'User not authenticated' });
+  const loggedUser = getLoggedUser(req);
+  if (loggedUser === 'anyone') {
+    sendError(res, 401, 'User not authenticated');
 
     return;
   }
 
-  const newProject = parseProjectData(req.body.data);
-  if (typeof newProject === 'undefined') {
-    res.status(400).json({ error: 'error', message: 'Invalid project data' });
+  const shortname = req.params.projectName;
+  const oldProject = await req.appConfig.db.queryProject({shortname, backup: {$exists: false}});
+  if (!_.isNil(oldProject) && !AccessControlService.hasFilesAccess(AccessLevel.EDIT, oldProject, loggedUser)) {
+    sendError(res, 403, 'User does not have edit rights');
 
     return;
   }
-  const oldProject = await req.appConfig.db.queryProject({shortname: newProject.shortname});
+
+  const { project: newProject, error } = await checkProject({
+    data: req.body.data,
+    shortname,
+    oldProject,
+    owner: _.isNil(oldProject) ? loggedUser : oldProject.owner,
+    db: req.appConfig.db.mongoDB()
+  });
+  if (error) {
+    sendError(res, 400, error);
+
+    return;
+  }
 
   let ignoredChanges = [];
   if (!_.isNil(oldProject)) {
-    if (!AccessControlService.hasFilesAccess(AccessLevel.EDIT, oldProject, loggedUser)) {
-      res.status(403).json({ error: 'error', message: 'User does not have edit rights' });
-
-      return;
-    }
     ignoredChanges = AccessControlService.preventUnauthorizedUpdates(newProject, oldProject, loggedUser);
+    ignoredChanges = _.union(ignoredChanges, keepListsWithoutEditRights(newProject, oldProject, loggedUser));
   }
 
-
-  let successMessage = "Project settings updated.";
+  let successMessage = _.isNil(oldProject) ? 'New project created.' : 'Project settings updated.';
   if(ignoredChanges.length > 0) {
     successMessage += ` Some changes (on ${ignoredChanges.join(', ')}) were ignored due to a lack of permissions.`;
   }
 
-  req.appConfig.db.upsertProject(newProject)
-    .then((o) => { console.log('postProject', o); res.send({success: true, response: o, message: successMessage}); })
-    .catch((e) => res
-      .send(e)
-      .status(500)
-      .end());
+  try {
+    const o = await req.appConfig.db.upsertProject(newProject);
+    res.json({success: true, response: o, message: successMessage});
+  } catch (err) {
+    console.log('ERROR: postProject', err);
+    sendError(res, 500, 'The project could not be saved');
+  }
 };
 
-// A project that the access checks cannot read (no collaborators or files
-// list, M3 validates them) answers 500.
+// Any other error (e.g. the database) answers 500.
 const postProject = catchErrors(postProjectUnsafe);
 
 // eslint-disable-next-line max-statements -- existing handler, not refactored in a lint-only change; 2026-10-11

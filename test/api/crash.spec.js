@@ -58,17 +58,20 @@ describe('Anonymous requests that must not crash the server', function () {
       assert.isArray(res.body.annotations.list);
     }).timeout(U.shortTimeout);
 
-    it('?var=name returns the project name', async function () {
+    // M3: as JSON (it was text/html, so a name holding markup was served as
+    // an HTML page), as BrainBox does
+    it('?var=name returns the project name, as JSON', async function () {
       const res = await get(`/project/json/${publicProject.shortname}?var=name`);
       assert.equal(res.status, 200);
-      assert.equal(res.text, publicProject.name);
+      assert.match(res.headers['content-type'], /^application\/json/);
+      assert.equal(JSON.parse(res.text), publicProject.name);
       await assertStillServing();
     }).timeout(U.shortTimeout);
 
     it('?var=files/list/0/name follows a nested path', async function () {
       const res = await get(`/project/json/${publicProject.shortname}?var=files/list/0/name`);
       assert.equal(res.status, 200);
-      assert.equal(res.text, 'Cat');
+      assert.equal(JSON.parse(res.text), 'Cat');
     }).timeout(U.shortTimeout);
 
     it('a ?var= path that does not exist answers 500 JSON', async function () {
