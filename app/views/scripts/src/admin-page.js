@@ -1,9 +1,10 @@
 /* global loggedUser */
-// Admin page (A1). Same structure as BrainBox view/brainbox/src/pages/admin-page.js.
+// Admin page (A1, A2). Same structure as BrainBox view/brainbox/src/pages/admin-page.js.
 import 'nwl-components/dist/style.css';
 import { Button, Footer, Header, Table, Wrapper } from 'nwl-components';
 import { createApp, ref } from 'vue';
 import config from './nwl-components-config';
+import { useInvalidProjects } from './admin-projects';
 
 const PAGE_SIZE = 50;
 
@@ -197,7 +198,8 @@ const AdminPage = {
       keyOf,
       viewerLink,
       formatDate,
-      targetOf
+      targetOf,
+      ...useInvalidProjects({ fetchJSON, postJSON })
     };
   },
   compilerOptions: {

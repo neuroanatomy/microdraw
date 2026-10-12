@@ -102,6 +102,58 @@
         </Table>
       </template>
     </section>
+    <section id="invalid-projects">
+      <h2>Projects that don't validate</h2>
+      <p class="help">
+        Stored projects that the validation of project saves would flag, as
+        <code>scripts/check-projects.js</code> lists them. <b>Remove blank rows</b> removes files with
+        no source (even if they have a name), collaborators with no username and annotation layers
+        with no name and no values. <b>Name unnamed layers</b> gives a name to layers that have values
+        but no name. Both refuse a project changed since this list was loaded, and keep the previous
+        version: <b>Restore</b> puts it back. Shortnames and users that don't exist are only listed:
+        fix them in the project's settings.
+      </p>
+      <p v-if="projectsError" class="error">[[projectsError]]</p>
+      <p v-if="projectsResult" class="result">
+        [[projectsResult.text]]
+        <Button v-if="projectsResult.restore" class="restore" @click="restoreProject(projectsResult)">Restore</Button>
+      </p>
+      <p v-if="projectsSummary" class="summary">
+        [[projectsSummary.invalid]] of [[projectsSummary.total]] projects have problems;
+        [[projectsSummary.refused]] cannot be saved again unchanged.
+        <Button :disabled="projectsLoading" @click="loadProjects()">[[projectsLoading ? 'Loading…' : 'Reload']]</Button>
+      </p>
+      <div v-for="p in projects" :key="p.shortname" class="project" :data-shortname="p.shortname">
+        <h3>
+          <code>[[p.shortname]]</code> [[p.name]] <span class="owner">owner: [[p.owner]]</span>
+          <a class="settings" :href="settingsLink(p)" target="_blank">Settings</a>
+        </h3>
+        <ul class="problems">
+          <li v-for="(q, i) in p.problems.slice(0, PROBLEMS_SHOWN)" :key="i" :class="'problem kind-' + q.kind.replace(' ', '-')">
+            <span class="tag">[[kindLabel[q.kind] ]]</span> [[q.message]]
+          </li>
+        </ul>
+        <details v-if="p.problems.length > PROBLEMS_SHOWN">
+          <summary>[[p.problems.length - PROBLEMS_SHOWN]] more</summary>
+          <ul class="problems">
+            <li v-for="(q, i) in p.problems.slice(PROBLEMS_SHOWN)" :key="i" :class="'problem kind-' + q.kind.replace(' ', '-')">
+              <span class="tag">[[kindLabel[q.kind] ]]</span> [[q.message]]
+            </li>
+          </ul>
+        </details>
+        <p class="fixes">
+          <Button v-if="blankCount(p) > 0" class="remove-blank" @click="removeBlankRows(p)">Remove blank rows ([[blankCount(p)]])</Button>
+        </p>
+        <form v-if="p.unnamedLayers.length > 0" class="name-layers" @submit.prevent="nameLayers(p)">
+          <p>Name unnamed layers:</p>
+          <label v-for="l in p.unnamedLayers" :key="l.index">
+            Layer [[l.index + 1]] ([[l.type]], values: <code>[[valuesText(l.values)]]</code>)
+            <input type="text" v-model="layerNames[p.shortname][l.index]" :data-index="l.index">
+          </label>
+          <Button class="do-name-layers">Name [[p.unnamedLayers.length]] layer(s)</Button>
+        </form>
+      </div>
+    </section>
   </main>
   <Footer/>
 </Wrapper>
@@ -188,6 +240,40 @@ button.danger {
 }
 code {
     font-size: 12px;
+}
+div.project {
+    border-top: 1px solid #555;
+    padding: 10px 0;
+}
+div.project p, div.project form {
+    text-align: left;
+}
+div.project h3 {
+    font-size: 13px;
+    margin: 0 0 6px;
+}
+div.project .owner {
+    color: #aaa;
+    font-weight: normal;
+    margin: 0 10px;
+}
+ul.problems {
+    margin: 4px 0;
+    padding-left: 20px;
+}
+.kind-blocking .tag {
+    background: #733;
+}
+.kind-warning .tag, .kind-shortname .tag, .kind-missing-user .tag {
+    color: #fc6;
+    border-color: #a83;
+}
+form.name-layers label {
+    display: block;
+    margin: 4px 0;
+}
+form.name-layers input {
+    margin-left: 6px;
 }
 </style>
 
