@@ -1,4 +1,8 @@
+const chai = require('chai');
+const chaiHttp = require('chai-http');
 const microdrawApp = require('../app/app');
+
+chai.use(chaiHttp);
 
 let appServer, db, wsServer;
 let serverPort = 3000;
@@ -111,6 +115,25 @@ const removeAnnotations = function (source) {
   const escaped = source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
   return db.get('annotations').remove({ fileID: new RegExp(`^${escaped}&slice=`) });
+};
+
+// Sign up a local user and wait until it is stored. NWL's /localSignup
+// answers before its insert has finished (auth/local.js does not wait for
+// addUser), so a login sent at once sometimes finds no user: that was the
+// "no session cookie" flake of permissions.spec (M3). Polls instead of a
+// fixed delay.
+const signUp = async (credentials) => {
+  await chai.request(serverOrigin()).post('/localSignup')
+    .send(credentials);
+  const deadline = Date.now() + shortTimeout;
+  /* eslint-disable no-await-in-loop -- polls until the user is stored */
+  while (!await db.get('users').findOne({ username: credentials.username })) {
+    if (Date.now() > deadline) {
+      throw new Error(`user ${credentials.username} was not stored after /localSignup`);
+    }
+    await delay(20);
+  }
+  /* eslint-enable no-await-in-loop */
 };
 
 const parseCookies = (str) => str
@@ -237,6 +260,7 @@ module.exports = {
   insertUser,
   removeUser,
   removeLocalUser,
+  signUp,
   insertProject,
   removeProject,
   removeAnnotations,

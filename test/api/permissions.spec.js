@@ -19,8 +19,8 @@ describe('TESTING PERMISSIONS (HTTP)', function () {
     await U.insertProject(U.privateProjectTest);
     // the collaborator the tests add: since M3 a project only names users that exist
     await U.insertUser({ username: 'foo', name: 'Foo' });
-    await agent.post('/localSignup')
-      .send(U.testingCredentials);
+    // waits until the user is stored (M3: logging in at once was flaky)
+    await U.signUp(U.testingCredentials);
     let res = await agent.post('/localLogin').redirects(0)
       .send(U.testingCredentials);
     expect(res).to.have.cookie('connect.sid');
