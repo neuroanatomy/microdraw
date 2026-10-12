@@ -186,10 +186,10 @@ describe('Validation of POST /project/json/:projectName (M3)', function () {
       await refused('m3anouser', project, /m3a-no-such-user/);
     }).timeout(U.shortTimeout);
 
-    it('a collaborator without a username or userID', async function () {
+    it('a collaborator with a different username and userID', async function () {
       const project = newProject('m3anoname');
-      project.collaborators.list.push({ name: 'Nobody', access: { collaborators: 'none', annotations: 'view', files: 'view' } });
-      await refused('m3anoname', project);
+      project.collaborators.list.push({ username: collaborator.username, userID: member.username, access: { collaborators: 'none', annotations: 'view', files: 'view' } });
+      await refused('m3anoname', project, /different/);
     }).timeout(U.shortTimeout);
 
     it('a new shortname that is not alphanumeric', async function () {
@@ -307,6 +307,128 @@ describe('Validation of POST /project/json/:projectName (M3)', function () {
         .send({ data: stored() });
       assert.equal(res.status, 401);
       isJSON(res);
+    }).timeout(U.shortTimeout);
+  });
+
+  // M3a2: 21 of the 76 production projects held rows that M3a refused, most of
+  // them blank rows left by the settings page's "+" button, so they could no
+  // longer be saved. Rows stored unchanged are accepted as they are; blank new
+  // rows are dropped; new or changed rows must be valid.
+  // eslint-disable-next-line max-statements
+  describe('stored rows and blank rows (M3a2)', function () {
+    const shortname = 'm3a2legacy';
+    const none = { collaborators: 'none', annotations: 'none', files: 'none' };
+    const legacy = () => ({
+      name: 'M3a2 legacy',
+      shortname,
+      url: '',
+      owner: member.username,
+      collaborators: { list: [anyone({ files: 'view' }), { username: '', name: '', access: none }] },
+      files: { list: [{ source: '/test_data/cat.json', name: 'cat' }, { source: '', name: '' }, { source: '', name: 'no source' }] },
+      annotations: { list: [{ type: 'text', name: null, values: null, display: true }, { type: 'vectorial', values: 'Set 1', display: true }] }
+    });
+    const save = (data) => agent.post(`/project/json/${shortname}`).send({ data });
+
+    beforeEach(async function () {
+      await U.removeProject(shortname);
+      await U.insertProject(legacy());
+    });
+
+    after(async function () {
+      await U.removeProject(shortname);
+    });
+
+    it('a stored project with an unnamed annotation, a file without source and a collaborator without username can be saved again unchanged', async function () {
+      const res = await save({ ...legacy(), name: 'saved again' });
+      assert.equal(res.status, 200, res.text);
+      const stored = await U.queryProject(shortname);
+      assert.equal(stored.name, 'saved again');
+      assert.lengthOf(stored.annotations.list, 2);
+      assert.lengthOf(stored.files.list, 3);
+      assert.lengthOf(stored.collaborators.list, 2);
+    }).timeout(U.shortTimeout);
+
+    it('stored rows are recognised whatever their position', async function () {
+      const project = legacy();
+      project.files.list.reverse();
+      project.annotations.list.reverse();
+      const res = await save(project);
+      assert.equal(res.status, 200, res.text);
+    }).timeout(U.shortTimeout);
+
+    // eslint-disable-next-line max-statements
+    it('blank new rows are dropped, not refused, and counted in the answer', async function () {
+      const project = legacy();
+      project.annotations.list.push({ type: 'text', name: '', values: '', display: true });
+      project.files.list.push({ source: '', name: '' });
+      project.collaborators.list.push({ username: '', name: '', access: none });
+      const res = await save(project);
+      assert.equal(res.status, 200, res.text);
+      assert.deepEqual(res.body.dropped, { files: 1, collaborators: 1, annotations: 1 });
+      assert.match(res.body.message, /Empty rows were not saved/);
+      const stored = await U.queryProject(shortname);
+      assert.lengthOf(stored.annotations.list, 2);
+      assert.lengthOf(stored.files.list, 3);
+      assert.lengthOf(stored.collaborators.list, 2);
+    }).timeout(U.shortTimeout);
+
+    it('a new annotation without a name is still refused', async function () {
+      const project = legacy();
+      project.annotations.list.push({ type: 'vectorial', name: '', values: 'Set 2', display: true });
+      const res = await save(project);
+      assert.equal(res.status, 400);
+      assert.match(res.body.message, /needs a name/);
+    }).timeout(U.shortTimeout);
+
+    // eslint-disable-next-line max-statements
+    it('a stored blank row changed into an invalid one is refused', async function () {
+      const project = legacy();
+      // eslint-disable-next-line no-script-url
+      project.files.list[1] = { source: 'javascript:alert(1)', name: '' };
+      let res = await save(project);
+      assert.equal(res.status, 400);
+      const other = legacy();
+      other.annotations.list[0] = { type: 'text', name: null, values: 'Set 1', display: true };
+      res = await save(other);
+      assert.equal(res.status, 400);
+      assert.equal((await U.queryProject(shortname)).name, 'M3a2 legacy');
+    }).timeout(U.shortTimeout);
+
+    // The settings page sends a file stored as a string s back as
+    // {source: s, name: <after the last '/'>}, and may send '' for null.
+    it('rows normalised by the settings page still count as stored', async function () {
+      const stored = legacy();
+      stored.files.list.push('http://m3a2.localhost/with space.dzi');
+      await U.removeProject(shortname);
+      await U.insertProject(stored);
+      const sent = legacy();
+      sent.files.list.push({ source: 'http://m3a2.localhost/with space.dzi', name: 'with space.dzi' });
+      sent.annotations.list[0] = { type: 'text', name: '', values: '', display: true };
+      const res = await save(sent);
+      assert.equal(res.status, 200, res.text);
+      assert.deepEqual(res.body.dropped, { files: 0, collaborators: 0, annotations: 0 });
+    }).timeout(U.shortTimeout);
+
+    it('a stored invalid string file cannot be changed into another invalid one', async function () {
+      const stored = legacy();
+      stored.files.list.push('http://m3a2.localhost/with space.dzi');
+      await U.removeProject(shortname);
+      await U.insertProject(stored);
+      const sent = legacy();
+      sent.files.list.push({ source: 'http://m3a2.localhost/other space.dzi', name: 'with space.dzi' });
+      const res = await save(sent);
+      assert.equal(res.status, 400);
+    }).timeout(U.shortTimeout);
+
+    it('a new project drops its blank rows', async function () {
+      const name = 'm3a2newblank';
+      created.push(name);
+      const project = newProject(name);
+      project.files.list.push({ source: '', name: '' });
+      const res = await agent.post(`/project/json/${name}`).send({ data: project });
+      assert.equal(res.status, 200, res.text);
+      assert.equal(res.body.dropped.files, 1);
+      assert.lengthOf((await U.queryProject(name)).files.list, 1);
     }).timeout(U.shortTimeout);
   });
 });

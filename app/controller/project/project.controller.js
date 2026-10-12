@@ -329,6 +329,15 @@ const keepListsWithoutEditRights = (newProject, oldProject, loggedUser) => {
   return ignored;
 };
 
+// The blank new rows that checkProject left out (M3a2), for the message
+const droppedMessage = (dropped) => {
+  const parts = Object.entries(dropped)
+    .filter(([, n]) => n > 0)
+    .map(([type, n]) => `${n} ${type}`);
+
+  return parts.length > 0 ? ` Empty rows were not saved (${parts.join(', ')}).` : '';
+};
+
 const sendError = (res, status, message) => res.status(status).json({ success: false, error: 'error', message });
 
 // eslint-disable-next-line max-statements
@@ -348,7 +357,7 @@ const postProjectUnsafe = async function (req, res) {
     return;
   }
 
-  const { project: newProject, error } = await checkProject({
+  const { project: newProject, dropped, error } = await checkProject({
     data: req.body.data,
     shortname,
     oldProject,
@@ -371,10 +380,11 @@ const postProjectUnsafe = async function (req, res) {
   if(ignoredChanges.length > 0) {
     successMessage += ` Some changes (on ${ignoredChanges.join(', ')}) were ignored due to a lack of permissions.`;
   }
+  successMessage += droppedMessage(dropped);
 
   try {
     const o = await req.appConfig.db.upsertProject(newProject);
-    res.json({success: true, response: o, message: successMessage});
+    res.json({success: true, response: o, message: successMessage, dropped});
   } catch (err) {
     console.log('ERROR: postProject', err);
     sendError(res, 500, 'The project could not be saved');

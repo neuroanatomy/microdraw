@@ -13,7 +13,7 @@
 
 const monk = require('monk');
 const _ = require('lodash');
-const { sanitize, structureError, collaboratorName, isAnyone } = require('../app/controller/project/project.validation');
+const { asFileObject, sanitize, storedRows, structureError, rowProblems, collaboratorName, isAnyone } = require('../app/controller/project/project.validation');
 
 const dbArg = process.argv.indexOf('--db');
 if (dbArg < 0 || !process.argv[dbArg + 1]) {
@@ -22,24 +22,32 @@ if (dbArg < 0 || !process.argv[dbArg + 1]) {
 }
 
 // The project as the settings page sends it back: nwl-components turns files
-// stored as plain strings into {source, name}.
+// stored as plain strings into {source, name} (asFileObject, as the server's
+// matching of stored rows does).
 const asSentBySettingsPage = (project) => {
   const files = project.files && Array.isArray(project.files.list) ?
-    { ...project.files, list: project.files.list.map((f) => (typeof f === 'string' ? { source: f, name: f.slice(f.lastIndexOf('/') + 1) } : f)) } :
+    { ...project.files, list: project.files.list.map(asFileObject) } :
     project.files;
 
   return { ..._.omit(project, ['_id', 'backup']), files };
 };
 
-// What re-saving the stored project unchanged would refuse, plus what the
-// sanitising would change and the users that do not exist (allowed for a
-// stored project, refused for a new one).
+// What re-saving the stored project unchanged would refuse, plus warnings:
+// rows that would be refused if they were new (stored rows are accepted
+// unchanged since M3a2), what the sanitising would change, and the users that
+// do not exist (allowed for a stored project, refused for a new one).
 // eslint-disable-next-line max-statements
 const report = (project, users) => {
   const problems = [];
-  const error = structureError(sanitize(asSentBySettingsPage(project)), { shortname: project.shortname, isNew: false });
+  // as the server does (M3a2): rows stored unchanged are accepted as they are
+  const sent = sanitize(asSentBySettingsPage(project));
+  const { stored } = storedRows(sent, project);
+  const error = structureError(sent, { shortname: project.shortname, isNew: false, stored });
   if (error) {
     problems.push(`refused: ${error}`);
+  }
+  for (const rowProblem of rowProblems(sanitize(asSentBySettingsPage(project)))) {
+    problems.push(`warning (stored row, accepted unchanged; refused if new or changed): ${rowProblem}`);
   }
   if (!_.isEqual(sanitize(project), project)) {
     problems.push('sanitising would change some strings (markup removed)');
@@ -73,7 +81,7 @@ const main = async () => {
         console.log(`${project.shortname} (owner ${project.owner}):\n  - ${problems.join('\n  - ')}`);
       }
     }
-    console.log(`\n${projects.length} projects, ${refused} could not be saved again unchanged.`);
+    console.log(`\n${projects.length} projects, ${refused} cannot be saved again unchanged.`);
   } finally {
     await db.close();
   }

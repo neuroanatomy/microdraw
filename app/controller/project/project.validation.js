@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- validation rules and their helpers; 2026-10-12 */
 /**
  * Validation and sanitising of the project documents sent to
  * POST /project/json/:projectName (M3, T002 step 1.4).
@@ -154,16 +155,18 @@ const annotationError = (a, i) => {
   if (!annotationTypes.includes(a.type)) {
     return `Annotation ${i + 1} has an invalid type (allowed: ${annotationTypes.join(', ')})`;
   }
-  if (typeof a.name !== 'string') {
+  if (!isNonEmptyString(a.name)) {
     return `Annotation ${i + 1} needs a name`;
   }
 
   return null;
 };
 
-const firstError = (list, check) => {
+// The first error among the rows of a list, skipping the rows in `skip`
+// (indexes of rows stored unchanged, see storedRows)
+const firstError = (list, check, skip = new Set()) => {
   for (let i = 0; i < list.length; i += 1) {
-    const error = check(list[i], i);
+    const error = skip.has(i) ? null : check(list[i], i);
     if (error) {
       return error;
     }
@@ -172,14 +175,101 @@ const firstError = (list, check) => {
   return null;
 };
 
+const isBlank = (v) => v === null || typeof v === 'undefined' || (typeof v === 'string' && v.trim() === '');
+
+// null, undefined and '' are the same value for the comparison below: the
+// settings page may send back '' for a stored null
+const text = (v) => (isBlank(v) ? '' : v);
+
+// A file as the nwl-components settings page sends it back: a file stored as
+// a plain string s becomes {source: s, name: <text after the last '/'>}
+// (ProjectService.transformProjectFiles)
+const asFileObject = (f) => {
+  if (typeof f !== 'string') {
+    return f;
+  }
+  const at = f.lastIndexOf('/');
+
+  return { source: f, name: at > 0 ? f.substring(at + 1) : '' };
+};
+
+// What a row is compared on, to tell whether it is stored unchanged: the
+// fields the settings page shows (it adds a display name to collaborators),
+// normalised as the page normalises them, on both sides.
+const rowKey = {
+  files: (f) => {
+    const o = asFileObject(f);
+
+    return _.isPlainObject(o) ? { source: text(o.source), name: text(o.name) } : o;
+  },
+  collaborators: (c) => (_.isPlainObject(c) ? { username: text(c.username), userID: text(c.userID), access: c.access } : c),
+  annotations: (a) => (_.isPlainObject(a) ? { type: a.type, name: text(a.name), values: text(a.values) } : a)
+};
+
+// Rows left empty (e.g. by the settings page's "+" button)
+const isBlankRow = {
+  files: (f) => _.isPlainObject(f) && isBlank(f.source) && isBlank(f.name),
+  collaborators: (c) => _.isPlainObject(c) && isBlank(c.username) && isBlank(c.userID),
+  annotations: (a) => _.isPlainObject(a) && isBlank(a.name) && isBlank(a.values)
+};
+
+const listOf = (project, type) => ((project && _.isPlainObject(project[type]) && Array.isArray(project[type].list)) ? project[type].list : []);
+
+// storedRows for one list
+// eslint-disable-next-line max-statements
+const sortRows = (type, rows, oldRows) => {
+  const available = oldRows.map((row) => rowKey[type](sanitize(row)));
+  const kept = [];
+  const stored = new Set();
+  let dropped = 0;
+  for (const row of rows) {
+    const at = available.findIndex((key) => _.isEqual(key, rowKey[type](row)));
+    if (at >= 0) {
+      available.splice(at, 1);
+      stored.add(kept.length);
+      kept.push(row);
+    } else if (isBlankRow[type](row)) {
+      dropped += 1;
+    } else {
+      kept.push(row);
+    }
+  }
+
+  return { kept, stored, dropped };
+};
+
+/**
+ * Sort the rows of the project sent (M3a2, decisions D27): a row equal to a
+ * row of the stored project (compared on rowKey, each stored row matching at
+ * most one sent row, whatever their positions) is stored unchanged and is
+ * accepted as it is, even if it would not be valid as a new row; a new or
+ * changed row that is blank is dropped; the others are checked.
+ * @param {object} project The sanitised project sent (its lists are changed:
+ *   blank new rows removed)
+ * @param {object|undefined} oldProject The stored project
+ * @returns {object} { stored: {type: Set of indexes}, dropped: {type: count} }
+ */
+const storedRows = (project, oldProject) => {
+  const stored = {};
+  const dropped = {};
+  for (const type of listTypes) {
+    if (_.isPlainObject(project[type]) && Array.isArray(project[type].list)) {
+      ({ kept: project[type].list, stored: stored[type], dropped: dropped[type] } = sortRows(type, project[type].list, listOf(oldProject, type)));
+    }
+  }
+
+  return { stored, dropped };
+};
+
 /**
  * Synchronous checks of a sanitised project
  * @param {object} project The project
- * @param {object} params { shortname: the name in the URL, isNew }
+ * @param {object} params { shortname: the name in the URL, isNew, stored: for
+ *   each list, the indexes of the rows stored unchanged, which are not checked }
  * @returns {string|null} What is wrong, or null
  */
 // eslint-disable-next-line max-statements, complexity
-const structureError = (project, { shortname, isNew }) => {
+const structureError = (project, { shortname, isNew, stored = {} }) => {
   if (project.shortname !== shortname) {
     return 'The project shortname in the data differs from the one in the URL';
   }
@@ -197,9 +287,9 @@ const structureError = (project, { shortname, isNew }) => {
     }
   }
 
-  const error = firstError(project.files.list, fileError) ||
-    firstError(project.collaborators.list, collaboratorError) ||
-    firstError(project.annotations.list, annotationError);
+  const error = firstError(project.files.list, fileError, stored.files) ||
+    firstError(project.collaborators.list, collaboratorError, stored.collaborators) ||
+    firstError(project.annotations.list, annotationError, stored.annotations);
   if (error) {
     return error;
   }
@@ -230,14 +320,15 @@ const missingUsers = async (db, names) => {
  * @param {object} project The project sent
  * @param {object|undefined} oldProject The stored project
  * @param {string} owner The owner
+ * @param {Set<number>} stored Indexes of the collaborators stored unchanged
  * @returns {Array<string>} Usernames
  */
-const usersToCheck = (project, oldProject, owner) => {
+const usersToCheck = (project, oldProject, owner, stored = new Set()) => {
   const known = oldProject && oldProject.collaborators && Array.isArray(oldProject.collaborators.list) ?
     oldProject.collaborators.list.filter(_.isPlainObject).map(collaboratorName) :
     [];
   const names = project.collaborators.list
-    .filter((c) => !isAnyone(c))
+    .filter((c, i) => !stored.has(i) && !isAnyone(c))
     .map(collaboratorName)
     .filter((name) => !known.includes(name));
 
@@ -249,7 +340,8 @@ const usersToCheck = (project, oldProject, owner) => {
  * @param {object} params { data: req.body.data, shortname: the name in the URL,
  *   oldProject: the stored project or undefined, owner: the owner to keep or set,
  *   db: Monk database }
- * @returns {Promise<object>} { project } or { error } (a 400 answer)
+ * @returns {Promise<object>} { project, dropped: blank new rows removed, by
+ *   list } or { error } (a 400 answer)
  */
 // eslint-disable-next-line max-statements
 const checkProject = async ({ data, shortname, oldProject, owner, db }) => {
@@ -258,28 +350,53 @@ const checkProject = async ({ data, shortname, oldProject, owner, db }) => {
     return { error: 'Invalid project data' };
   }
   const project = _.omit(sanitize(parsed), serverFields);
-  const error = structureError(project, { shortname, isNew: _.isNil(oldProject) });
+  const { stored, dropped } = storedRows(project, oldProject);
+  const error = structureError(project, { shortname, isNew: _.isNil(oldProject), stored });
   if (error) {
     return { error };
   }
   // The owner is not set by the client: the stored one, or the creator.
   project.owner = owner;
 
-  const missing = await missingUsers(db, usersToCheck(project, oldProject, owner));
+  const missing = await missingUsers(db, usersToCheck(project, oldProject, owner, stored.collaborators));
   if (missing.length > 0) {
     return { error: `Unknown users: ${missing.join(', ')}` };
   }
 
-  return { project };
+  return { project, dropped };
+};
+
+/**
+ * Every problem of the rows of a project, as if they were all new (for
+ * scripts/check-projects.js: stored rows are accepted unchanged on save)
+ * @param {object} project A sanitised project
+ * @returns {Array<string>} The problems
+ */
+const rowProblems = (project) => {
+  const problems = [];
+  const checks = { files: fileError, collaborators: collaboratorError, annotations: annotationError };
+  for (const type of listTypes) {
+    listOf(project, type).forEach((row, i) => {
+      const error = checks[type](row, i);
+      if (error) {
+        problems.push(error);
+      }
+    });
+  }
+
+  return problems;
 };
 
 module.exports = {
   annotationTypes,
+  asFileObject,
   collaboratorName,
   checkProject,
   isAnyone,
   parseProjectData,
   plainText,
+  rowProblems,
   sanitize,
+  storedRows,
   structureError
 };
