@@ -320,9 +320,10 @@ describe('controller/api/index.js', () => {
             authenticatedUser = null;
           });
 
-          it('should return 403', () => {
+          // 401 since H3b: no logged-out saves, checked before the project
+          it('should return 401', () => {
             const { status } = res;
-            expect(status).to.equal(403);
+            expect(status).to.equal(401);
           });
         });
 

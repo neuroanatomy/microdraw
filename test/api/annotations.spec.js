@@ -11,6 +11,8 @@ const U = require('../mocha.test.util');
 describe('Annotation upload and load_last', function () {
   const credentials = { username: 'api-annotations-user', password: 'annotations-password' };
   const source = 'api-roundtrip-source';
+  // annotations are only saved inside a project (H3b)
+  const project = U.createPublicAnnotationProject('apiannotationsroundtrip');
   const region = {
     annotation: {
       name: 'round trip region',
@@ -19,11 +21,12 @@ describe('Annotation upload and load_last', function () {
   };
   const upload = (token) => chai.request(U.serverURL)
     .post('/api/upload')
-    .query(Object.assign({ action: 'save', source, slice: 0, project: '' }, token ? { token } : {}))
+    .query(Object.assign({ action: 'save', source, slice: 0, project: project.shortname }, token ? { token } : {}))
     .attach('data', Buffer.from(JSON.stringify([region])), 'annotation.json');
   let token;
 
   before(async function () {
+    await U.insertProject(project);
     await chai.request(U.serverURL).post('/localSignup')
       .send(credentials);
     const agent = chai.request.agent(U.getServer());
@@ -35,6 +38,7 @@ describe('Annotation upload and load_last', function () {
 
   after(async function () {
     await U.removeAnnotations(source);
+    await U.removeProject(project.shortname);
     await U.removeLocalUser(credentials.username);
   });
 
@@ -42,7 +46,7 @@ describe('Annotation upload and load_last', function () {
     const res = await upload();
     assert.equal(res.status, 401);
     const load = await chai.request(U.serverURL).get('/api')
-      .query({ action: 'load_last', source, slice: 0 });
+      .query({ action: 'load_last', source, slice: 0, project: project.shortname });
     assert.lengthOf(load.body, 0, 'the refused upload was saved anyway');
   }).timeout(U.shortTimeout);
 
@@ -52,7 +56,7 @@ describe('Annotation upload and load_last', function () {
     assert.equal(res.status, 200);
 
     const load = await chai.request(U.serverURL).get('/api')
-      .query({ action: 'load_last', source, slice: 0 });
+      .query({ action: 'load_last', source, slice: 0, project: project.shortname });
     assert.equal(load.status, 200);
     assert.lengthOf(load.body, 1);
     const [saved] = load.body;

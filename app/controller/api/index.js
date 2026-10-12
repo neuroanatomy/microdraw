@@ -179,13 +179,20 @@ const updateAnnotation = async (req, {
   await req.app.db.insertAnnotations(arrayTobeSaved);
 };
 
+// H3b: annotations are only saved inside a project. A save, append or upload
+// with an empty or missing project answers 400: the request lacks a required
+// parameter, and no user may make it (403 would suggest another user could).
+// Before H3b such saves were stored with project '', and each one marked every
+// user's '' annotations on the image as backups. Those stay readable (GET /api).
+const NO_PROJECT_ERROR = 'Saving annotations requires a project: open the image from a project you can edit, '
+  + 'or create one at /project/new';
+
 // Why `username` may not edit annotations in `project`: {status, error}, or
-// undefined when it may. An empty project name ('') belongs to no project and
-// is not checked. Shared by the editor save (POST /api) and the API upload
-// (POST /api/upload, H2a).
+// undefined when it may. Shared by the editor save (POST /api) and the API
+// upload (POST /api/upload, H2a).
 const annotationEditRefusal = async (req, project, username) => {
   if (!project) {
-    return;
+    return {status: 400, error: NO_PROJECT_ERROR};
   }
   const result = await req.app.db.queryProject({shortname: project});
   if (!result) {
@@ -203,8 +210,16 @@ const annotationEditRefusal = async (req, project, username) => {
 const saveFromGUI = async function (req, res) {
   const { Hash, annotation } = req.body;
 
+  // H3b (maintainer, 2026-10-12): no logged-out saves, even in a project where
+  // 'anyone' may edit. Checked before the project. A valid token sets req.user.
+  if (!req.user || !req.user.username) {
+    res.status(401).json({error: 'Log in to save annotations'});
+
+    return;
+  }
+
   // current user
-  const username = (req.user && req.user.username) || 'anyone';
+  const { username } = req.user;
   console.log(`current user: ${username}`);
 
   // project name
@@ -213,8 +228,8 @@ const saveFromGUI = async function (req, res) {
 
   const refusal = await annotationEditRefusal(req, project, username);
   if (refusal) {
-    if (refusal.status === 404) {
-      res.status(404).json({error: refusal.error});
+    if (refusal.status === 404 || refusal.status === 400) {
+      res.status(refusal.status).json({error: refusal.error});
     } else {
       res.status(refusal.status).send(refusal.error);
     }
@@ -323,8 +338,8 @@ const saveFromAPIUnsafe = async function (req, res) {
   }
 
   // validate and submit
-  if (typeof project === 'undefined') {
-    res.status(401).json({msg: "Invalid project"});
+  if (!project) {
+    res.status(400).json({msg: NO_PROJECT_ERROR});
   } else if(!jsonIsValid(json).valid) {
     res.status(401).json({
       msg: `Invalid annotation file: ${jsonIsValid(json).msg}`

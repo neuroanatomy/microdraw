@@ -101,8 +101,8 @@ describe('Single requests that must not crash the server (M2)', function () {
   });
 
   describe('POST /api (save from the GUI)', function () {
-    it('a missing project answers 404 (anonymous)', async function () {
-      const res = await chai.request(U.serverURL).post('/api')
+    it('a missing project answers 404 (logged in; anonymous saves are refused first, H3b)', async function () {
+      const res = await agent.post('/api')
         .send({
           action: 'save',
           source,
@@ -119,7 +119,7 @@ describe('Single requests that must not crash the server (M2)', function () {
 
   describe('POST /api/upload (save from the API)', function () {
     const upload = () => chai.request(U.serverURL).post('/api/upload')
-      .query({ action: 'save', source, slice: 0, project: '', token });
+      .query({ action: 'save', source, slice: 0, project: ownedProject.shortname, token });
 
     it('an upload without a file answers 400', async function () {
       const res = await upload().timeout(timeout);
