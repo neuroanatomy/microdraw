@@ -9,6 +9,7 @@ const _ = require('lodash');
 const { AccessControlService, AccessLevel, AccessType } = require('neuroweblab');
 const { checkProject, collaboratorName } = require('./project.validation');
 const { withProjectLock } = require('../projectLock');
+const { visibleProjectParts } = require('./visibleProject');
 const { catchErrors } = require('../catchErrors');
 const { scriptJSON, escapeHTML } = require('../escape');
 const validator = function (req, res, next) {
@@ -51,9 +52,10 @@ const project = async function (req, res) {
 
         return;
       }
+      // only what the visitor may see goes into the page (M3)
       const context = {
         projectShortname: json.shortname,
-        projectInfo: scriptJSON(json),
+        projectInfo: scriptJSON(visibleProjectParts(json, loggedUser)),
         login
       };
       res.render('project', context);
@@ -221,13 +223,7 @@ const apiProjectUnsafe = async function (req, res) {
     return;
   }
 
-  if (!AccessControlService.canViewCollaborators(json, loggedUser)) {
-    json.collaborators.list = json.collaborators.list.filter((collaborator) => collaborator.username === 'anyone');
-  }
-
-  if (!AccessControlService.canViewAnnotations(json, loggedUser)) {
-    json.annotations.list = [];
-  }
+  json = visibleProjectParts(json, loggedUser);
 
   if (req.query.var) {
     let i;

@@ -4,6 +4,7 @@
 const dateFormat = require('dateformat');
 const { AccessControlService } = require('neuroweblab');
 const { scriptJSON } = require('../escape');
+const { visibleProjectParts } = require('../project/visibleProject');
 //const checkAccess = require('../checkAccess/checkAccess.js');
 //const dataSlices = require('../dataSlices/dataSlices.js');
 
@@ -181,20 +182,6 @@ const api_userAtlas = function (req, res) {
         res.send({success: false, list: []});
     });
     */
-};
-
-// A project as GET /project/json/:name shows it to loggedUser: collaborators
-// other than 'anyone' and the annotations list are hidden unless loggedUser
-// may view them.
-const visibleProjectParts = (project, loggedUser) => {
-  if (!AccessControlService.canViewCollaborators(project, loggedUser)) {
-    project.collaborators.list = project.collaborators.list.filter((collaborator) => collaborator.username === 'anyone');
-  }
-  if (!AccessControlService.canViewAnnotations(project, loggedUser)) {
-    project.annotations.list = [];
-  }
-
-  return project;
 };
 
 /**

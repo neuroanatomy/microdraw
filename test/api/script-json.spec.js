@@ -38,6 +38,8 @@ describe('Escaping user-set names in pages (H2b)', function () {
   describe('server-rendered pages', function () {
     const project = U.createProjectWithPermission('h2bscriptproject', {});
     project.collaborators.list[0].access.files = 'view';
+    // since M3 the page only holds the layers the visitor may view
+    project.collaborators.list[0].access.annotations = 'view';
     project.name = SCRIPT_NAME;
     project.annotations.list = [{ type: 'text', name: SCRIPT_NAME, values: null }];
     const user = { username: 'h2b-script-user', name: SCRIPT_NAME, joined: '2026-10-12T00:00:00.000Z' };
