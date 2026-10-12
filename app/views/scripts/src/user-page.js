@@ -8,13 +8,9 @@ const PageContents = {
   template: '#template',
   setup() {
     const projects = ref([]);
-    const atlas = ref([]);
-    const files = ref([]);
 
     return {
       projects,
-      atlas,
-      files,
       userInfo
     };
   },
@@ -26,23 +22,8 @@ const PageContents = {
       }
     };
 
-    const fetchAtlas = async () => {
-      const res = await (await fetch(`/user/json/${userInfo.username}/atlas?start=${this.atlas.length}&length=100`)).json();
-      if (res.successful & (res.list.length > 0)) {
-        this.atlas.push(...res.list);
-      }
-    };
-
-    const fetchFiles = async () => {
-      const res = await (await fetch(`/user/json/${userInfo.username}/files?start=${this.files.length}&length=100`)).json();
-      if (res.success & (res.list.length > 0)) {
-        this.files.push(...res.list);
-      }
-    };
-
+    // The Datasets and Atlas tabs (and their fetches) come back with stage 3.
     fetchProjects();
-    fetchAtlas();
-    fetchFiles();
   },
   compilerOptions: {
     delimiters: ['[[', ']]']

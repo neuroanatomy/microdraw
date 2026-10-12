@@ -131,14 +131,10 @@ const api_userFiles = function (req, res) {
   const length = parseInt(req.query.length);
 
   console.log('userName:', userName, 'start:', start, 'length:', length);
+  // Not implemented yet (T002 stage 3.3, 3.4): an empty list, not fake rows.
   res.send({
-    success:true,
-    message:'WARNING: THIS FUNCTION IS NOT YET IMPLEMENTED',
-    list: [
-      {name: 'test1', dimensions: '3000x2000x200', included: 'yes'},
-      {name: 'test2', dimensions: '4000x3000x300', included: 'yes'},
-      {name: 'test3', dimensions: '5000x4000x400', included: 'yes'}
-    ]
+    success: true,
+    list: []
   });
 
   /*
@@ -168,13 +164,10 @@ const api_userAtlas = function (req, res) {
   const length = parseInt(req.query.length);
 
   console.log('userName:', userName, 'start:', start, 'length:', length);
+  // Not implemented yet (T002 stage 3.4): an empty list, not fake rows.
   res.send({
     successful: true,
-    message: "WARNING: THIS FUNCTIONALITY IS NOT YET IMPLEMENTED",
-    list: [
-      {parent: 'Test 1', name: 'test 1', project: 'testproject1', lastModified: (new Date()).toJSON()},
-      {parent: 'Test 2', name: 'test 2', project: 'testproject2', lastModified: (new Date()).toJSON()}
-    ]
+    list: []
   });
 
   /*
