@@ -1,8 +1,9 @@
 const { isAdmin, requestUsername } = require('./admins');
 const annotations = require('./admin.annotations');
+const { scriptJSON } = require('../escape');
 
 // Follows BrainBox controller/admin/admin.controller.js (requireAdmin,
-// the JSON handlers), so that the two can be merged later.
+// adminPage, the JSON handlers), so that the two can be merged later.
 
 /**
  * Let through only admins (logged in, or authenticated by a token)
@@ -21,6 +22,35 @@ const requireAdmin = (req, res, next) => {
   }
 
   next();
+};
+
+/**
+ * Render the admin page
+ * @param {object} req Request object
+ * @param {object} res Response object
+ * @returns {void}
+ */
+const adminPage = (req, res) => {
+  const username = requestUsername(req);
+  if (!username) {
+    req.session.returnTo = req.originalUrl;
+    res.status(401).render('askForLogin', {
+      title: 'MicroDraw: Admin',
+      functionality: 'use the admin tools',
+      login: '<a href=\'/auth/github\'>Log in with GitHub</a>'
+    });
+
+    return;
+  }
+  if (!isAdmin(username)) {
+    res.status(403).render('error', { message: 'Admins only' });
+
+    return;
+  }
+  res.render('admin', {
+    title: 'MicroDraw: Admin',
+    loggedUser: scriptJSON({ username })
+  });
 };
 
 const serverError = (res, err) => {
@@ -151,6 +181,7 @@ const assignOrphans = (req, res) => {
 
 module.exports = {
   requireAdmin,
+  adminPage,
   getOrphans,
   removeOrphans,
   restoreOrphans,

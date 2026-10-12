@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    {{> partials/header }}
+    <link rel="stylesheet" type="text/css" href="/css/ui.css" />
+    <link href='/lib/roboto/roboto.css' rel='stylesheet' type='text/css'>
+</head>
+
+<body>
+
+<div id="app"></div>
+<script type="text/html" id="template">
+<Wrapper>
+  <Header>
+    <span class="title">Admin</span>
+  </Header>
+  <main>
+    <section id="orphans">
+      <h2>Orphan annotations</h2>
+      <p class="help">
+        Annotations whose project is empty or missing (saved outside a project, before
+        saving required one), or names a project that does not exist (any more). They are
+        grouped by image, slice, author and the project they carry. <b>Delete</b> marks them
+        as backups, like an older version: nothing is erased, and it can be undone.
+        <b>Assign</b> moves them into a project.
+      </p>
+      <form class="toolbar" @submit.prevent="search()">
+        <input v-model="sourceFilter" type="text" placeholder="Only this image (source URL), or leave empty for all">
+        <Button :disabled="loading">[[loading ? 'Searching…' : 'Search']]</Button>
+      </form>
+      <p v-if="error" class="error">[[error]]</p>
+      <p v-if="result" class="result">
+        [[result.text]]
+        <Button v-if="result.undo" class="undo" @click="undo(result.undo)">Undo</Button>
+      </p>
+      <p v-if="!loading && loaded && total === 0" class="none">No orphan annotations found.</p>
+      <template v-if="total > 0">
+        <p class="paging">
+          [[skip + 1]]–[[skip + list.length]] of [[total]] groups
+          <Button :disabled="skip === 0 || loading" @click="page(-1)">Previous</Button>
+          <Button :disabled="skip + list.length >= total || loading" @click="page(1)">Next</Button>
+        </p>
+        <Table id="orphan-list">
+          <thead>
+            <tr><th>Image</th><th>Slice</th><th>Author</th><th>Project</th><th>Regions</th><th>Last modified (UTC)</th><th></th></tr>
+          </thead>
+          <tbody>
+            <template v-for="g in list" :key="keyOf(g)">
+              <tr class="orphan" :data-key="keyOf(g)">
+                <td class="source"><a :href="viewerLink(g)" target="_blank">[[g.source]]</a></td>
+                <td class="slice">[[g.slice]]</td>
+                <td class="user">[[g.user === null ? '(none)' : g.user]]</td>
+                <td class="project">
+                  <span v-if="g.reason === 'none'">(none)</span>
+                  <span v-else><code>[[g.project]]</code> <span class="tag">does not exist</span></span>
+                </td>
+                <td class="regions">[[g.regions]]</td>
+                <td class="modified">[[formatDate(g.modified)]]</td>
+                <td class="actions">
+                  <Button class="assign" @click="toggleAssign(g)">Assign…</Button>
+                  <Button className="danger" class="delete" @click="remove(g)">Delete</Button>
+                </td>
+              </tr>
+              <tr v-if="assigning && keyOf(assigning.group) === keyOf(g)" class="details">
+                <td colspan="7">
+                  <p v-if="assigning.loading">Looking for projects that list this image…</p>
+                  <template v-else>
+                    <p v-if="assigning.candidates.length === 0" class="help">No project lists this image.</p>
+                    <p v-else>Projects that list this image:</p>
+                    <ul class="candidates">
+                      <li v-for="p in assigning.candidates" :key="p.shortname">
+                        <label>
+                          <input type="radio" name="target" :value="p.shortname" v-model="assigning.target" @change="assigning.other = ''">
+                          <code>[[p.shortname]]</code> [[p.name]]
+                          <span v-if="p.existing" class="warning">
+                            already has [[p.existing]] region(s) on this image<span v-if="p.existingByUser">, [[p.existingByUser]] by [[g.user]]</span>: both are kept
+                          </span>
+                        </label>
+                      </li>
+                      <li>
+                        <label>
+                          <input type="radio" name="target" value="" v-model="assigning.target">
+                          Another project:
+                        </label>
+                        <input v-model="assigning.other" class="other" type="text" placeholder="project shortname" @focus="assigning.target = ''">
+                        <label><input type="checkbox" v-model="assigning.addImage" class="add-image"> add the image to its files</label>
+                      </li>
+                    </ul>
+                    <p class="help">
+                      Annotations that the project already has on this image are kept: the two sets are
+                      separate regions, and the viewer shows both. Assign when nobody has the image open
+                      in that project: a save from an open page would mark the assigned regions as backups.
+                    </p>
+                    <Button class="do-assign" :disabled="!targetOf(assigning)" @click="assign()">Assign [[g.regions]] region(s) to [[targetOf(assigning) || '…']]</Button>
+                    <Button @click="assigning = null">Cancel</Button>
+                  </template>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </Table>
+      </template>
+    </section>
+  </main>
+  <Footer/>
+</Wrapper>
+</script>
+<style>
+main {
+    padding: 0 20px;
+}
+section {
+    background: #333;
+    padding: 20px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+    text-align: left;
+}
+section h2 {
+    font-size: 14px;
+    margin: 0 0 10px;
+}
+section a {
+    color: #fff;
+}
+section table {
+    margin-left: 0;
+    margin-top: 10px;
+    table-layout: auto;
+}
+section td {
+    padding: 2px 6px;
+}
+td.source {
+    word-break: break-all;
+}
+td.actions {
+    text-align: right;
+    white-space: nowrap;
+}
+tr.details td {
+    background: #2a2a2a;
+}
+ul.candidates {
+    list-style: none;
+    padding-left: 0;
+}
+ul.candidates li {
+    margin: 6px 0;
+}
+.toolbar {
+    display: flex;
+    gap: 5px;
+}
+input[type=text] {
+    color: #fff;
+    background: #222;
+    font: inherit;
+    padding: 6px;
+    border: 1px solid #777;
+    border-radius: 3px;
+}
+.toolbar input[type=text] {
+    flex: 1;
+}
+button.danger {
+    border-color: #c55;
+    color: #f99;
+}
+.help {
+    color: #aaa;
+}
+.error, .tag {
+    color: #f77;
+}
+.warning {
+    color: #fc6;
+}
+.result {
+    color: #8d8;
+}
+.tag {
+    font-size: 11px;
+    border: 1px solid #c55;
+    border-radius: 3px;
+    padding: 0 3px;
+}
+code {
+    font-size: 12px;
+}
+</style>
+
+<script>
+const loggedUser={{{loggedUser}}};
+</script>
+<script src="/js/pages/admin-page.js"></script>
+
+</body>
+</html>
