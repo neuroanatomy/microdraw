@@ -20,7 +20,7 @@ const buildFileID = function ({ source, slice }) {
 // API routes
 
 // eslint-disable-next-line max-statements
-router.get('/', async function (req, res) {
+const getAnnotationsUnsafe = async function (req, res) {
   console.warn("call to GET api");
   console.warn(req.query);
 
@@ -42,6 +42,12 @@ router.get('/', async function (req, res) {
                     && result.collaborators.list
                     && result.collaborators.list.map((u) => u.username) || [];
     console.log(`project owner: ${owner}, users: ${users}`);
+
+    if (!result) {
+      res.status(404).json({error: 'Project not found'});
+
+      return;
+    }
 
     // check if user has view permission
     if(!AccessControlService.canViewAnnotations(result, username)) {
@@ -65,6 +71,19 @@ router.get('/', async function (req, res) {
   console.log(`found ${annotations.length} annotations`);
 
   res.status(200).send(annotations);
+};
+
+// Any error in getAnnotationsUnsafe answers 500 instead of becoming an
+// unhandled rejection, which would end the process.
+router.get('/', async function (req, res) {
+  try {
+    await getAnnotationsUnsafe(req, res);
+  } catch (err) {
+    console.log('ERROR:', err);
+    if (!res.headersSent) {
+      res.status(500).send({err: 'Server error'});
+    }
+  }
 });
 
 // eslint-disable-next-line max-statements

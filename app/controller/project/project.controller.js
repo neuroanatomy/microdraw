@@ -181,9 +181,9 @@ const projectNew = function (req, res) {
 };
 
 // eslint-disable-next-line max-statements -- existing handler, not refactored in a lint-only change; 2026-10-11
-const apiProject = async function (req, res) {
+const apiProjectUnsafe = async function (req, res) {
   console.log("GET project", req.params);
-  const json = await req.appConfig.db.queryProject({shortname: req.params.projectName, backup: {$exists: false}});
+  let json = await req.appConfig.db.queryProject({shortname: req.params.projectName, backup: {$exists: false}});
   if (_.isNil(json)) {
     res.status(404).json({error: 'Project not found'});
 
@@ -216,12 +216,25 @@ const apiProject = async function (req, res) {
     const arr = req.query.var.split('/');
     for (i in arr) {
       if({}.hasOwnProperty.call(arr, i)) {
-        // eslint-disable-next-line no-const-assign -- known bug, fixed in M2 (catch-up plan), 2026-10-11
         json = json[arr[i]];
       }
     }
   }
   res.send(json);
+};
+
+// Any error in apiProjectUnsafe (a db failure, a ?var= path that does not
+// exist) answers 500 instead of becoming an unhandled rejection, which would
+// end the process.
+const apiProject = async function (req, res) {
+  try {
+    await apiProjectUnsafe(req, res);
+  } catch (err) {
+    console.log('ERROR:', err);
+    if (!res.headersSent) {
+      res.status(500).json({error: 'Server error'});
+    }
+  }
 };
 
 const apiProjectAll = function (req, res) {

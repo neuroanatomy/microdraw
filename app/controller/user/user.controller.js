@@ -22,6 +22,22 @@ const validator = function (req, res, next) {
   next();
 };
 
+// Fields of a user document that the public user routes may expose
+// (GET /user/json/:userName and the userInfo of GET /user/:userName).
+// Never passhash, tokens, or anything else stored on the user.
+const publicUserFields = ['username', 'name', 'avatarURL', 'url', 'joined'];
+
+const publicUser = (doc) => {
+  const pub = {};
+  for (const field of publicUserFields) {
+    if (typeof doc[field] !== 'undefined') {
+      pub[field] = doc[field];
+    }
+  }
+
+  return pub;
+};
+
 const user = function (req, res) {
   const username = req.params.userName;
 
@@ -37,7 +53,7 @@ const user = function (req, res) {
           joined: dateFormat(json.joined, 'dddd d mmm yyyy, HH:MM'),
           avatar: json.avatarURL,
           title: json.name,
-          userInfo: JSON.stringify(json),
+          userInfo: JSON.stringify(publicUser(json)),
           tab: req.query.tab || 'data',
           loggedUser: JSON.stringify(req.user || null)
         };
@@ -54,8 +70,9 @@ const user = function (req, res) {
 
 const api_user = function (req, res) {
   req.appConfig.db.queryUser({username: req.params.userName, backup: {$exists: false}})
-    .then((json) => {
-      if (json) {
+    .then((doc) => {
+      if (doc) {
+        let json = publicUser(doc);
         if (req.query.var) {
           let i;
           const arr = req.query.var.split('/');
@@ -66,6 +83,14 @@ const api_user = function (req, res) {
         res.send(json);
       } else {
         res.send();
+      }
+    })
+    .catch((err) => {
+      if (err && err.message === 'error find one user') {
+        res.status(404).send({error: 'User not found'});
+      } else {
+        console.log('ERROR:', err);
+        res.status(500).send({error: 'Server error'});
       }
     });
 };
