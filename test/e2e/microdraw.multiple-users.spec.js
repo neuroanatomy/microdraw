@@ -8,7 +8,6 @@ const U = require('../mocha.test.util');
 const chai = require('chai');
 const {assert} = chai;
 
-const { launchBrowser } = require('./browser');
 const H = require('./helpers');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
@@ -18,19 +17,19 @@ const shadowclick = async function (sel, testPage) {
   await handle.click();
 };
 
-let browser;
+let context;
 let page1, page2;
 let res;
 
 // eslint-disable-next-line max-statements
 describe('Editing tools: multiple users drawing on the same dataset', () => {
   before(async () => {
-    browser = await launchBrowser();
+    context = await H.newContext();
   });
 
   describe('simultaneously opening the same data set', () => {
     it('opens data page on browser 1', async () => {
-      page1 = await browser.newPage();
+      page1 = await context.newPage();
       await page1.setViewport({width: U.width, height: U.height});
       await H.openData(page1, U.url('/data?source=/test_data/cat.json&slice=0'));
       await H.settleFrames(page1);
@@ -44,11 +43,11 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       assert(res.sliceIndex === 0, 'Slice index is not 0');
       assert(res.regionsExists === true, 'No Regions object');
       assert(res.regionsLength === 0, `Regions.length is ${res.regionsLength} instead of 0`);
-    });
+    }).timeout(U.shortTimeout);
 
     // eslint-disable-next-line max-statements
     it('open data page on browser 2', async () => {
-      page2 = await browser.newPage();
+      page2 = await context.newPage();
       await page2.setViewport({width: U.width, height: U.height});
       await H.openData(page2, U.url('/data?source=/test_data/cat.json&slice=0'));
       await shadowclick(UI.NEXT, page2);
@@ -64,7 +63,7 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       assert(res.sliceIndex === 1, 'Slice index is not 1');
       assert(res.regionsExists === true, 'No Regions object');
       assert(res.regionsLength === 0, `Regions.length is ${res.regionsLength} instead of 0`);
-    });
+    }).timeout(U.shortTimeout);
   });
 
   describe('simultaneously drawing on different slices', () => {
@@ -90,7 +89,7 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       assert(res.regionsExists === true, 'No Regions object');
       assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
       assert(res.pathSegments === 3, `Path has ${res.pathSegments} segments instead of 3`);
-    });
+    }).timeout(U.mediumTimeout);
 
     // eslint-disable-next-line max-statements
     it('draw square in slice 2, browser 2, and save', async () => {
@@ -115,7 +114,7 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       assert(res.regionsExists === true, 'No Regions object');
       assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
       assert(res.pathSegments === 4, `Path has ${res.pathSegments} segments instead of 4`);
-    });
+    }).timeout(U.mediumTimeout);
 
     it('show triangle in slice 1 when browser 2 moves to slice 1', async () => {
       await shadowclick(UI.PREVIOUS, page2);
@@ -134,7 +133,7 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       assert(res.regionsExists === true, 'No Regions object');
       assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
       assert(res.pathSegments === 3, `Path has ${res.pathSegments} segments instead of 3`);
-    });
+    }).timeout(U.shortTimeout);
 
     it('show square in slice 2 when browser 1 moves to slice 2', async () => {
       await page1.bringToFront();
@@ -154,7 +153,7 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       assert(res.regionsExists === true, 'No Regions object');
       assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
       assert(res.pathSegments === 4, `Path has ${res.pathSegments} segments instead of 4`);
-    });
+    }).timeout(U.shortTimeout);
   });
 
   describe('simultaneously deleting', () => {
@@ -194,7 +193,7 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       assert(res.sliceIndex === 0, 'Slice index is not 0');
       assert(res.regionsExists === true, 'No Regions object');
       assert(res.regionsLength === 0, `Regions.length is ${res.regionsLength} instead of 0`);
-    });
+    }).timeout(U.longTimeout);
 
     // eslint-disable-next-line max-statements
     it('delete square in browser 2, disappears from both browsers', async () => {
@@ -232,7 +231,7 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       assert(res.sliceIndex === 1, 'Slice index is not 1');
       assert(res.regionsExists === true, 'No Regions object');
       assert(res.regionsLength === 0, `Regions.length is ${res.regionsLength} instead of 0`);
-    });
+    }).timeout(U.longTimeout);
   });
 
   describe('simultaneously drawing on the same slices', () => {
@@ -270,7 +269,7 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       assert(res.regionsExists === true, 'No Regions object');
       assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
       assert(res.pathSegments === 3, `Path has ${res.pathSegments} segments instead of 3`);
-    });
+    }).timeout(U.mediumTimeout);
 
     // eslint-disable-next-line max-statements
     it('draw square in slice 1, browser 2, and save', async () => {
@@ -295,7 +294,7 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       assert(res.regionsExists === true, 'No Regions object');
       assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
       assert(res.pathSegments === 4, `Path has ${res.pathSegments} segments instead of 4`);
-    });
+    }).timeout(U.mediumTimeout);
 
     it('show triangle and square after reloading in browser 1', async () => {
       await page1.bringToFront();
@@ -314,7 +313,7 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       assert(res.regionsExists === true, 'No Regions object');
       assert(res.regionsLength === 2, `Regions.length is ${res.regionsLength} instead of 2`);
       assert(res.pathSegments === 7, `Path has ${res.pathSegments} segments instead of 7`);
-    });
+    }).timeout(U.shortTimeout);
 
     it('show triangle and square after reloading in browser 2', async () => {
       await page2.bringToFront();
@@ -333,7 +332,7 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       assert(res.regionsExists === true, 'No Regions object');
       assert(res.regionsLength === 2, `Regions.length is ${res.regionsLength} instead of 2`);
       assert(res.pathSegments === 7, `Path has ${res.pathSegments} segments instead of 7`);
-    });
+    }).timeout(U.shortTimeout);
 
     // eslint-disable-next-line max-statements
     it('delete triangle and square in browser 1, disappears from both browsers', async () => {
@@ -373,10 +372,10 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       assert(res.sliceIndex === 0, 'Slice index is not 0');
       assert(res.regionsExists === true, 'No Regions object');
       assert(res.regionsLength === 0, `Regions.length is ${res.regionsLength} instead of 0`);
-    });
+    }).timeout(U.longTimeout);
   });
 
   after(async () => {
-    await browser.close();
+    await context.close();
   });
 });

@@ -12,12 +12,11 @@ var {assert} = chai;
 //   console.warn(`[microdraw]: dependency error: puppeteer needs to be installed manually. - npm i puppeteer`);
 //   process.exit(1);
 // }
-const { launchBrowser } = require('./browser');
 const H = require('./helpers');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
-let browser;
+let context;
 let page;
 
 const shadowclick = async function (sel) {
@@ -27,12 +26,12 @@ const shadowclick = async function (sel) {
 
 describe('Editing tools: draw polygons and curves', () => {
   it('opens a data page', async () => {
-    browser = await launchBrowser();
-    page = await browser.newPage();
+    context = await H.newContext();
+    page = await context.newPage();
     await page.setViewport({width: U.width, height: U.height});
     await H.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
     await H.settleFrames(page);
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('draws a triangle', async () => {
@@ -53,7 +52,7 @@ describe('Editing tools: draw polygons and curves', () => {
     assert(res.regionsExists === true, 'No Regions object');
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
     assert(res.pathSegments === 3, `Path has ${res.pathSegments} segments instead of 3`);
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   it('does not keep the unsaved triangle upon reload', async () => {
     await page.goto( // reload
@@ -69,7 +68,7 @@ describe('Editing tools: draw polygons and curves', () => {
     assert(res.regionsExists === true, 'No Regions object');
     assert(res.regionsLength === 0, `Regions.length is ${res.regionsLength} instead of 0`);
 
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('draws and saves a triangle', async () => {
@@ -97,7 +96,7 @@ describe('Editing tools: draw polygons and curves', () => {
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
     assert(res.pathSegments === 3, `Path has ${res.pathSegments} segments instead of 3`);
 
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('selects, deletes and saves the triangle', async () => {
@@ -119,7 +118,7 @@ describe('Editing tools: draw polygons and curves', () => {
     assert(res.regionsExists === true, 'No Regions object');
     assert(res.regionsLength === 0, `Regions.length is ${res.regionsLength} instead of 0`);
 
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('draws a curve', async () => {
@@ -152,7 +151,7 @@ describe('Editing tools: draw polygons and curves', () => {
     // "Draw" simplifies on mouse up, so the original 72 vertices become 11
     assert(res.pathSegments === 11, `Path has ${res.pathSegments} segments instead of 11`);
 
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('adds a point', async () => {
@@ -176,7 +175,7 @@ describe('Editing tools: draw polygons and curves', () => {
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 0`);
     assert(res.pathSegments === 12, `Path has ${res.pathSegments} segments instead of 12`);
 
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('removes a point', async () => {
@@ -200,9 +199,9 @@ describe('Editing tools: draw polygons and curves', () => {
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 0`);
     assert(res.pathSegments === 11, `Path has ${res.pathSegments} segments instead of 11`);
 
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   after(async () => {
-    await browser.close();
+    await context.close();
   });
 });

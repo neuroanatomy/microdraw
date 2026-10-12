@@ -6,7 +6,6 @@ const U = require('../mocha.test.util');
 const chai = require('chai');
 const {assert} = chai;
 
-const { launchBrowser } = require('./browser');
 const H = require('./helpers');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
@@ -16,15 +15,15 @@ const shadowclick = async function (sel, testPage) {
   await handle.click();
 };
 
-let browser;
+let context;
 let page;
 
 describe('Editing tools: draw in multiple slices', () => {
   before(async () => {
-    browser = await launchBrowser();
+    context = await H.newContext();
   });
   it('opens data page', async () => {
-    page = await browser.newPage();
+    page = await context.newPage();
     await page.setViewport({width: U.width, height: U.height});
     // page.on('console', (message) =>
     //   console.log(`${message.type().substr(0, 3)
@@ -33,7 +32,7 @@ describe('Editing tools: draw in multiple slices', () => {
     await H.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
     await H.settleFrames(page);
 
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('draw and save a square in 1st slice', async () => {
@@ -59,7 +58,7 @@ describe('Editing tools: draw in multiple slices', () => {
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
     assert(res.pathSegments === 4, `Path has ${res.pathSegments} segments instead of 4`);
 
-  }).timeout(0);
+  }).timeout(U.mediumTimeout);
 
   // eslint-disable-next-line max-statements
   it('move to the 2nd slice and draw and save a triangle', async () => {
@@ -88,7 +87,7 @@ describe('Editing tools: draw in multiple slices', () => {
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
     assert(res.pathSegments === 3, `Path has ${res.pathSegments} segments instead of 3`);
 
-  }).timeout(0);
+  }).timeout(U.longTimeout);
 
   it('square is still present after reloading the 1st slice', async () => {
     await page.goto(
@@ -108,7 +107,7 @@ describe('Editing tools: draw in multiple slices', () => {
     assert(res.regionsExists === true, 'No Regions object');
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
     assert(res.pathSegments === 4, `Path has ${res.pathSegments} segments instead of 4`);
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('triangle is still present after reloading 2nd slice', async () => {
@@ -130,7 +129,7 @@ describe('Editing tools: draw in multiple slices', () => {
     assert(res.regionsExists === true, 'No Regions object');
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
     assert(res.pathSegments === 3, `Path has ${res.pathSegments} segments instead of 3`);
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('clean up the 2 slices', async () => {
@@ -181,9 +180,9 @@ describe('Editing tools: draw in multiple slices', () => {
     assert(res2.sliceIndex === 1, 'Slice index is not 1');
     assert(res2.regionsExists === true, 'No Regions object in slice 2');
     assert(res2.regionsLength === 0, `Regions.length is ${res2.regionsLength} instead of 0 in slice 2`);
-  }).timeout(0);
+  }).timeout(U.longTimeout);
 
   after(async () => {
-    await browser.close();
+    await context.close();
   });
 });

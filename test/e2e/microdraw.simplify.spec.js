@@ -10,12 +10,11 @@ var {assert} = chai;
 //   console.warn(`[microdraw]: dependency error: puppeteer needs to be installed manually. - npm i puppeteer`);
 //   process.exit(1);
 // }
-const { launchBrowser } = require('./browser');
 const H = require('./helpers');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
-let browser;
+let context;
 let page;
 
 const shadowclick = async function(sel) {
@@ -85,11 +84,11 @@ const checkPixels = async (star) => {
 
 describe('Editing tools: simplify', () => {
   before(async () => {
-    browser = await launchBrowser();
+    context = await H.newContext();
   });
   // eslint-disable-next-line max-statements
   it('opens a data page', async () => {
-    page = await browser.newPage();
+    page = await context.newPage();
     await page.setViewport({width: U.width, height: U.height});
     await H.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
     await H.settleFrames(page);
@@ -108,7 +107,7 @@ describe('Editing tools: simplify', () => {
     assert.equal(img[3], 255, `image pixel ${img} is not opaque`);
     assert.isBelow(img[0] + img[1] + img[2], 3*250, `image pixel ${img} is blank`);
     assertTransparent(await H.samplePixel(page, 'paper', ...o), 'annotation canvas');
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('draws a star polygon', async () => {
@@ -136,7 +135,7 @@ describe('Editing tools: simplify', () => {
     // not closed yet, so not filled
     assert.equal(star.fillAlpha, 0);
     await checkPixels(star);
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('simplify once', async () => {
@@ -154,7 +153,7 @@ describe('Editing tools: simplify', () => {
     assertBounds(star.viewBounds, SIMPLIFY_ONCE_VIEW_BOUNDS, 'simplified star');
     assert.equal(star.fillAlpha, 0.5);
     await checkPixels(star);
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('simplify again', async () => {
@@ -171,9 +170,9 @@ describe('Editing tools: simplify', () => {
     assertBounds(star.viewBounds, SIMPLIFY_TWICE_VIEW_BOUNDS, 'star simplified twice');
     assert.equal(star.fillAlpha, 0.5);
     await checkPixels(star);
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   after(async () => {
-    await browser.close();
+    await context.close();
   });
 });

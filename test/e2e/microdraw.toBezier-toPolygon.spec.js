@@ -10,12 +10,11 @@ var {assert} = chai;
 //     console.warn(`[microdraw]: dependency error: puppeteer needs to be installed manually. - npm i puppeteer`)
 //     process.exit(1)
 // }
-const { launchBrowser } = require('./browser');
 const H = require('./helpers');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
-let browser;
+let context;
 let page;
 
 const shadowclick = async function (sel) {
@@ -98,8 +97,8 @@ const assertPolygon = async (star, what) => {
 describe('Editing tools: convert polygons to bézier and vice-versa', () => {
   // eslint-disable-next-line max-statements
   it('opens a data page', async () => {
-    browser = await launchBrowser();
-    page = await browser.newPage();
+    context = await H.newContext();
+    page = await context.newPage();
     await page.setViewport({width: U.width, height: U.height});
     await H.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
     await H.settleFrames(page);
@@ -116,7 +115,7 @@ describe('Editing tools: convert polygons to bézier and vice-versa', () => {
     assert.equal(img[3], 255, `image pixel ${img} is not opaque`);
     assert.isBelow(img[0] + img[1] + img[2], 3*250, `image pixel ${img} is blank`);
     await assertPixelShows(o, [], 'annotation canvas');
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('draws a star polygon', async () => {
@@ -137,7 +136,7 @@ describe('Editing tools: convert polygons to bézier and vice-versa', () => {
     assert.equal(star.fillAlpha, 0.5);
     starArea = star.area;
     await assertPolygon(star, 'star');
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('converts the star polygon to a bézier curve', async () => {
@@ -156,7 +155,7 @@ describe('Editing tools: convert polygons to bézier and vice-versa', () => {
       // eslint-disable-next-line no-await-in-loop
       await assertPixelShows(pt, [], 'bézier star, corner that the curve cuts');
     }
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   it('converts the star bézier back to a polygon', async () => {
     // conversion to polygon has to be confirmed through a dialog
@@ -171,9 +170,9 @@ describe('Editing tools: convert polygons to bézier and vice-versa', () => {
     const star = await onlyRegion();
     assert.approximately(star.area/starArea, 1, 1e-6, 'toPolygon should give back the original polygon');
     await assertPolygon(star, 'star back to a polygon');
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   after(async () => {
-    await browser.close();
+    await context.close();
   });
 });

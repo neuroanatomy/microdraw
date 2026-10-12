@@ -12,12 +12,11 @@ var {assert} = chai;
 //   console.warn(`[microdraw]: dependency error: puppeteer needs to be installed manually. - npm i puppeteer`);
 //   process.exit(1);
 // }
-const { launchBrowser } = require('./browser');
 const H = require('./helpers');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
-let browser;
+let context;
 let page;
 
 const shadowclick = async function (sel) {
@@ -27,14 +26,14 @@ const shadowclick = async function (sel) {
 
 describe('Editing tools: Add regions', () => {
   before(async () => {
-    browser = await launchBrowser();
+    context = await H.newContext();
   });
   it('opens a data page', async () => {
-    page = await browser.newPage();
+    page = await context.newPage();
     await page.setViewport({width: U.width, height: U.height});
     await H.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
     await H.settleFrames(page);
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('draws a square', async () => {
@@ -59,7 +58,7 @@ describe('Editing tools: Add regions', () => {
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
     assert(res.pathSegments === 4, `Path has ${res.pathSegments} segments instead of 4`);
 
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('draws another square', async () => {
@@ -84,7 +83,7 @@ describe('Editing tools: Add regions', () => {
     assert(res.path1Segments === 4, `1st path has ${res.path1Segments} segments instead of 4`);
     assert(res.path2Segments === 4, `2nd path ${res.path2Segments} segments instead of 4`);
 
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   it('does the union of the 2 squares', async () => {
     // select union tool
@@ -108,9 +107,9 @@ describe('Editing tools: Add regions', () => {
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
     assert(res.pathSegments === 8, `Path has ${res.pathSegments} segments instead of 4`);
 
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   after(async () => {
-    await browser.close();
+    await context.close();
   });
 });

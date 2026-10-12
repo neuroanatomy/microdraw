@@ -12,12 +12,11 @@ var {assert} = chai;
 //     console.warn(`[microdraw]: dependency error: puppeteer needs to be installed manually. - npm i puppeteer`)
 //     process.exit(1)
 // }
-const { launchBrowser } = require('./browser');
 const H = require('./helpers');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
-let browser;
+let context;
 let page;
 
 const shadowclick= async function (sel) {
@@ -27,15 +26,15 @@ const shadowclick= async function (sel) {
 
 describe('Editing tools: Translate, rotate, flip', () => {
   before(async () => {
-    browser = await launchBrowser();
+    context = await H.newContext();
   });
   it('opens a data page', async () => {
-    page = await browser.newPage();
+    page = await context.newPage();
     await page.setViewport({width: U.width, height: U.height});
     await H.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
     await H.settleFrames(page);
 
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('draws a square', async () => {
@@ -60,7 +59,7 @@ describe('Editing tools: Translate, rotate, flip', () => {
     assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
     assert(res.pathSegments === 4, `Path has ${res.pathSegments} segments instead of 4`);
 
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   /*
 
@@ -89,7 +88,7 @@ describe('Editing tools: Translate, rotate, flip', () => {
 
     assert(res1.regionX < res2.regionX, `X-coord is not larger after translation`);
 
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
   */
 
   // eslint-disable-next-line max-statements
@@ -112,7 +111,7 @@ describe('Editing tools: Translate, rotate, flip', () => {
 
     assert(res.regionTransformationExists === true, 'No transformation matrix exists');
 
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   it('flip', async () => {
 
@@ -130,9 +129,9 @@ describe('Editing tools: Translate, rotate, flip', () => {
 
     assert(res2.regionX < res1.regionX, "X-coord of region is not smaller after flip");
 
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   after(async () => {
-    await browser.close();
+    await context.close();
   });
 });

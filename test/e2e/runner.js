@@ -3,8 +3,11 @@ const H = require('./helpers');
 
 // root-level before & after hooks
 
-before(async () => {
+before(async function () {
+  // eslint-disable-next-line no-invalid-this -- mocha passes the hook context as this
+  this.timeout(U.longTimeout);
   await U.initResources();
+  await H.startBrowser();
 });
 
 // DEBUG_SCREENSHOTS=1 saves a screenshot of each open page when a test fails,
@@ -17,6 +20,9 @@ afterEach(async function () {
   }
 });
 
-after(async () => {
+after(async function () {
+  // eslint-disable-next-line no-invalid-this -- mocha passes the hook context as this
+  this.timeout(U.longTimeout);
+  await H.stopBrowser();
   await U.closeResources();
 });

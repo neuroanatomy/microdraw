@@ -10,12 +10,11 @@ var {assert} = chai;
 //     console.warn(`[microdraw]: dependency error: puppeteer needs to be installed manually. - npm i puppeteer`)
 //     process.exit(1)
 // }
-const { launchBrowser } = require('./browser');
 const H = require('./helpers');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
-let browser;
+let context;
 let page;
 
 const shadowclick = async function(sel) {
@@ -114,12 +113,12 @@ const assertView = async (zoom, centreX, what) => {
 
 describe('View pages and data', () => {
   before(async () => {
-    browser = await launchBrowser();
+    context = await H.newContext();
   });
 
   // eslint-disable-next-line max-statements
   it('shows the landing page', async () => {
-    page = await browser.newPage();
+    page = await context.newPage();
     await page.setViewport({width: U.width, height: U.height});
     await page.goto(U.url(''), { waitUntil: 'load' });
 
@@ -142,7 +141,7 @@ describe('View pages and data', () => {
     assert.equal(url.placeholder, 'Enter a DeepZoom image URL and click Go');
     assert.approximately(footer.width, U.width, 1, 'footer is not full width');
     assert.isAbove(footer.y, go.y + go.height, 'footer is not below the controls');
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('shows test data, first page', async () => {
@@ -160,7 +159,7 @@ describe('View pages and data', () => {
     slice0Pixel = await H.samplePixel(page, 'osd', U.width/2, U.height/2);
     assert.equal(slice0Pixel[3], 255, `image pixel ${slice0Pixel} is not opaque`);
     assert.isBelow(slice0Pixel[0] + slice0Pixel[1] + slice0Pixel[2], 3*250, `image pixel ${slice0Pixel} is blank`);
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   it('can go to the next page', async () => {
     await shadowclick(UI.NEXT);
@@ -172,7 +171,7 @@ describe('View pages and data', () => {
     const px = await H.samplePixel(page, 'osd', U.width/2, U.height/2);
     assert.equal(px[3], 255, `image pixel ${px} is not opaque`);
     assert.notDeepEqual(px, slice0Pixel, 'the image did not change');
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   it('can go back to the previous page', async () => {
     await shadowclick(UI.PREVIOUS);
@@ -182,7 +181,7 @@ describe('View pages and data', () => {
 
     await assertSlice(0);
     assert.deepEqual(await H.samplePixel(page, 'osd', U.width/2, U.height/2), slice0Pixel, 'not the first image again');
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   it('can zoom in', async () => {
     await shadowclick(UI.ZOOMIN);
@@ -191,7 +190,7 @@ describe('View pages and data', () => {
     await H.settleFrames(page);
 
     await assertView(HOME_ZOOM*ZOOM_FACTOR, HOME_CENTRE.x, 'zoomed in');
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('can translate', async () => {
@@ -206,7 +205,7 @@ describe('View pages and data', () => {
     await H.settleFrames(page);
 
     await assertView(HOME_ZOOM*ZOOM_FACTOR, PANNED_CENTRE_X, 'panned');
-  }).timeout(0);
+  }).timeout(U.mediumTimeout);
 
   it('can zoom out', async () => {
     await shadowclick(UI.ZOOMOUT);
@@ -215,9 +214,9 @@ describe('View pages and data', () => {
     await H.settleFrames(page);
 
     await assertView(HOME_ZOOM, PANNED_CENTRE_X, 'zoomed out');
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   after(async () => {
-    await browser.close();
+    await context.close();
   });
 });

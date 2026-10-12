@@ -9,6 +9,27 @@
 const fs = require('fs');
 const path = require('path');
 const { shortTimeout, mediumTimeout } = require('../mocha.test.util');
+const { launchBrowser } = require('./browser');
+
+// One browser for the whole e2e run, started and closed by runner.js. Each spec
+// works in its own incognito context (separate cookies and storage), which it
+// closes in its after hook. ignoreHTTPSErrors is what permissions.spec.js used
+// to launch its own browser with.
+let sharedBrowser = null;
+const startBrowser = async () => {
+  sharedBrowser = await launchBrowser({ ignoreHTTPSErrors: true });
+};
+const stopBrowser = async () => {
+  if (sharedBrowser) {
+    await sharedBrowser.close();
+    sharedBrowser = null;
+  }
+};
+const newContext = () => {
+  if (!sharedBrowser) { throw new Error('no shared browser: run the e2e specs through test/e2e/runner.js'); }
+
+  return sharedBrowser.createIncognitoBrowserContext();
+};
 
 // Pages opened through openData, for the DEBUG_SCREENSHOTS failure hook in runner.js.
 const openPages = new Set();
@@ -262,11 +283,14 @@ const samplePixel = (page, which, x, y) => page.evaluate((w, px, py) => {
 module.exports = {
   expectedFillPixel,
   instrumentPage,
+  newContext,
   openData,
   regionState,
   samplePixel,
   saveDebugScreenshots,
   settleFrames,
+  startBrowser,
+  stopBrowser,
   viewportState,
   waitForMicrodraw,
   waitForSave,

@@ -10,12 +10,11 @@ var {assert} = chai;
 //     console.warn(`[microdraw]: dependency error: puppeteer needs to be installed manually. - npm i puppeteer`)
 //     process.exit(1)
 // }
-const { launchBrowser } = require('./browser');
 const H = require('./helpers');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
-let browser;
+let context;
 let page;
 
 const shadowclick = async function(sel) {
@@ -105,8 +104,8 @@ const assertThreeShapes = async (what) => {
 describe('Editing tools: undo and redo', () => {
   // eslint-disable-next-line max-statements
   it('opens a data page', async () => {
-    browser = await launchBrowser();
-    page = await browser.newPage();
+    context = await H.newContext();
+    page = await context.newPage();
     await page.setViewport({width: U.width, height: U.height});
     await H.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
     await H.settleFrames(page);
@@ -123,7 +122,7 @@ describe('Editing tools: undo and redo', () => {
     assert.equal(img[3], 255, `image pixel ${img} is not opaque`);
     assert.isBelow(img[0] + img[1] + img[2], 3*250, `image pixel ${img} is blank`);
     await assertPixelShows('triangle', []);
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('draws a triangle, a square and a circle', async () => {
@@ -162,7 +161,7 @@ describe('Editing tools: undo and redo', () => {
 
     drawn = await assertThreeShapes('drawn');
     assert.deepEqual(await stacks(), { undo: UNDO_STEPS, redo: 0, slice: 0, perSlice: [3, 0] });
-  }).timeout(0);
+  }).timeout(U.mediumTimeout);
 
   it('undo', async () => {
     for(let i=0; i<10; i+=1) {
@@ -178,7 +177,7 @@ describe('Editing tools: undo and redo', () => {
       // eslint-disable-next-line no-await-in-loop
       await assertPixelShows(where, []);
     }
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   it('redo', async () => {
     for(let i=0; i<10; i+=1) {
@@ -195,7 +194,7 @@ describe('Editing tools: undo and redo', () => {
       assertBounds(reg.viewBounds, [d.x, d.y, d.width, d.height], `region ${i} after redo, against where it was drawn`);
       assert.equal(reg.index, drawn[i].index, `region ${i} changed z-order`);
     });
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('can undo an annotation from a different layer', async () => {
@@ -230,9 +229,9 @@ describe('Editing tools: undo and redo', () => {
     assertShape(triangle, TRIANGLE, 'restored triangle');
     await assertPixelShows('triangle', [triangle]);
     await assertPixelShows('circleOnly', []);
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   after(async () => {
-    await browser.close();
+    await context.close();
   });
 });

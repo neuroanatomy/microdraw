@@ -12,12 +12,11 @@ var {assert} = chai;
 //     console.warn(`[microdraw]: dependency error: puppeteer needs to be installed manually. - npm i puppeteer`)
 //     process.exit(1)
 // }
-const { launchBrowser } = require('./browser');
 const H = require('./helpers');
 
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
-let browser;
+let context;
 let page;
 
 const shadowclick = async function (sel) {
@@ -27,13 +26,13 @@ const shadowclick = async function (sel) {
 
 describe('Editing tools: order', () => {
   it('opens a data page', async () => {
-    browser = await launchBrowser();
-    page = await browser.newPage();
+    context = await H.newContext();
+    page = await context.newPage();
     await page.setViewport({width: U.width, height: U.height});
     await H.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
     await H.settleFrames(page);
 
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('draws four overlapping triangles', async () => {
@@ -66,7 +65,7 @@ describe('Editing tools: order', () => {
     assert(res.regionsLength === 4, `Regions.length is ${res.regionsLength} instead of 4`);
     assert(res.firstRegionX < res.lastRegionX, `X-coord of 1st region is not smaller than that of the last region`);
 
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('invert the order by sending front', async () => {
@@ -95,7 +94,7 @@ describe('Editing tools: order', () => {
     assert(res.regionsLength === 4, `Regions.length is ${res.regionsLength} instead of 4`);
     assert(res.lastRegionX < res.firstRegionX, `X-coord of last region is not smaller than that of the 1st region`);
 
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   // eslint-disable-next-line max-statements
   it('invert the order by sending back', async () => {
@@ -123,9 +122,9 @@ describe('Editing tools: order', () => {
     assert(res.regionsLength === 4, `Regions.length is ${res.regionsLength} instead of 4`);
     assert(res.firstRegionX < res.lastRegionX, `X-coord of 1st region is not smaller than that of the last region`);
 
-  }).timeout(0);
+  }).timeout(U.shortTimeout);
 
   after(async () => {
-    await browser.close();
+    await context.close();
   });
 });

@@ -7,7 +7,7 @@ const chaiHttp = require('chai-http');
 chai.use(chaiHttp);
 const U = require('../../test/mocha.test.util');
 const _ = require('lodash');
-const { launchBrowser } = require('./browser');
+const H = require('./helpers');
 
 // eslint-disable-next-line max-statements
 describe('TESTING PERMISSIONS', function () {
@@ -104,30 +104,31 @@ describe('TESTING PERMISSIONS', function () {
     const setupProjectWithAccess = (access, name) => {
       const project = U.createProjectWithPermission(name, access);
       projects[project.name] = project;
-      U.insertProject(project);
+
+      return U.insertProject(project);
     };
 
-    before(function () {
+    before(async function () {
+      const inserts = [];
       ["none", "view", "edit", "add", "remove"].forEach((access) => {
-        setupProjectWithAccess(
+        inserts.push(setupProjectWithAccess(
           { files: access },
           `files${access}`
-        );
-        setupProjectWithAccess(
+        ));
+        inserts.push(setupProjectWithAccess(
           { files: 'edit', collaborators: access },
           `collaborators${access}filesedit`
-        );
-        setupProjectWithAccess(
+        ));
+        inserts.push(setupProjectWithAccess(
           { files: 'edit', annotations: access },
           `fileseditannotations${access}`
-        );
+        ));
       });
+      await Promise.all(inserts);
     });
 
-    after(function() {
-      Object.keys(projects).forEach((shortname) => {
-        U.removeProject(shortname);
-      });
+    after(async function() {
+      await Promise.all(Object.keys(projects).map((shortname) => U.removeProject(shortname)));
     });
 
     it('Checks that collaborators cannot edit a project if files is set to none', async function() {
@@ -295,6 +296,7 @@ describe('TESTING PERMISSIONS', function () {
     });
 
 
+    // Wrong field, left for M1 (catch-up plan): this asserts collaborators.list, not annotations.list, so it does not test what its name says.
     it('Checks that collaborators cannot add project annotations if set to none', async function() {
       const project = _.cloneDeep(projects.fileseditannotationsnone);
       const initialProjectState = _.cloneDeep(project);
@@ -310,6 +312,7 @@ describe('TESTING PERMISSIONS', function () {
       assert.equal(fromDb.collaborators.list.length, initialProjectState.collaborators.list.length);
     });
 
+    // Wrong field, left for M1 (catch-up plan): this asserts collaborators.list, not annotations.list, so it does not test what its name says.
     it('Checks that collaborators cannot add project annotations if set to view', async function() {
       const project = _.cloneDeep(projects.fileseditannotationsview);
       const initialProjectState = _.cloneDeep(project);
@@ -354,6 +357,7 @@ describe('TESTING PERMISSIONS', function () {
       assert.isAbove(projectFromDB.annotations.list.length, initialProjectState.annotations.list.length);
     });
 
+    // Wrong field, left for M1 (catch-up plan): this asserts collaborators.list, not annotations.list, so it does not test what its name says.
     it('Checks that collaborators cannot remove project annotations if set to none', async function() {
       const project = _.cloneDeep(projects.fileseditannotationsnone);
       const initialProjectState = _.cloneDeep(project);
@@ -366,6 +370,7 @@ describe('TESTING PERMISSIONS', function () {
       assert.equal(fromDb.collaborators.list.length, initialProjectState.collaborators.list.length);
     });
 
+    // Wrong field, left for M1 (catch-up plan): this asserts collaborators.list, not annotations.list, so it does not test what its name says.
     it('Checks that collaborators cannot remove project annotations if set to view', async function() {
       const project = _.cloneDeep(projects.fileseditannotationsview);
       const initialProjectState = _.cloneDeep(project);
@@ -378,6 +383,7 @@ describe('TESTING PERMISSIONS', function () {
       assert.equal(fromDb.collaborators.list.length, initialProjectState.collaborators.list.length);
     });
 
+    // Wrong field, left for M1 (catch-up plan): this asserts collaborators.list, not annotations.list, so it does not test what its name says.
     it('Checks that collaborators cannot remove project annotations if set to add', async function() {
       const project = _.cloneDeep(projects.fileseditannotationsadd);
       const initialProjectState = _.cloneDeep(project);
@@ -447,7 +453,7 @@ describe('TESTING PERMISSIONS', function () {
     it('Checks that collaborators cannot remove project files if set to add', async function() {
       let project = U.createProjectWithPermission('permissionTest', { files: 'add' });
       projects.permissionTest = project;
-      U.insertProject(project);
+      await U.insertProject(project);
 
       const initialProjectState = _.cloneDeep(project);
       project = _.cloneDeep(project);
@@ -473,16 +479,16 @@ describe('TESTING PERMISSIONS', function () {
     });
 
     describe('Test view permissions of logged users', function() {
-      let browser, page;
+      let context, page;
 
       before(async function() {
-        browser = await launchBrowser({ ignoreHTTPSErrors: true });
-        page = await browser.newPage();
+        context = await H.newContext();
+        page = await context.newPage();
         await page.setCookie(...cookies);
       });
 
-      after(function() {
-        browser.close();
+      after(async function() {
+        await context.close();
       });
 
       it('Check that collaborators cannot see other collaborators if not permitted', async function () {
@@ -492,7 +498,7 @@ describe('TESTING PERMISSIONS', function () {
         await page.waitForSelector('#access tbody');
         const contributorsTableLength = (await page.$$('#access tbody tr')).length;
         assert.equal(contributorsTableLength, 1); // 'anyone' only
-      }).timeout(U.longTimeout);
+      }).timeout(U.shortTimeout);
 
       it('Check that collaborators cannot see other collaborators if not permitted using JSON API', async function () {
         const project = _.cloneDeep(projects.collaboratorsnonefilesedit);
@@ -507,7 +513,7 @@ describe('TESTING PERMISSIONS', function () {
         await page.waitForSelector('#annotations tbody');
         const annotationsTableLength = (await page.$$('#annotations tbody tr')).length;
         assert.equal(annotationsTableLength, 1); // placeholder
-      }).timeout(U.longTimeout);
+      }).timeout(U.shortTimeout);
 
     });
 
