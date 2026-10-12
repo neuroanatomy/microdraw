@@ -38,7 +38,7 @@
             <a href="/doc"><img id="doc" class="button" title="documentation" src='/img/doc.svg'/></a>
             <a href="https://github.com/neuroanatomy/microdraw/issues" target="_blank"><img id="bug" class="button" title="report a bug" src='/img/bug.svg'/></a>
             <a href="https://github.com/neuroanatomy/microdraw" target="_blank"><img id="github" class="button" title="join our github project" style='width:15px;height:15px' src='/img/github.svg'/></a>
-            <div id="MyLogin">
+            <div id="MyLogin" v-pre>
                 <span>{{{login}}}</span>
             </div>
         </div>
@@ -190,7 +190,10 @@ for(k=0;k<app.projectInfo.annotations.list.length;k++) {
     if (app.projectInfo.annotations.list[k].type === "text" |
         app.projectInfo.annotations.list[k].type === "hidden text" |
         app.projectInfo.annotations.list[k].type === "multiple choices") {
-        document.querySelector("#projectFiles thead tr").innerHTML += "<th>" + app.projectInfo.annotations.list[k].name + "</th>";
+        // as text: annotation names are user data (H2b)
+        const th = document.createElement("th");
+        th.textContent = app.projectInfo.annotations.list[k].name;
+        document.querySelector("#projectFiles thead tr").appendChild(th);
         annotations.text.push(app.projectInfo.annotations.list[k]);
     }
 }

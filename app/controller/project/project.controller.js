@@ -8,6 +8,7 @@
 const _ = require('lodash');
 const { AccessControlService, AccessLevel } = require('neuroweblab');
 const { catchErrors } = require('../catchErrors');
+const { scriptJSON, escapeHTML } = require('../escape');
 const validator = function (req, res, next) {
   next();
 };
@@ -27,7 +28,7 @@ const getLoggedUser = (req) => {
 // eslint-disable-next-line max-statements -- existing handler, not refactored in a lint-only change; 2026-10-11
 const project = async function (req, res) {
   const login = (req.user) ?
-    ('<a href=\'/user/' + req.user.username + '\'>' + req.user.username + '</a> (<a href=\'/logout\'>Log Out</a>)') :
+    ('<a href=\'/user/' + escapeHTML(encodeURIComponent(req.user.username)) + '\'>' + escapeHTML(req.user.username) + '</a> (<a href=\'/logout\'>Log Out</a>)') :
     ('<a href=\'/auth/github\'>Log in with GitHub</a>');
   const requestedProject = req.params.projectName;
   let loggedUser = "anyone";
@@ -50,7 +51,7 @@ const project = async function (req, res) {
       }
       const context = {
         projectShortname: json.shortname,
-        projectInfo: JSON.stringify(json),
+        projectInfo: scriptJSON(json),
         login
       };
       res.render('project', context);
@@ -152,8 +153,8 @@ var settingsUnsafe = async function(req, res) {
   var context = {
     projectShortname: json.shortname,
     owner: json.owner,
-    projectInfo: JSON.stringify(json),
-    loggedUser: JSON.stringify(req.user || null)
+    projectInfo: scriptJSON(json),
+    loggedUser: scriptJSON(req.user || null)
   };
   res.render('projectSettings', context);
 };
@@ -185,12 +186,12 @@ const projectNew = function (req, res) {
     res.render('askForLogin', {
       title: "MicroDraw: New Project",
       functionality: "create a new project",
-      loggedUser: JSON.stringify(req.user || null)
+      loggedUser: scriptJSON(req.user || null)
     });
   } else {
     res.render('projectNew', {
       title: "MicroDraw: New Project",
-      loggedUser: JSON.stringify(req.user || null)
+      loggedUser: scriptJSON(req.user || null)
     });
   }
 };

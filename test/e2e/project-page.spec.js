@@ -95,3 +95,58 @@ describe('Project page empty states (M2)', function () {
     assert.isTrue(await visible(page, '#noAnnotations'), 'no "no annotations" message');
   }).timeout(U.mediumTimeout);
 });
+
+/*
+  H2b: names set by a project's owner or collaborators are shown to visitors.
+  A text-annotation name is written into the files table header as text, and
+  a name holding `</script>` does not end the page's inline script.
+*/
+describe('Project page writes user-set names as text (H2b)', function () {
+  const IMG_NAME = '<img src=x onerror="window.h2bInjected=true">';
+  const SCRIPT_NAME = '</script><script>window.h2bInjected=true</script>';
+  const injectionProject = publicProject('e2eprojectpageinjection');
+  injectionProject.files.list = [];
+  injectionProject.annotations.list = [
+    { type: 'text', name: IMG_NAME, values: null, display: true },
+    { type: 'text', name: SCRIPT_NAME, values: null, display: true }
+  ];
+  let context, page;
+  const pageErrors = [];
+
+  before(async function () {
+    await U.insertProject({ ...injectionProject });
+    context = await H.newContext();
+    page = await context.newPage();
+    page.on('pageerror', (err) => pageErrors.push(err.message));
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      if (req.url() === VUE_CDN) {
+        req.respond({ status: 200, contentType: 'application/javascript', body: VUE_STAND_IN });
+      } else {
+        req.continue();
+      }
+    });
+  });
+
+  after(async function () {
+    await context.close();
+    await U.removeProject(injectionProject.shortname);
+  });
+
+  it('shows annotation names as text, runs none of them, and keeps them intact', async function () {
+    await page.goto(U.url(`/project/${injectionProject.shortname}`), { waitUntil: 'load' });
+    await H.settleFrames(page);
+    assert.deepEqual(pageErrors, []);
+    const state = await page.evaluate(() => ({
+      injected: typeof window.h2bInjected,
+      headers: [...document.querySelectorAll('#projectFiles thead th')].map((th) => th.textContent),
+      images: document.querySelectorAll('#projectFiles img, #app img[src="x"]').length,
+      // eslint-disable-next-line no-undef -- the page's global Vue app
+      names: app.projectInfo.annotations.list.map((a) => a.name)
+    }));
+    assert.equal(state.injected, 'undefined', 'an annotation name ran as code');
+    assert.equal(state.images, 0, 'an annotation name was parsed as HTML');
+    assert.deepEqual(state.headers, ['Name', 'File', IMG_NAME, SCRIPT_NAME]);
+    assert.deepEqual(state.names, [IMG_NAME, SCRIPT_NAME]);
+  }).timeout(U.shortTimeout);
+});

@@ -3,6 +3,7 @@
 // const async = require('async');
 const dateFormat = require('dateformat');
 const { AccessControlService } = require('neuroweblab');
+const { scriptJSON } = require('../escape');
 //const checkAccess = require('../checkAccess/checkAccess.js');
 //const dataSlices = require('../dataSlices/dataSlices.js');
 
@@ -53,9 +54,9 @@ const user = function (req, res) {
           joined: dateFormat(json.joined, 'dddd d mmm yyyy, HH:MM'),
           avatar: json.avatarURL,
           title: json.name,
-          userInfo: JSON.stringify(publicUser(json)),
+          userInfo: scriptJSON(publicUser(json)),
           tab: req.query.tab || 'data',
-          loggedUser: JSON.stringify(req.user || null)
+          loggedUser: scriptJSON(req.user || null)
         };
         res.render('user', context);
       } else {
