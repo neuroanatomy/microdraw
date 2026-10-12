@@ -3,6 +3,7 @@ const express = require('express');
 const router = new express.Router();
 const multer = require('multer');
 const { AccessControlService } = require('neuroweblab');
+const { catchErrors } = require('../catchErrors');
 
 const fs = require('fs');
 
@@ -73,18 +74,10 @@ const getAnnotationsUnsafe = async function (req, res) {
   res.status(200).send(annotations);
 };
 
-// Any error in getAnnotationsUnsafe answers 500 instead of becoming an
-// unhandled rejection, which would end the process.
-router.get('/', async function (req, res) {
-  try {
-    await getAnnotationsUnsafe(req, res);
-  } catch (err) {
-    console.log('ERROR:', err);
-    if (!res.headersSent) {
-      res.status(500).send({err: 'Server error'});
-    }
-  }
-});
+// Errors in the annotation routes answer 500 {err: 'Server error'}.
+const serverError = (res) => res.status(500).send({err: 'Server error'});
+
+router.get('/', catchErrors(getAnnotationsUnsafe, serverError));
 
 // eslint-disable-next-line max-statements
 const updateAnnotation = async (req, {
@@ -173,6 +166,12 @@ const saveFromGUI = async function (req, res) {
         && result.collaborators.list.map((u) => u.username);
     console.log(`project owner: ${owner}, users: ${users}`);
 
+    if (!result) {
+      res.status(404).json({error: 'Project not found'});
+
+      return;
+    }
+
     // check if user has edit permission
     if(!AccessControlService.canEditAnnotations(result, username)) {
       res.status(403).send(`User ${username} does not have permission to edit annotations on project ${project}`);
@@ -242,22 +241,44 @@ const jsonIsValid = function (obj) {
 //   }
 // };
 
-// eslint-disable-next-line max-statements
-const saveFromAPI = async function (req, res) {
+// The parsed JSON of the uploaded annotation file, or undefined if there is
+// no file or it is not JSON.
+const readUploadedJSON = async (req) => {
+  const [file] = req.files || [];
+  if (!file) {
+    return;
+  }
+  const rawString = TMP_DIR
+    ? (await fs.promises.readFile(file.path)).toString()
+    : file.buffer.toString();
+  try {
+    return JSON.parse(rawString);
+  } catch (err) {
+    // not JSON: answered with 400 by the caller
+  }
+};
+
+// eslint-disable-next-line max-statements, complexity
+const saveFromAPIUnsafe = async function (req, res) {
   const fileID = buildFileID(req.query);
   const username = req.user && req.user.username;
   const { project, Hash } = req.query;
-  const rawString = TMP_DIR
-    ? await fs.promises.readFile(req.files[0].path).toString()
-    : req.files[0].buffer.toString();
+  const json = await readUploadedJSON(req);
+  if (typeof json === 'undefined' || json === null) {
+    res.status(400).json({msg: 'Invalid annotation file: no file, or not JSON'});
 
-  const json = JSON.parse(rawString);
+    return;
+  }
 
-  // add uid to path
-  json.forEach((v) => {
-    v.annotation.uid = Math.random().toString(16)
-      .slice(2);
-  });
+  // add uid to path (items without an annotation object fail validation below)
+  if (Array.isArray(json)) {
+    json.forEach((v) => {
+      if (v && v.annotation && typeof v.annotation === 'object') {
+        v.annotation.uid = Math.random().toString(16)
+          .slice(2);
+      }
+    });
+  }
 
   // validate and submit
   if (typeof project === 'undefined') {
@@ -266,6 +287,8 @@ const saveFromAPI = async function (req, res) {
     res.status(401).json({
       msg: `Invalid annotation file: ${jsonIsValid(json).msg}`
     });
+  } else if (project && !(await req.app.db.queryProject({shortname: project}))) {
+    res.status(404).json({msg: 'Project not found'});
   } else {
     const { action } = req.query;
 
@@ -298,15 +321,17 @@ const saveFromAPI = async function (req, res) {
   }
 };
 
-router.post('/', function (req, res) {
+const saveFromAPI = catchErrors(saveFromAPIUnsafe, serverError);
+
+router.post('/', catchErrors(async function (req, res) {
   console.warn("call to POST from GUI");
 
   if(req.body.action === 'save') {
-    saveFromGUI(req, res);
+    await saveFromGUI(req, res);
   } else {
     res.status(500).send({err:'actions other than save are no longer supported.'});
   }
-});
+}, serverError));
 
 const filterAuthorizedUserOnly = (req, res, next) => {
   const username = req.user && req.user.username;

@@ -7,6 +7,7 @@
 // const dataSlices = require('../dataSlices/dataSlices.js');
 const _ = require('lodash');
 const { AccessControlService, AccessLevel } = require('neuroweblab');
+const { catchErrors } = require('../catchErrors');
 const validator = function (req, res, next) {
   next();
 };
@@ -69,7 +70,7 @@ const project = async function (req, res) {
  * @returns {void}
  */
 // eslint-disable-next-line max-statements -- existing handler, not refactored in a lint-only change; 2026-10-11
-var settings = async function(req, res) {
+var settingsUnsafe = async function(req, res) {
   console.log("Settings");
   const requestedProject = req.params.projectName;
 
@@ -157,6 +158,8 @@ var settings = async function(req, res) {
   res.render('projectSettings', context);
 };
 
+const settings = catchErrors(settingsUnsafe, (res) => res.status(500).send('Error'));
+
 /**
  * @function projectNew
  * @desc Render the page with the GUI for entering a new project
@@ -236,18 +239,8 @@ const apiProjectUnsafe = async function (req, res) {
 };
 
 // Any error in apiProjectUnsafe (a db failure, a ?var= path that does not
-// exist) answers 500 instead of becoming an unhandled rejection, which would
-// end the process.
-const apiProject = async function (req, res) {
-  try {
-    await apiProjectUnsafe(req, res);
-  } catch (err) {
-    console.log('ERROR:', err);
-    if (!res.headersSent) {
-      res.status(500).json({error: 'Server error'});
-    }
-  }
-};
+// exist) answers 500.
+const apiProject = catchErrors(apiProjectUnsafe);
 
 // Shortnames of all the projects the requester may view.
 const viewableProjectNames = async (req) => {
@@ -299,8 +292,24 @@ const apiProjectFiles = function (req, res) {
   res.send({});
 };
 
+// The project sent in the body (data, as an object or a JSON string), or
+// undefined if it is not an object with a shortname.
+const parseProjectData = (data) => {
+  let newProject = data;
+  if (typeof data === 'string') {
+    try {
+      newProject = JSON.parse(data);
+    } catch (err) {
+      return;
+    }
+  }
+  if (_.isPlainObject(newProject) && typeof newProject.shortname === 'string') {
+    return newProject;
+  }
+};
+
 // eslint-disable-next-line max-statements -- existing handler, not refactored in a lint-only change; 2026-10-11
-const postProject = async function (req, res) {
+const postProjectUnsafe = async function (req, res) {
   let loggedUser = 'anonymous';
   if(req.isAuthenticated()) {
     loggedUser = req.user.username;
@@ -314,7 +323,12 @@ const postProject = async function (req, res) {
     return;
   }
 
-  const newProject = typeof req.body.data === "string" ? JSON.parse(req.body.data): req.body.data;
+  const newProject = parseProjectData(req.body.data);
+  if (typeof newProject === 'undefined') {
+    res.status(400).json({ error: 'error', message: 'Invalid project data' });
+
+    return;
+  }
   const oldProject = await req.appConfig.db.queryProject({shortname: newProject.shortname});
 
   let ignoredChanges = [];
@@ -341,8 +355,12 @@ const postProject = async function (req, res) {
       .end());
 };
 
+// A project that the access checks cannot read (no collaborators or files
+// list, M3 validates them) answers 500.
+const postProject = catchErrors(postProjectUnsafe);
+
 // eslint-disable-next-line max-statements -- existing handler, not refactored in a lint-only change; 2026-10-11
-const deleteProject = async function (req, res) {
+const deleteProjectUnsafe = async function (req, res) {
   console.log("DELETE Project");
 
   let loggedUser = 'anonymous';
@@ -364,6 +382,11 @@ const deleteProject = async function (req, res) {
     const {projectName} = req.params;
 
     const projectToDelete = await req.appConfig.db.queryProject({shortname: projectName});
+    if (_.isNil(projectToDelete)) {
+      res.status(404).json({ success: false, message: 'Project not found' });
+
+      return;
+    }
     if (!AccessControlService.hasFilesAccess(AccessLevel.REMOVE, projectToDelete, loggedUser)) {
       console.log('WARNING: user does not have remove rights');
       res.status(403).json({ success: false, message: 'The user is not allowed to delete this project' });
@@ -382,6 +405,8 @@ const deleteProject = async function (req, res) {
         .end());
   }
 };
+
+const deleteProject = catchErrors(deleteProjectUnsafe);
 
 module.exports = {
   validator,

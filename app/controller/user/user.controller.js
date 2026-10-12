@@ -74,10 +74,8 @@ const api_user = function (req, res) {
       if (doc) {
         let json = publicUser(doc);
         if (req.query.var) {
-          let i;
-          const arr = req.query.var.split('/');
-          for (i of arr) {
-            json = json[arr[i]];
+          for (const key of req.query.var.split('/')) {
+            json = json[key];
           }
         }
         res.send(json);
@@ -95,21 +93,26 @@ const api_user = function (req, res) {
     });
 };
 
-const api_userAll = function (req, res) {
-  console.log('api_userAll');
+// Lists usernames, 20 per page, as BrainBox's apiUserAll lists nicknames.
+// Queried here: NWL's db.js does not export queryAllUsers (T001 step 2).
+const api_userAll = async function (req, res) {
   if (!req.query.page) {
     res.json({error: 'The \'pages\' parameter has to be specified'});
 
     return;
   }
 
-  const page = parseInt(req.query.page);
+  const page = Math.max(0, parseInt(req.query.page) || 0);
   const nItemsPerPage = 20;
 
-  req.appConfig.db.queryAllUsers({backup: {$exists: false}}, {skip: page * nItemsPerPage, limit: nItemsPerPage, fields: {_id: 0}})
-    .then((array) => {
-      res.send(array.map((o) => o.username));
-    });
+  try {
+    const users = await req.appConfig.db.mongoDB().get('users')
+      .find({backup: {$exists: false}, username: {$type: 'string'}}, {skip: page * nItemsPerPage, limit: nItemsPerPage, fields: {_id: 0, username: 1}});
+    res.send(users.map((o) => o.username));
+  } catch (err) {
+    console.log('ERROR:', err);
+    res.status(500).json({error: 'Server error'});
+  }
 };
 
 

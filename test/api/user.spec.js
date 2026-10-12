@@ -16,6 +16,24 @@ const publicFields = ['username', 'name', 'avatarURL', 'url', 'joined'];
 
 const get = (pathname) => chai.request(U.serverURL).get(pathname);
 
+// All the names GET /user/json returns, following its pages.
+const listAllUsers = async () => {
+  const names = [];
+  for (let page = 0; page < 100; page++) {
+    // eslint-disable-next-line no-await-in-loop -- pages are read in order
+    const res = await get(`/user/json?page=${page}`);
+    assert.equal(res.status, 200);
+    assert.isArray(res.body);
+    assert.isAtMost(res.body.length, 20);
+    names.push(...res.body);
+    if (res.body.length < 20) {
+      break;
+    }
+  }
+
+  return names;
+};
+
 describe('Public user data (/user/json/:userName, /user/:userName)', function () {
   before(async function () {
     // eslint-disable-next-line no-invalid-this -- mocha passes the hook context as this
@@ -81,4 +99,35 @@ describe('Public user data (/user/json/:userName, /user/:userName)', function ()
     assert.equal(userInfo.username, credentials.username);
     Object.keys(userInfo).forEach((key) => assert.include(publicFields, key));
   }).timeout(U.shortTimeout);
+
+  describe('user routes fixed in M2', function () {
+    // M2: ?var= used to index the path segments with their own values, so it
+    // never returned the field it named.
+    it('?var=username returns the username', async function () {
+      const res = await get(`/user/json/${credentials.username}?var=username`);
+      assert.equal(res.status, 200);
+      assert.equal(res.text, credentials.username);
+    }).timeout(U.shortTimeout);
+
+    // M2: GET /user/json called NWL queryAllUsers, which NWL's db.js does not
+    // export (500 on every page). It lists usernames only, 20 per page, as
+    // BrainBox's apiUserAll lists nicknames.
+    it('GET /user/json?page= lists usernames only, 20 per page', async function () {
+      const names = await listAllUsers();
+      names.forEach((name) => assert.isString(name));
+      assert.include(names, credentials.username);
+      assert.isFalse(JSON.stringify(names).includes('$2b$'), 'list contains a bcrypt hash');
+    }).timeout(U.shortTimeout);
+
+    it('GET /user/json without a page answers an error message', async function () {
+      const res = await get('/user/json');
+      assert.property(res.body, 'error');
+    }).timeout(U.shortTimeout);
+
+    it('GET /user/json?page=<not a number> answers the first page', async function () {
+      const res = await get('/user/json?page=abc');
+      assert.equal(res.status, 200);
+      assert.isArray(res.body);
+    }).timeout(U.shortTimeout);
+  });
 });
