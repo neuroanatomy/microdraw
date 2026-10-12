@@ -1,4 +1,4 @@
-/* global Microdraw */
+/* global Microdraw, UnsavedStash */
 const fadeOut = function (el) {
   el.style.opacity = 1;
 
@@ -29,7 +29,7 @@ const _dialog = async ({el, message, doFadeOut=true, delay=2000, background="#33
     doFadeOut = true;
   }
 
-  el.innerHTML = message;
+  el.textContent = message;
   el.style.background = background;
   fadeIn(el);
   await new Promise((resolve) => {
@@ -54,11 +54,14 @@ window.ToolSave = { save: (function() {
     });
 
     if (!res.ok) {
-      throw await res.text();
+      const err = new Error(await res.text());
+      err.status = res.status;
+      throw err;
     }
 
-    // update hash
+    // update hash; what was sent is now the server's version (H3a)
     Microdraw.ImageInfo[sl].Hash = query.Hash;
+    UnsavedStash.snapshot(Microdraw, sl);
 
     return sl;
   };
@@ -81,24 +84,57 @@ window.ToolSave = { save: (function() {
     _dialog({el, message: "Successfully saved", delay: 1000, background: "#2a3"});
   };
 
-  const _errorFeedback = function (err) {
+  // A refused or failed save (H3a): 401 asks to log in, 403 says why.
+  const _errorFeedback = function (refused) {
     const el = Microdraw.dom.querySelector('#saveDialog');
-    _dialog({el, message: "Unable to save, try again later", background: "#d34"});
-    console.log(err);
+    const {status, kept} = refused;
+    if (status === 401) {
+      UnsavedStash.showLoginDialog(el, kept);
+    } else {
+      const reason = status === 403 ?
+        "You don't have permission to edit annotations in this project." :
+        "Unable to save, try again later.";
+      const message = reason + (kept ?
+        " Your annotations are kept in this browser." :
+        "");
+      _dialog({el, message, background: "#d34"});
+    }
+    console.log(refused.cause);
   };
 
-  /**
-     * @function microdrawDBSave
-     * @desc Save SVG overlay to microdrawDB
-     * @returns {void}
-     */
-  var microdrawDBSave = async function () {
-    if( Microdraw.debug ) {
-      console.log("> save promise");
+  // H3a: without a project, or logged out, nothing is sent to the server. The
+  // user's own changes are kept in localStorage, and a dialog explains why.
+  const _keepAndExplain = function (changed, explain) {
+    const kept = changed
+      .map(({sl, value}) => UnsavedStash.keep(Microdraw, sl, value))
+      .every(Boolean);
+    explain(Microdraw.dom.querySelector('#saveDialog'), kept);
+  };
+
+  // Without a project, or logged out, keep the changes and say why: true.
+  // Without a project the project dialog comes first: creating one needs a login anyway.
+  const _cannotSend = function (changed) {
+    if (changed.length === 0) {
+      return false;
+    }
+    if (!Microdraw.project) {
+      _keepAndExplain(changed, UnsavedStash.showNoProjectDialog);
+
+      return true;
+    }
+    if (!UnsavedStash.loggedIn()) {
+      _keepAndExplain(changed, UnsavedStash.showLoginDialog);
+
+      return true;
     }
 
-    var promiseArray = [];
-    var savedSections = [];
+    return false;
+  };
+
+  // The sections whose annotations changed since they were loaded or saved:
+  // {sl, value, h}, where value is what save sends and h its hash.
+  const _changedSections = function () {
+    const changed = [];
 
     Object.keys(Microdraw.ImageInfo).forEach((sl) => {
       if ((Microdraw.config.multiImageSave) || (sl === Microdraw.currentImage)) {
@@ -112,32 +148,55 @@ window.ToolSave = { save: (function() {
         // Do not save anything for this section
         if (typeof section.Hash !== "undefined" && h !== section.Hash) {
           value.Hash = h;
-          const query = {
-            action: 'save',
-            source: Microdraw.source,
-            slice: sl,
-            project: Microdraw.project,
-            Hash: h,
-            annotation: JSON.stringify(value)
-          };
-
-          console.log("pushing POST promise");
-          promiseArray.push(_processOneSection(query));
-          savedSections.push(sl);
+          changed.push({sl, value, h});
         }
       }
     });
 
-    await _savingFeedback(savedSections);
+    return changed;
+  };
+
+  /**
+     * @function microdrawDBSave
+     * @desc Save SVG overlay to microdrawDB
+     * @returns {void}
+     */
+  var microdrawDBSave = async function () {
+    if( Microdraw.debug ) {
+      console.log("> save promise");
+    }
+
+    const changed = _changedSections();
+
+    if (_cannotSend(changed)) {
+      return;
+    }
+
+    // A section the server refuses (403, 401) or that fails is kept in
+    // localStorage, so that it can be imported later (H3a).
+    const promiseArray = changed.map(({sl, value, h}) => _processOneSection({
+      action: 'save',
+      source: Microdraw.source,
+      slice: sl,
+      project: Microdraw.project,
+      Hash: h,
+      annotation: JSON.stringify(value)
+    }).catch((err) => {
+      const refused = new Error('save refused');
+      refused.cause = err;
+      refused.status = err.status;
+      refused.kept = UnsavedStash.keep(Microdraw, sl, value);
+      throw refused;
+    }));
+
+    await _savingFeedback(changed.map(({sl}) => sl));
 
     if(promiseArray.length > 0) {
       Promise.all(promiseArray)
         .then(() => {
           _successFeedback();
         })
-        .catch((err) => {
-          _errorFeedback(err);
-        });
+        .catch(_errorFeedback);
     }
   };
 

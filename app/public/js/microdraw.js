@@ -1481,6 +1481,14 @@ const Microdraw = (function () {
           if (slice !== Microdraw.currentImage) {
             return;
           }
+          me._drawRegionsInPaper(regions);
+
+          // the regions as on the server; annotations kept in this browser (H3a)
+          /* global UnsavedStash */
+          UnsavedStash.snapshot(me, slice);
+          UnsavedStash.offerImport(me, slice);
+
+          return;
         }
       }
 
@@ -1843,7 +1851,8 @@ const Microdraw = (function () {
         me.loadScript("/lib/paper-full-0.12.15.min.js"),
         me.loadScript("/lib/openseadragon/openseadragon.js"),
         me.loadScript("/lib/hippy-hippo/hippy-hippo-umd.js"), // vendored: hippy-hippo@0.0.1
-        me.loadScript("/js/microdraw-ws.js")
+        me.loadScript("/js/microdraw-ws.js"),
+        me.loadScript("/js/unsaved-stash.js")
       ]);
 
       await me.loadScript("/lib/openseadragon-viewerinputhook.min.js");

@@ -10,6 +10,9 @@ const {assert} = chai;
 
 const H = require('./helpers');
 
+// Annotations are only saved inside a project (H3): this spec opens its image in one.
+const project = U.createPublicAnnotationProject('e2emultipleusers');
+
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
 const shadowclick = async function (sel, testPage) {
@@ -24,6 +27,7 @@ let res;
 // eslint-disable-next-line max-statements
 describe('Editing tools: multiple users drawing on the same dataset', () => {
   before(async () => {
+    await U.insertProject(project);
     context = await H.newContext();
   });
 
@@ -31,7 +35,9 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
     it('opens data page on browser 1', async () => {
       page1 = await context.newPage();
       await page1.setViewport({width: U.width, height: U.height});
-      await H.openData(page1, U.url('/data?source=/test_data/cat.json&slice=0'));
+      // annotations are only saved by a logged-in user (H3)
+      await H.logIn(page1);
+      await H.openData(page1, U.url(`/data?source=/test_data/cat.json&project=${project.shortname}&slice=0`));
       await H.settleFrames(page1);
 
       res = await page1.evaluate(() => ({
@@ -49,7 +55,7 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
     it('open data page on browser 2', async () => {
       page2 = await context.newPage();
       await page2.setViewport({width: U.width, height: U.height});
-      await H.openData(page2, U.url('/data?source=/test_data/cat.json&slice=0'));
+      await H.openData(page2, U.url(`/data?source=/test_data/cat.json&project=${project.shortname}&slice=0`));
       await shadowclick(UI.NEXT, page2);
       await H.waitForMicrodraw(page2, 1);
       await H.settleFrames(page2);
@@ -238,11 +244,11 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
     before(async() => {
       // open slice 1 in both browsers
       await page1.goto(
-        U.url('/data?source=/test_data/cat.json&slice=0'),
+        U.url(`/data?source=/test_data/cat.json&project=${project.shortname}&slice=0`),
         { waitUntil: 'networkidle0' }
       );
       await page2.goto(
-        U.url('/data?source=/test_data/cat.json&slice=0'),
+        U.url(`/data?source=/test_data/cat.json&project=${project.shortname}&slice=0`),
         { waitUntil: 'networkidle0' }
       );
     });
@@ -377,5 +383,7 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
 
   after(async () => {
     await context.close();
+    await U.removeProjectAnnotations(project.shortname);
+    await U.removeProject(project.shortname);
   });
 });

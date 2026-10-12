@@ -8,6 +8,9 @@ const {assert} = chai;
 
 const H = require('./helpers');
 
+// Annotations are only saved inside a project (H3): this spec opens its image in one.
+const project = U.createPublicAnnotationProject('e2emultipleslices');
+
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
 const shadowclick = async function (sel, testPage) {
@@ -20,16 +23,19 @@ let page;
 
 describe('Editing tools: draw in multiple slices', () => {
   before(async () => {
+    await U.insertProject(project);
     context = await H.newContext();
   });
   it('opens data page', async () => {
     page = await context.newPage();
     await page.setViewport({width: U.width, height: U.height});
+    // annotations are only saved by a logged-in user (H3)
+    await H.logIn(page);
     // page.on('console', (message) =>
     //   console.log(`${message.type().substr(0, 3)
     //     .toUpperCase()} ${message.text()}`));
 
-    await H.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
+    await H.openData(page, U.url(`/data?source=/test_data/cat.json&project=${project.shortname}&slice=0`));
     await H.settleFrames(page);
 
   }).timeout(U.shortTimeout);
@@ -91,7 +97,7 @@ describe('Editing tools: draw in multiple slices', () => {
 
   it('square is still present after reloading the 1st slice', async () => {
     await page.goto(
-      U.url('/data?source=/test_data/cat.json&slice=0'),
+      U.url(`/data?source=/test_data/cat.json&project=${project.shortname}&slice=0`),
       { waitUntil: 'networkidle0' }
     );
 
@@ -133,7 +139,7 @@ describe('Editing tools: draw in multiple slices', () => {
 
   // eslint-disable-next-line max-statements
   it('clean up the 2 slices', async () => {
-    await H.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
+    await H.openData(page, U.url(`/data?source=/test_data/cat.json&project=${project.shortname}&slice=0`));
 
     // cleanup 1st slice
     await shadowclick(UI.SELECT, page);
@@ -184,5 +190,7 @@ describe('Editing tools: draw in multiple slices', () => {
 
   after(async () => {
     await context.close();
+    await U.removeProjectAnnotations(project.shortname);
+    await U.removeProject(project.shortname);
   });
 });

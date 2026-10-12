@@ -79,6 +79,42 @@ const serverError = (res) => res.status(500).send({err: 'Server error'});
 
 router.get('/', catchErrors(getAnnotationsUnsafe, serverError));
 
+// What the current user (or 'anyone' when logged out) may do with a project's
+// annotations, and, with ?source=, whether the project lists that image (as the
+// project page matches it: same `source` string). The viewer asks before
+// offering to import annotations kept in the browser (H3a): only into a project
+// the user can edit and that lists the image.
+// eslint-disable-next-line max-statements
+const getAnnotationPermissionsUnsafe = async function (req, res) {
+  const { project, source } = req.query;
+  if (!project || typeof project !== 'string') {
+    res.status(400).json({error: 'Missing project'});
+
+    return;
+  }
+  const result = await req.app.db.queryProject({shortname: project});
+  if (!result) {
+    res.status(404).json({error: 'Project not found'});
+
+    return;
+  }
+  const username = (req.user && req.user.username) || 'anyone';
+  const answer = {
+    project,
+    annotations: {
+      view: Boolean(AccessControlService.canViewAnnotations(result, username)),
+      edit: Boolean(AccessControlService.canEditAnnotations(result, username))
+    }
+  };
+  if (typeof source === 'string') {
+    const files = (result.files && Array.isArray(result.files.list)) ? result.files.list : [];
+    answer.image = { source, listed: files.some((f) => f && f.source === source) };
+  }
+  res.status(200).json(answer);
+};
+
+router.get('/permissions', catchErrors(getAnnotationPermissionsUnsafe));
+
 // eslint-disable-next-line max-statements
 const updateAnnotation = async (req, {
   fileID,

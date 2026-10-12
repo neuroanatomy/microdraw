@@ -8,6 +8,9 @@ const {assert} = chai;
 
 const H = require('./helpers');
 
+// Annotations are only saved inside a project (H3): this spec opens its image in one.
+const project = U.createPublicAnnotationProject('e2ezarr');
+
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
 const shadowclick = async function (sel, testPage) {
@@ -20,6 +23,7 @@ let page;
 
 describe('OME-Zarr tile source', () => {
   before(async () => {
+    await U.insertProject(project);
     context = await H.newContext();
   });
 
@@ -27,7 +31,9 @@ describe('OME-Zarr tile source', () => {
   it('opens the zarr source with correct dimensions, no webgl taint, and the webgl drawer', async () => {
     page = await context.newPage();
     await page.setViewport({width: U.width, height: U.height});
-    await H.openData(page, U.url('/data?source=/test_data/cat-zarr.json&slice=0'));
+    // annotations are only saved by a logged-in user (H3)
+    await H.logIn(page);
+    await H.openData(page, U.url(`/data?source=/test_data/cat-zarr.json&project=${project.shortname}&slice=0`));
     await H.settleFrames(page);
 
     const res = await page.evaluate(() => ({
@@ -71,7 +77,7 @@ describe('OME-Zarr tile source', () => {
   }).timeout(U.mediumTimeout);
 
   it('the region round-trips through a reload', async () => {
-    await H.openData(page, U.url('/data?source=/test_data/cat-zarr.json&slice=0'));
+    await H.openData(page, U.url(`/data?source=/test_data/cat-zarr.json&project=${project.shortname}&slice=0`));
     await H.settleFrames(page);
 
     const res = await page.evaluate(() => ({
@@ -112,7 +118,7 @@ describe('OME-Zarr tile source', () => {
 
   // eslint-disable-next-line max-statements
   it('clean up the region', async () => {
-    await H.openData(page, U.url('/data?source=/test_data/cat-zarr.json&slice=0'));
+    await H.openData(page, U.url(`/data?source=/test_data/cat-zarr.json&project=${project.shortname}&slice=0`));
 
     await shadowclick(UI.SELECT, page);
     await page.mouse.click(450, 150);
@@ -132,5 +138,7 @@ describe('OME-Zarr tile source', () => {
 
   after(async () => {
     await context.close();
+    await U.removeProjectAnnotations(project.shortname);
+    await U.removeProject(project.shortname);
   });
 });

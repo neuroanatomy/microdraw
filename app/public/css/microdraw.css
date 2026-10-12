@@ -65,7 +65,7 @@ html, body {
     left:50%;
     transform: translate( -50%, -50%);
 }
-#saveDialog {
+#saveDialog, #importDialog {
     display: none;
     position:absolute;
     top:20px;
@@ -77,6 +77,19 @@ html, body {
     z-index:20;
     line-height:20px;
     padding:20px;
+}
+#importDialog {
+    transform: translateX(-50%);
+    max-width: 60%;
+}
+#saveDialog a, #importDialog a {
+    color: #8cf;
+}
+.dialogButtons {
+    margin-top: 12px;
+}
+.dialogButtons button {
+    margin: 0 4px;
 }
 .button {
     vertical-align: middle;

@@ -87,6 +87,22 @@ const removeProject = function (shortname) {
   return db.get('projects').remove({ shortname });
 };
 
+// Annotation documents written straight to the database, e.g. ones saved
+// outside a project before H3.
+const insertAnnotations = function (docs) {
+  return db.get('annotations').insert(docs);
+};
+
+// Current (non-backup) annotation documents matching `query`.
+const findAnnotations = function (query) {
+  return db.get('annotations').find(Object.assign({ backup: { $exists: false } }, query));
+};
+
+// Annotations saved in a project, all sources and versions (test data only).
+const removeProjectAnnotations = function (shortname) {
+  return db.get('annotations').remove({ project: shortname });
+};
+
 // Annotations saved for a source, all slices and versions (test data only).
 const removeAnnotations = function (source) {
   const escaped = source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -196,6 +212,20 @@ const createProjectWithPermission = function (name, accessProp) {
   return project;
 };
 
+// A project in which anyone, logged in or not, may view the files and edit the
+// annotations. Since H3, annotations are only saved inside a project, so the
+// e2e specs that save open their images in one of these.
+const createPublicAnnotationProject = function (shortname) {
+  const project = createProjectWithPermission(shortname, { files: 'view', annotations: 'edit' });
+  project.collaborators.list[0].access = { collaborators: 'none', annotations: 'edit', files: 'view' };
+  project.files.list = [
+    { source: '/test_data/cat.json', name: 'cat' },
+    { source: '/test_data/cat-zarr.json', name: 'cat-zarr' }
+  ];
+
+  return project;
+};
+
 module.exports = {
   delay,
   shortTimeout,
@@ -207,8 +237,12 @@ module.exports = {
   insertProject,
   removeProject,
   removeAnnotations,
+  removeProjectAnnotations,
+  insertAnnotations,
+  findAnnotations,
   queryProject,
   createProjectWithPermission,
+  createPublicAnnotationProject,
   initResources,
   closeResources,
   getServer,

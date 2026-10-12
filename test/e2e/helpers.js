@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 'use strict';
 
 /*
@@ -8,7 +9,7 @@
 */
 const fs = require('fs');
 const path = require('path');
-const { shortTimeout, mediumTimeout } = require('../mocha.test.util');
+const { shortTimeout, mediumTimeout, url } = require('../mocha.test.util');
 const { launchBrowser } = require('./browser');
 
 // One browser for the whole e2e run, started and closed by runner.js. Each spec
@@ -280,7 +281,45 @@ const samplePixel = (page, which, x, y) => page.evaluate((w, px, py) => {
   return Array.from(canvas.getContext('2d').getImageData(cx, cy, 1, 1).data);
 }, which, x, y);
 
+// The user the e2e specs save annotations as: since H3 the server refuses
+// saves without a logged-in user.
+const annotator = { username: 'e2e-annotator', password: 'e2e-annotator-password' };
+
+/**
+ * Log a page's browser context in as `credentials` (local sign-in, created if
+ * needed). The session cookie then holds for every page of the context.
+ * @param {Object} page A puppeteer page
+ * @param {Object} credentials {username, password}
+ * @returns {Promise} Resolves when GET /token answers 200 (logged in)
+ */
+const logIn = async (page, credentials = annotator) => {
+  await page.goto(url('/'), { waitUntil: 'load' });
+  const loggedIn = await page.evaluate(async (c) => {
+    const post = (route) => fetch(route, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(c),
+      redirect: 'manual',
+      credentials: 'same-origin'
+    });
+    await post('/localSignup');
+    // /localSignup may answer before its insert has finished: retry the login
+    /* eslint-disable no-await-in-loop -- sequential retries */
+    for (let i = 0; i < 20; i += 1) {
+      await post('/localLogin');
+      if ((await fetch('/token', { credentials: 'same-origin' })).ok) { return true; }
+      await new Promise((resolve) => { setTimeout(resolve, 100); });
+    }
+    /* eslint-enable no-await-in-loop */
+
+    return false;
+  }, credentials);
+  if (!loggedIn) { throw new Error(`could not log in as ${credentials.username}`); }
+};
+
 module.exports = {
+  annotator,
+  logIn,
   expectedFillPixel,
   instrumentPage,
   newContext,

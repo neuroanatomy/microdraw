@@ -14,6 +14,9 @@ var {assert} = chai;
 // }
 const H = require('./helpers');
 
+// Annotations are only saved inside a project (H3): this spec opens its image in one.
+const project = U.createPublicAnnotationProject('e2edraw');
+
 const shadow = (sel) => `document.querySelector("#content").shadowRoot.querySelector("${sel}")`;
 
 let context;
@@ -25,11 +28,17 @@ const shadowclick = async function (sel) {
 };
 
 describe('Editing tools: draw polygons and curves', () => {
+  before(async () => {
+    await U.insertProject(project);
+  });
+
   it('opens a data page', async () => {
     context = await H.newContext();
     page = await context.newPage();
     await page.setViewport({width: U.width, height: U.height});
-    await H.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
+    // annotations are only saved by a logged-in user (H3)
+    await H.logIn(page);
+    await H.openData(page, U.url(`/data?source=/test_data/cat.json&project=${project.shortname}&slice=0`));
     await H.settleFrames(page);
   }).timeout(U.shortTimeout);
 
@@ -56,7 +65,7 @@ describe('Editing tools: draw polygons and curves', () => {
 
   it('does not keep the unsaved triangle upon reload', async () => {
     await page.goto( // reload
-      U.url('/data?source=/test_data/cat.json&slice=0'),
+      U.url(`/data?source=/test_data/cat.json&project=${project.shortname}&slice=0`),
       { waitUntil: 'networkidle0' }
     );
 
@@ -82,7 +91,7 @@ describe('Editing tools: draw polygons and curves', () => {
 
     await shadowclick(UI.SAVE); // select the save tool
     await page.goto( // reloads
-      U.url('/data?source=/test_data/cat.json&slice=0'),
+      U.url(`/data?source=/test_data/cat.json&project=${project.shortname}&slice=0`),
       { waitUntil: 'networkidle0' }
     );
 
@@ -106,7 +115,7 @@ describe('Editing tools: draw polygons and curves', () => {
     await shadowclick(UI.DELETE); // delete tool
     await shadowclick(UI.SAVE); // select the save tool
     await page.goto( // reload
-      U.url('/data?source=/test_data/cat.json&slice=0'),
+      U.url(`/data?source=/test_data/cat.json&project=${project.shortname}&slice=0`),
       { waitUntil: 'networkidle0' }
     );
 
@@ -203,5 +212,7 @@ describe('Editing tools: draw polygons and curves', () => {
 
   after(async () => {
     await context.close();
+    await U.removeProjectAnnotations(project.shortname);
+    await U.removeProject(project.shortname);
   });
 });
