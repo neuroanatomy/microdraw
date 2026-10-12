@@ -2016,7 +2016,7 @@ const Microdraw = (function () {
       // Initialize the control key handler and set shortcuts
       me.initShortCutHandler();
       me.shortCutHandler({pc:'^ z', mac:'cmd z'}, me.cmdUndo);
-      me.shortCutHandler({pc:'shift ^ z', mac:'shift cmd z'}, me.cmdRedo);
+      me.shortCutHandler({pc:'^ shift z', mac:'shift cmd z'}, me.cmdRedo);
       if( me.config.drawingEnabled ) {
         me.shortCutHandler({pc:'^ x', mac:'cmd x'}, function () {
           console.log("cut!");
