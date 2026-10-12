@@ -23,9 +23,9 @@
 const _ = require('lodash');
 const monk = require('monk');
 const { withProjectLock } = require('../projectLock');
-const { checkProject, plainText } = require('../project/project.validation');
+const { checkProject, duplicateLayerNames, plainText } = require('../project/project.validation');
 const {
-  blankRows, checkStoredProjects, isUnnamedLayer, nameKey, projectVersion
+  blankRows, checkStoredProjects, isUnnamedLayer, projectVersion
 } = require('../project/project.check');
 
 const current = { backup: { $exists: false } };
@@ -122,8 +122,9 @@ const removeBlankRows = (appDb, { shortname, version, username }) => changeProje
 
 /**
  * The names asked for, checked against a stored project: only unnamed
- * layers that have values; names non-empty once sanitised, unique in the
- * project (ignoring case and surrounding spaces)
+ * layers that have values; names non-empty once sanitised, not used by
+ * another layer (ignoring case and surrounding spaces; the check of project
+ * saves, duplicateLayerNames)
  * @param {object} project The stored project
  * @param {object} names { index: name }
  * @returns {object} { names: Map index → name } or { status, error }
@@ -143,13 +144,13 @@ const checkNames = (project, names) => {
     }
     chosen.set(index, name);
   }
-  const all = layers.map((a, i) => (chosen.has(i) ? chosen.get(i) : (a && a.name))).filter((name) => typeof name === 'string' && name.trim() !== '');
-  const seen = new Set();
-  for (const name of all) {
-    if (seen.has(nameKey(name))) {
-      return { status: 400, error: `Two layers would be called "${name}"` };
-    }
-    seen.add(nameKey(name));
+  // the check of project saves (F1): the layers named here are new names,
+  // the others are stored rows, whose duplicates stay accepted
+  const named = layers.map((a, i) => (chosen.has(i) ? { ...a, name: chosen.get(i) } : a));
+  const unchanged = new Set(layers.map((a, i) => i).filter((i) => !chosen.has(i)));
+  const [duplicate] = duplicateLayerNames(named, unchanged);
+  if (duplicate) {
+    return { status: 400, error: duplicate.message };
   }
 
   return { names: chosen };

@@ -162,6 +162,38 @@ const annotationError = (a, i) => {
   return null;
 };
 
+// What two layer names are compared on: case and surrounding spaces ignored
+const nameKey = (name) => String(name).trim()
+  .toLowerCase();
+
+const hasName = (a) => _.isPlainObject(a) && isNonEmptyString(a.name);
+
+/**
+ * The annotation layers named as another layer of the list, compared on
+ * nameKey (F1). Shared by the save check (structureError), the stored-project
+ * check (rowProblemList) and the admin fix that names layers (A2), so that the
+ * three agree. A row is reported if a row before it, or a row in `stored`
+ * anywhere, has the same name; rows in `stored` are never reported, so
+ * duplicates already stored stay accepted unchanged (M3a2).
+ * @param {Array} list The annotation layers
+ * @param {Set<number>} stored Indexes of the rows stored unchanged
+ * @returns {Array<object>} [{ row, message }]
+ */
+const duplicateLayerNames = (list, stored = new Set()) => {
+  const problems = [];
+  list.forEach((a, i) => {
+    if (stored.has(i) || !hasName(a)) {
+      return;
+    }
+    const same = list.findIndex((b, k) => k !== i && (k < i || stored.has(k)) && hasName(b) && nameKey(b.name) === nameKey(a.name));
+    if (same >= 0) {
+      problems.push({ row: i, message: `Annotation ${i + 1} has the same name as annotation ${same + 1}: "${a.name.trim()}" (names are compared ignoring case)` });
+    }
+  });
+
+  return problems;
+};
+
 // The first error among the rows of a list, skipping the rows in `skip`
 // (indexes of rows stored unchanged, see storedRows)
 const firstError = (list, check, skip = new Set()) => {
@@ -293,6 +325,10 @@ const structureError = (project, { shortname, isNew, stored = {} }) => {
   if (error) {
     return error;
   }
+  const [duplicate] = duplicateLayerNames(project.annotations.list, stored.annotations);
+  if (duplicate) {
+    return duplicate.message;
+  }
   if (!project.collaborators.list.some(isAnyone)) {
     return 'The collaborators list needs an \'anyone\' entry';
   }
@@ -384,6 +420,9 @@ const rowProblemList = (project) => {
       }
     });
   }
+  for (const { row, message } of duplicateLayerNames(listOf(project, 'annotations'))) {
+    problems.push({ list: 'annotations', row, message });
+  }
 
   return problems;
 };
@@ -393,9 +432,11 @@ module.exports = {
   asFileObject,
   collaboratorName,
   checkProject,
+  duplicateLayerNames,
   isAnyone,
   isBlank,
   listOf,
+  nameKey,
   parseProjectData,
   plainText,
   rowProblemList,

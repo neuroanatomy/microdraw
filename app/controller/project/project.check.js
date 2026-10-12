@@ -7,8 +7,9 @@
  * For each stored project it lists:
  * - what would refuse saving it again unchanged from the settings page
  *   ('blocking');
- * - the stored rows that would be refused if they were new or changed, and
- *   the strings the sanitising would change ('warning');
+ * - the stored rows that would be refused if they were new or changed
+ *   (annotation layers named as another one included, F1), and the strings
+ *   the sanitising would change ('warning');
  * - a shortname that is not alphanumeric ('shortname');
  * - the users it names that do not exist ('missing user');
  * and what the admin fixes can do about it: the blank rows they would
@@ -17,7 +18,7 @@
 const crypto = require('crypto');
 const _ = require('lodash');
 const {
-  asFileObject, collaboratorName, isAnyone, isBlank, listOf, rowProblemList,
+  asFileObject, collaboratorName, isAnyone, isBlank, listOf, nameKey, rowProblemList,
   sanitize, storedRows, structureError
 } = require('./project.validation');
 
@@ -76,9 +77,6 @@ const blankRows = (project) => _.fromPairs(listTypes.map((type) => [
 ]));
 
 const isUnnamedLayer = (a) => _.isPlainObject(a) && isBlank(a.name) && !isBlank(a.values);
-
-const nameKey = (name) => String(name).trim()
-  .toLowerCase();
 
 /**
  * The annotation layers that have no name but have values, with a proposed

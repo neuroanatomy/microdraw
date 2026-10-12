@@ -8,6 +8,7 @@ const { assert, expect } = chai;
 const _ = require('lodash');
 const U = require('../mocha.test.util');
 const { plainText } = require('../../app/controller/project/project.validation');
+const { projectProblems } = require('../../app/controller/project/project.check');
 
 // M3 (T002 step 1.4): POST /project/json/:projectName validates and sanitises
 // the project, as BrainBox's isProjectObject, adapted to microdraw (D27).
@@ -430,5 +431,74 @@ describe('Validation of POST /project/json/:projectName (M3)', function () {
       assert.equal(res.body.dropped.files, 1);
       assert.lengthOf((await U.queryProject(name)).files.list, 1);
     }).timeout(U.shortTimeout);
+  });
+
+  // F1: two annotation layers cannot have the same name, compared ignoring
+  // case and surrounding spaces, as A2's name-layers checks (one function);
+  // duplicates already stored are accepted unchanged (M3a2)
+  // eslint-disable-next-line max-statements
+  describe('duplicate layer names (F1)', function () {
+    const shortname = 'f1dupes';
+    const layer = (name, values = '') => ({ type: 'vectorial', name, values, display: true });
+    const stored = () => ({
+      ...newProject(shortname),
+      owner: member.username,
+      annotations: { list: [layer('Cortex', 'Set 1'), layer('CORTEX', 'Set 2'), layer('Other')] }
+    });
+    const save = (data) => agent.post(`/project/json/${shortname}`).send({ data });
+
+    beforeEach(async function () {
+      await U.removeProject(shortname);
+      await U.insertProject(stored());
+    });
+
+    after(async function () {
+      await U.removeProject(shortname);
+    });
+
+    it('a new project with two layers of the same name, ignoring case, is refused', async function () {
+      const project = newProject('f1dupesnew');
+      project.annotations.list.push(layer(' LAYER '));
+      await refused('f1dupesnew', project, /same name/);
+    }).timeout(U.shortTimeout);
+
+    it('stored duplicates are accepted unchanged, and new layers with other names too', async function () {
+      let res = await save({ ...stored(), name: 'saved again' });
+      assert.equal(res.status, 200, res.text);
+      const project = stored();
+      project.annotations.list.push(layer('Third'));
+      res = await save(project);
+      assert.equal(res.status, 200, res.text);
+      assert.lengthOf((await U.queryProject(shortname)).annotations.list, 4);
+    }).timeout(U.shortTimeout);
+
+    it('a new layer named as an existing one is refused', async function () {
+      const project = stored();
+      project.annotations.list.push(layer('other'));
+      const res = await save(project);
+      assert.equal(res.status, 400);
+      assert.match(res.body.message, /same name/);
+      assert.lengthOf((await U.queryProject(shortname)).annotations.list, 3);
+    }).timeout(U.shortTimeout);
+
+    it('a layer renamed, or a stored duplicate changed, is refused', async function () {
+      let project = stored();
+      project.annotations.list[2] = layer('cortex ');
+      let res = await save(project);
+      assert.equal(res.status, 400);
+      project = stored();
+      project.annotations.list[1] = layer('CORTEX', 'Set 3');
+      res = await save(project);
+      assert.equal(res.status, 400);
+      assert.match(res.body.message, /same name/);
+    }).timeout(U.shortTimeout);
+
+    it('the stored-project check reports stored duplicates as warnings', function () {
+      const problems = projectProblems(stored(), new Set([member.username]));
+      const duplicates = problems.filter((q) => (/same name/).test(q.message));
+      assert.lengthOf(duplicates, 1);
+      assert.deepInclude(duplicates[0], { kind: 'warning', list: 'annotations', row: 1 });
+      assert.isFalse(problems.some((q) => q.kind === 'blocking'));
+    });
   });
 });

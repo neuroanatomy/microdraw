@@ -375,6 +375,18 @@ describe('Admin: projects that don\'t validate (A2)', function () {
       assert.equal(res.status, 409);
       assert.lengthOf(await logs('a2unnamed'), 0);
     }).timeout(U.mediumTimeout);
+    // F1: the save check and this fix use one function: a stored duplicate
+    // does not block naming another layer, a new name may not repeat one
+    it('agrees with project saves on duplicate names: stored duplicates are accepted, new ones refused', async function () {
+      await db().get('projects')
+        .update({ shortname: 'a2unnamed' }, { $push: { 'annotations.list': { type: 'vectorial', name: 'layer 1 ', values: '', display: true } } });
+      const { version } = await entry('a2unnamed');
+      let res = await post('/admin/json/projects/name-layers', { project: 'a2unnamed', version, names: { 0: 'LAYER 1' } });
+      assert.equal(res.status, 400);
+      res = await post('/admin/json/projects/name-layers', { project: 'a2unnamed', version, names: { 0: 'Cortex', 2: 'Notes' } });
+      assert.equal(res.status, 200, res.text);
+      assert.deepEqual((await stored('a2unnamed')).annotations.list.map((a) => a.name), ['Cortex', 'Layer 1', 'Notes', 'layer 1 ']);
+    }).timeout(U.shortTimeout);
   });
 
   describe('POST /admin/json/projects/restore', function () {
