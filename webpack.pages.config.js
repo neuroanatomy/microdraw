@@ -11,7 +11,9 @@ module.exports = (env, argv) => ({
       './app/views/scripts/src/project-settings-page.js',
     'user-page': './app/views/scripts/src/user-page.js'
   },
-  devtool: 'eval-source-map',
+  // N3: no source map in production (eval-source-map tripled the pages' size);
+  // `npm run dev-pages` keeps it for debugging
+  devtool: argv.mode === 'production' ? false : 'eval-source-map',
   plugins: [new CleanWebpackPlugin(['dist'])],
   output: {
     filename: '[name].js',

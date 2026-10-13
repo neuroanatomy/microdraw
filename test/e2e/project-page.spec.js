@@ -203,7 +203,8 @@ describe('Project page (M2b, M8a)', function () {
       await page.click('#projectFiles tbody tr:nth-child(2) td:nth-child(1)');
     });
     assert.equal(target.pathname, `/project/${fullProject.shortname}`);
-    assert.equal(target.search, `?source=${ZARR}&project=${fullProject.shortname}`);
+    // the source is encoded since N3 (project-page-source-encoding.spec.js)
+    assert.equal(target.search, `?source=${encodeURIComponent(ZARR)}&project=${fullProject.shortname}`);
   }).timeout(U.mediumTimeout);
 
   it('the up and down keys open the previous and next file, wrapping around', async function () {

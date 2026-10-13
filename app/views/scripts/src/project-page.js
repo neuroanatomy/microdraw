@@ -13,7 +13,8 @@
   - The cells are read only. The old page had editable inputs that were never
     saved; the project's files and layers are edited in its settings page.
   - Moving to another file reloads the page with ?source=<file>&project=<name>,
-    as before; the viewer reads both from the URL.
+    as before, both encoded with encodeURIComponent since N3; the viewer reads
+    both from the URL (Microdraw.deparam decodes them).
 */
 import { createApp } from 'vue';
 
@@ -24,14 +25,16 @@ const layers = listOf('annotations');
 const { shortname } = projectInfo;
 const textTypes = ['text', 'hidden text', 'multiple choices'];
 
-const fileURL = (index) => `/project/${shortname}?source=${files[index].source}&project=${shortname}`;
+// The source is encoded (N3): a source may hold `&`, `#`, `=` or spaces.
+const fileQuery = (index) => `source=${encodeURIComponent(files[index].source)}&project=${encodeURIComponent(shortname)}`;
+const fileURL = (index) => `/project/${shortname}?${fileQuery(index)}`;
 const goToFile = (index) => { location.href = fileURL(index); };
 
 // The file in the URL; without one, the first file is opened.
 const source = new URLSearchParams(location.search).get('source');
 const redirecting = files.length > 0 && source === null;
 if (redirecting) {
-  location.search = `source=${files[0].source}&project=${shortname}`;
+  location.search = fileQuery(0);
 }
 const fileIndex = Math.max(0, files.findIndex((f) => f.source === source));
 

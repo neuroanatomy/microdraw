@@ -10,7 +10,7 @@ in full-window iframes, one per layer, with a small control panel on top. A tran
 OpenSeadragon canvas of every layer, so the layers pan and zoom together.
 
 They were served from the site root until 2026-10-13 (M8b). The old URLs
-(`/composer.html`, `/composer-0.html`, `/overlays.html`) redirect here, query string included.
+(`/composer.html`, `/composer-0.html`, `/overlays.html`) redirect here (302), query string included.
 
 | Page | What it shows |
 |---|---|
@@ -38,4 +38,6 @@ hosts and ports.
 ## Tests
 
 `test/e2e/examples.spec.js` is a smoke test: each page loads without errors in its own frame
-and shows its control panel. It does not test the layers' images or the event passing.
+and shows its control panel. It does not test the layers' images or the event passing. It runs
+offline: requests to other hosts are aborted, and the viewers' requests for BigBrain data through
+the server (`/getJson`) get a canned answer, so the tests never fetch `bigbrain-ftp.loris.ca`.
