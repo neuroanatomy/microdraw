@@ -6,6 +6,7 @@ module.exports = (env, argv) => ({
   entry: {
     'admin-page': './app/views/scripts/src/admin-page.js',
     'project-new-page': './app/views/scripts/src/project-new-page.js',
+    'project-page': './app/views/scripts/src/project-page.js',
     'project-settings-page':
       './app/views/scripts/src/project-settings-page.js',
     'user-page': './app/views/scripts/src/user-page.js'

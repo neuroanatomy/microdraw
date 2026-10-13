@@ -56,7 +56,9 @@ const project = async function (req, res) {
       // only what the visitor may see goes into the page (M3)
       const context = {
         projectShortname: json.shortname,
+        projectName: json.name,
         projectInfo: scriptJSON(visibleProjectParts(json, loggedUser)),
+        wsPort: req.app.get('wsPort') || 8080,
         login
       };
       res.render('project', context);

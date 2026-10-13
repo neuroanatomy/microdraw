@@ -9,11 +9,12 @@
     <link rel="stylesheet" href="/css/project-style.css" type="text/css" />
     <link href='/lib/roboto/roboto.css' rel='stylesheet' type='text/css'>
     <style>
-        input {
-            background: none;
-            border: none;
-            width: 100%;
+        #projectFiles td, #vecAnnotations td {
             text-align: center;
+        }
+        #projectFiles td.empty::before, #vecAnnotations td.empty::before {
+            content: 'Empty';
+            opacity: 0.4;
         }
         .emptyState {
             margin: 10px;
@@ -27,7 +28,7 @@
 
 <body>
 
-<div id="app" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:stretch">
+<div id="page" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:stretch">
     
     <!-- Header (fixed height) -->
     <div id="header" style="height:80px">
@@ -38,7 +39,7 @@
             <a href="/doc"><img id="doc" class="button" title="documentation" src='/img/doc.svg'/></a>
             <a href="https://github.com/neuroanatomy/microdraw/issues" target="_blank"><img id="bug" class="button" title="report a bug" src='/img/bug.svg'/></a>
             <a href="https://github.com/neuroanatomy/microdraw" target="_blank"><img id="github" class="button" title="join our github project" style='width:15px;height:15px' src='/img/github.svg'/></a>
-            <div id="MyLogin" v-pre>
+            <div id="MyLogin">
                 <span>{{{login}}}</span>
             </div>
         </div>
@@ -48,7 +49,7 @@
             <a href='/' style="text-decoration:none">
                 <img style='height:56px;vertical-align:middle' src='/img/microdraw-white.svg'/>
             </a><span style="font-family: Roboto, sans-serif; font-size: 36px; font-weight:100;vertical-align:middle" id="fontLogo"> 
-                <a href='/' style="font-family: Roboto, sans-serif; font-size: 36px; font-weight:100; text-decoration:none">[[projectInfo.name]]</a>
+                <a href='/' style="font-family: Roboto, sans-serif; font-size: 36px; font-weight:100; text-decoration:none">{{projectName}}</a>
             </span>
         </div>
     </div>
@@ -59,46 +60,9 @@
 
             <div id="left" style="flex:0 0 400px;position:relative">
             
-                <div style="display:flex;flex-direction:column;height:100%">
-                    <!-- Project Files -->
-                    <div id="projectFiles" class="block" style="flex:1 1 auto">
-                        <table style="width:100%;text-align:left">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>File</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="val in projectInfo.files.list">
-                                    <td><input v-model="val.name" contentEditable=true class='noEmptyWithPlaceholder' placeholder="Empty"></td>
-                                    <td><input v-model="val.source" contentEditable=true class='noEmptyWithPlaceholder' placeholder="Empty"></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <p id="noFiles" class="emptyState" hidden>This project has no files yet. Add them in the <a href="/project/{{projectShortname}}/settings">project settings</a>.</p>
-                    </div>
-                
-                    <!-- File Annotations -->
-                    <div id="annotations" class="block" style="flex:1 1 200px">
-                        <table id="vecAnnotations" style="width:100%;text-align:left">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Label Set</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="val in projectInfo.annotations.list">
-                                    <td><input v-model="val.name" contentEditable=true class='noEmptyWithPlaceholder' placeholder="Empty"></td>
-                                    <td><input v-model="val.values" contentEditable=true class='noEmptyWithPlaceholder' placeholder="Empty"></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <p id="noAnnotations" class="emptyState" hidden>This project has no annotation layers.</p>
-                    </div>
-                </div>
-                
+                <!-- Project files and annotation layers: rendered by /js/pages/project-page.js -->
+                <div id="projectTables" style="display:flex;flex-direction:column;height:100%"></div>
+
                 <div id="resizeButton" class="block">
                 </div>
                 
@@ -116,249 +80,10 @@
 
 <script>
 const projectInfo={{{projectInfo}}};
+// Port the websocket server is listening on (as on /data)
+window.MICRODRAW_WS_PORT = {{ wsPort }};
 </script>
-
-<script>
-function loadScript (path, testScriptPresent) {
-  return new Promise((resolve, reject) => {
-      if(testScriptPresent && testScriptPresent()) {
-          resolve();
-      }
-      const s = document.createElement("script");
-      s.src = path;
-      s.onload=resolve;
-      s.onerror=reject;
-      document.body.appendChild(s);
-  });
-}
-
-// A project without a files or annotations list is shown as an empty one.
-for (const key of ['files', 'annotations']) {
-  if (!projectInfo[key] || !Array.isArray(projectInfo[key].list)) {
-    projectInfo[key] = {list: []};
-  }
-}
-
-// Empty states. Shown before Vue compiles #app, so they do not depend on it.
-document.querySelector("#noFiles").hidden = projectInfo.files.list.length > 0;
-document.querySelector("#noAnnotations").hidden = projectInfo.annotations.list.length > 0;
-
-async function attach () {
-  const res = await fetch("/microdraw");
-  const txt = await res.text();
-  const parser = new DOMParser();
-  const elem = parser.parseFromString(txt, 'text/html').documentElement;
-  const shadow = document.querySelector("#microdraw").attachShadow({mode: 'open'});
-  shadow.appendChild(elem);
-  loadScript("/js/microdraw.js")
-  .then(() => {
-      Microdraw.init(shadow);
-  });
-}
-// The viewer is only attached when there is a file to show.
-if (projectInfo.files.list.length > 0) {
-  attach();
-}
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
-<!--<script src="http://localhost/libs/vue/2.4.2/vue.min.js"></script>-->
-
-<script>
-var app = new Vue({
-  el: '#app',
-  delimiters: ['[[', ']]'],
-  data: {
-    projectInfo: projectInfo,
-    annotationType: ['vectorial', 'text'],
-    labelSets: ['Set I', 'Set II', 'Set III']
-  }
-});
-
-const projShortname = app.projectInfo.shortname;
-const annotations = {
-    text: []    // collect text annotations
-};
-let k;
-
-// interface elements
-const resizeButton = document.querySelector("#resizeButton");
-const body = document.querySelector("body");
-
-// collect the project's text annotations
-for(k=0;k<app.projectInfo.annotations.list.length;k++) {
-    if (app.projectInfo.annotations.list[k].type === "text" |
-        app.projectInfo.annotations.list[k].type === "hidden text" |
-        app.projectInfo.annotations.list[k].type === "multiple choices") {
-        // as text: annotation names are user data (H2b)
-        const th = document.createElement("th");
-        th.textContent = app.projectInfo.annotations.list[k].name;
-        document.querySelector("#projectFiles thead tr").appendChild(th);
-        annotations.text.push(app.projectInfo.annotations.list[k]);
-    }
-}
-
-// setup event handling
-document.querySelector("#addProject").onclick = () => { location="/project/new"; };
-document.querySelector("#settings").onclick = () => {
-    var pathname=location.pathname;
-    if(pathname.slice(-1)=="/")
-        location=pathname+"settings";
-    else
-        location=pathname+"/settings";
-};
-document.querySelector("#projectFiles").onclick = (e) => {
-    const prevRow = document.querySelector("#projectFiles tbody tr.selected");
-    const prevIndex = prevRow ? prevRow.rowIndex - 1 : -1;
-    const row = e.target.closest('#projectFiles tbody tr');
-    if (!row) {
-        return;
-    }
-    const index = row.rowIndex - 1;
-    if(index !== prevIndex && index < projectInfo.files.list.length) {
-        location.href = `/project/${projShortname}?source=${projectInfo.files.list[index].source}&project=${projShortname}`;
-    }
-};
-document.querySelector("#vecAnnotations").onclick = (e) => {
-    const row = e.target.closest('#vecAnnotations tbody tr');
-    if (row) {
-        selectRow(row);
-    }
-};
-
-// listen to changes in file selection by pressing the up/down arrows
-window.addEventListener('keydown', (e) => {
-    const table = document.querySelector("#projectFiles tbody");
-    const row = table.querySelector("tr.selected");
-    const {length} = app.projectInfo.files.list;
-    if (!row || length === 0) {
-        return;
-    }
-    const prevIndex = row.rowIndex - 1;
-    let newIndex;
-
-    switch(e.keyCode) {
-        case 38: // up
-            newIndex = (prevIndex + length - 1) % length;
-            break;
-        case 40: // down
-            newIndex = (prevIndex + 1) % length;
-            break;
-        default:
-            return;
-    }
-    if(newIndex !== prevIndex) {
-        location.href = `/project/${projShortname}?source=${projectInfo.files.list[newIndex].source}&project=${projShortname}`;
-    }
-});
-
-// select the first annotation row
-const firstAnnotationRow = document.querySelector("#vecAnnotations tbody tr");
-if (firstAnnotationRow) {
-    firstAnnotationRow.classList.add("selected");
-}
-
-// select the row of the file in the URL (?source=), or open the first file
-if (projectInfo.files.list.length > 0) {
-    const source = new URLSearchParams(location.search).get('source');
-    if (source === null) {
-        location.search = `source=${projectInfo.files.list[0].source}&project=${projShortname}`;
-    } else {
-        const fileIndex = Math.max(0, projectInfo.files.list.findIndex((f) => f.source === source));
-        const fileRow = document.querySelectorAll("#projectFiles tbody tr")[fileIndex];
-        if (fileRow) {
-            selectRow(fileRow);
-        }
-    }
-}
-
-/**
- * @func resizeStart
- */
-const configureResizeButton = function () {
-    resizeButton.setAttribute('data', JSON.stringify({flag:-1,x0:0,y0:0}));
-    resizeButton.addEventListener('mousedown', resizeStart);
-    resizeButton.addEventListener('touchstart', resizeStart);
-    body.addEventListener('mousemove',resizeMove);
-    body.addEventListener('touchmove',resizeMove);
-    body.addEventListener('mouseup',resizeEnd);
-    body.addEventListener('touchend',resizeEnd);
-}
-
-/**
- * @func resizeStart
- */
-const resizeStart = function (e) {
-    let x0, y0;
-    switch(e.type) {
-        case 'mousemove':
-            x0 = e.pageX;
-            y0 = e.pageY;
-            break;
-        case 'touchmove':
-            x0 = e.changedTouches[0].pageX;
-            y0 = e.changedTouches[0].pageY;
-            break;
-        default:
-            x0 = 0;
-            y0 = 0;
-    }
-    document.querySelector("#resizeButton").setAttribute(
-        'data',
-        JSON.stringify({ flag: 0, x0, y0 })
-    );
-}
-
-/**
- * @func resizeMove
- */
-function resizeMove(e) {
-    let x, y;
-    switch(e.type) {
-        case 'mousemove':
-            x = e.pageX;
-            y = e.pageY;
-            break;
-        case 'touchmove':
-            x = e.changedTouches[0].pageX;
-            y = e.changedTouches[0].pageY;
-            // x = e.originalEvent.changedTouches[0].pageX;
-            // y = e.originalEvent.changedTouches[0].pageY;
-            break;
-        default:
-            x = 0;
-            y = 0;
-    }
-
-    const {flag, x0, y0} = JSON.parse(resizeButton.getAttribute('data'));
-    if(flag === 0) {
-        resizeButton.setAttribute('data', JSON.stringify({flag:1, x0: x, y0: y}));
-    } else if(flag === 1) {
-        const d = x0 - x;
-        const newFlexBasis = `${document.querySelector("#left").clientWidth - d}px`;
-        document.querySelector("#left").style.flexBasis = newFlexBasis;
-        resizeButton.setAttribute('data', JSON.stringify({flag: 1, x0: x, y0: y}));
-        Microdraw.resizeAnnotationOverlay();
-    }
-}
-
-/**
- * @func resizeEnd
- */
-const resizeEnd = function (e) {
-    resizeButton.setAttribute('data', JSON.stringify({flag: -1}));
-}
-
-configureResizeButton();
-
-function selectRow(tr) {
-    for(row of tr.closest("tbody").rows) {
-        row.classList.remove("selected");
-    }
-    tr.classList.add("selected");
-}
-
-</script>
+<script src="/js/pages/project-page.js"></script>
 
 {{! <script>
     (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
