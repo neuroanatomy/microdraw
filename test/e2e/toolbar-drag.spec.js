@@ -10,8 +10,9 @@
   M4e: in full screen only, like BrainBox. M4f (microdraw D36): microdraw's
   toolbar always floats over the image, so it is draggable all the time, kept
   inside the viewer area (#microdrawView) while dragging, on window resize and
-  on entering or leaving full screen, and its position is remembered in
-  localStorage (per browser) until a dock button docks it again.
+  on entering or leaving full screen. M4g (D37): its position is not
+  remembered; every page load and every new image starts it at the top left
+  (docked left).
 
   Each test has its own browser context (its own localStorage) and its page is
   the only one open: touch moves are sent with animation frames, which a page
@@ -179,37 +180,45 @@ describe('Dragging the viewer\'s toolbar (M4e, M4f)', () => {
     }).timeout(U.longTimeout);
 
     // eslint-disable-next-line max-statements
-    it('remembers the position after a reload, and the dock buttons forget it', async () => {
+    it('starts at the top left after a reload and on the next image, even after being dragged', async () => {
       await openViewer(VIEWPORTS.desktop);
-      assert.isNull(await stored(page));
+      const start = await panelRect(page);
+      const view = await viewRect(page);
+      assert.deepEqual([start.left - view.left, start.top - view.top], [5, 5], 'docked left is the top left corner');
+      assert.equal(await toolbarDisplay(page), 'left');
+
       await mouseDrag(page, await handleCentre(page));
-      const dropped = await panelRect(page);
-      assert.isNotNull(await stored(page));
-
-      await H.openData(page, U.url(DATA_URL));
       assert.equal(await toolbarDisplay(page), 'free');
-      assert.deepEqual(await panelRect(page), dropped);
+      assert.isNull(await stored(page), 'nothing remembered');
 
-      // also on the next image
+      // next image
       await press(page, '#next');
       await H.waitForMicrodraw(page, 1);
-      assert.deepEqual(await panelRect(page), dropped);
+      assert.equal(await toolbarDisplay(page), 'left');
+      assert.deepEqual(await panelRect(page), start);
 
-      await press(page, '#display-right');
-      assert.equal(await toolbarDisplay(page), 'right');
-      assert.equal((await panelRect(page)).right, (await viewRect(page)).right);
-      assert.isNull(await stored(page));
+      // reload
+      await mouseDrag(page, await handleCentre(page), { x: FAR, y: FAR });
       await H.openData(page, U.url(DATA_URL));
-      assert.equal(await toolbarDisplay(page), 'left', 'docked as by default after a reload');
+      assert.equal(await toolbarDisplay(page), 'left');
+      assert.deepEqual(await panelRect(page), start);
+
+      // docked right, then a new image: back to the top left too
+      await press(page, '#display-right');
+      await press(page, '#next');
+      await H.waitForMicrodraw(page, 1);
+      assert.deepEqual(await panelRect(page), start);
     }).timeout(U.longTimeout);
 
-    it('clamps a remembered position that no longer fits the window', async () => {
-      await openViewer(VIEWPORTS.desktop);
-      await mouseDrag(page, await handleCentre(page), { x: FAR, y: FAR });
-      await page.setViewport({ width: 900, height: 700 });
+    it('forgets a position M4f left in the browser', async () => {
+      context = await H.newContext();
+      page = await context.newPage();
+      await page.setViewport(VIEWPORTS.desktop);
+      await page.goto(U.url('/'), { waitUntil: 'load' });
+      await page.evaluate((k) => localStorage.setItem(k, JSON.stringify({ left: 300, top: 200 })), STORAGE_KEY);
       await H.openData(page, U.url(DATA_URL));
-      assert.equal(await toolbarDisplay(page), 'free');
-      await assertInside(page);
+      assert.isNull(await stored(page));
+      assert.equal(await toolbarDisplay(page), 'left');
     }).timeout(U.longTimeout);
 
     it('re-clamps the toolbar when the window gets smaller', async () => {
@@ -237,12 +246,15 @@ describe('Dragging the viewer\'s toolbar (M4e, M4f)', () => {
   });
 
   describe('in full screen', () => {
-    it('moves the toolbar by the mouse drag', async () => {
+    it('moves the toolbar by the mouse drag, and starts the next image at the top left', async () => {
       await openViewer(VIEWPORTS.desktop, { fullscreen: true });
       const before = await panelRect(page);
       await mouseDrag(page, await handleCentre(page));
       assertMovedByDelta(before, await panelRect(page));
       assert.equal(await toolbarDisplay(page), 'free');
+      await press(page, '#next');
+      await H.waitForMicrodraw(page, 1);
+      assert.deepEqual(await panelRect(page), before);
       assert.deepEqual(pageErrors, []);
     }).timeout(U.longTimeout);
 
@@ -287,7 +299,6 @@ describe('Dragging the viewer\'s toolbar (M4e, M4f)', () => {
       await press(page, '#display-left');
       assert.equal(await toolbarDisplay(page), 'left');
       assert.deepEqual(await panelRect(page), docked);
-      assert.isNull(await stored(page));
     }).timeout(U.longTimeout);
   });
 

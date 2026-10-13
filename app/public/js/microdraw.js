@@ -1322,6 +1322,9 @@ const Microdraw = (function () {
       // display slice number
       me.dom.querySelector("#slice-number").innerHTML = `Slice ${imageNumber}`;
 
+      // every image starts with the toolbar at the viewer's top left (M4g, D37)
+      me.resetToolbarPosition();
+
       // open the image in the viewer
       me.viewerOpenImage(me.ImageInfo[me.currentImage]);
 
@@ -2014,7 +2017,6 @@ const Microdraw = (function () {
       case "right":
         me.dom.querySelector("body").setAttribute("data-toolbarDisplay", display);
         me.clearFreeToolbar();
-        me.storeToolbarPosition(null);
         break;
       }
     },
@@ -2024,43 +2026,6 @@ const Microdraw = (function () {
      * @returns {boolean} True in full screen
      */
     isFullscreen: () => me.dom.querySelector("body").hasAttribute("data-fullscreen"),
-
-    /** localStorage key of the dragged toolbar's position (M4f, D36) */
-    toolbarStorageKey: "microdraw.toolbarPosition",
-
-    /**
-     * @desc The toolbar position remembered in this browser, if any
-     * @returns {object|null} {left, top} in px from the viewer's top left corner
-     */
-    storedToolbarPosition: () => {
-      try {
-        const pos = JSON.parse(window.localStorage.getItem(me.toolbarStorageKey));
-        if (pos && Number.isFinite(pos.left) && Number.isFinite(pos.top)) {
-          return pos;
-        }
-      } catch (e) {
-        // no storage (private mode, blocked): start docked
-      }
-
-      return null;
-    },
-
-    /**
-     * @desc Remembers the toolbar position in this browser, or forgets it (null)
-     * @param {object|null} pos {left, top}
-     * @returns {void}
-     */
-    storeToolbarPosition: (pos) => {
-      try {
-        if (pos) {
-          window.localStorage.setItem(me.toolbarStorageKey, JSON.stringify(pos));
-        } else {
-          window.localStorage.removeItem(me.toolbarStorageKey);
-        }
-      } catch (e) {
-        // no storage: the position is not remembered
-      }
-    },
 
     /**
      * @desc Removes the position a drag gave the toolbar, so that its side's CSS places it again
@@ -2108,21 +2073,19 @@ const Microdraw = (function () {
     },
 
     /**
-     * @desc Puts the toolbar where it was last dropped in this browser (clamped), if it was
+     * @desc Puts the toolbar back at the viewer's top left corner, docked left (as on page
+     * load); called for every new image (M4g, D37)
      * @returns {void}
      */
-    restoreToolbarPosition: () => {
-      const pos = me.storedToolbarPosition();
-      if (pos) {
-        me.placeToolbar(pos.left, pos.top);
-      }
+    resetToolbarPosition: () => {
+      me.changeToolbarDisplay("left");
     },
 
     /**
      * @desc The toolbar (#menuBar) follows a mouse or finger drag that starts on its header's
      * middle cell (#toolsDragHandle), in normal view and in full screen (M4e; always since M4f,
-     * D36). It becomes "free", kept inside the viewer, and its position is remembered in
-     * localStorage until a dock button docks it again.
+     * D36). It becomes "free", kept inside the viewer, until a dock button, a new image or a page
+     * load puts it back docked (M4g, D37: the position is not remembered).
      * @returns {void}
      */
     initToolsDrag: () => {
@@ -2130,21 +2093,16 @@ const Microdraw = (function () {
       const panel = me.dom.querySelector("#menuBar");
       if (!handle || !panel) { return; }
       let startLeft, startTop, startX, startY;
-      let pos = null;
-
       const start = (x, y) => {
         startX = x;
         startY = y;
         // offsetLeft/Top: from the viewer (#microdrawView, the toolbar's offsetParent)
-        pos = me.placeToolbar(panel.offsetLeft, panel.offsetTop);
+        const pos = me.placeToolbar(panel.offsetLeft, panel.offsetTop);
         startLeft = pos.left;
         startTop = pos.top;
       };
       const move = (x, y) => {
-        pos = me.placeToolbar(startLeft + x - startX, startTop + y - startY);
-      };
-      const end = () => {
-        me.storeToolbarPosition(pos);
+        me.placeToolbar(startLeft + x - startX, startTop + y - startY);
       };
 
       handle.addEventListener("mousedown", (e) => {
@@ -2154,7 +2112,6 @@ const Microdraw = (function () {
         const onMouseMove = (ev) => { move(ev.clientX, ev.clientY); };
         const onMouseUp = () => {
           handle.classList.remove("dragging");
-          end();
           document.removeEventListener("mousemove", onMouseMove);
           document.removeEventListener("mouseup", onMouseUp);
         };
@@ -2170,7 +2127,6 @@ const Microdraw = (function () {
           move(ev.touches[0].clientX, ev.touches[0].clientY);
         };
         const onTouchEnd = () => {
-          end();
           document.removeEventListener("touchmove", onTouchMove);
           document.removeEventListener("touchend", onTouchEnd);
         };
@@ -2178,8 +2134,15 @@ const Microdraw = (function () {
         document.addEventListener("touchend", onTouchEnd);
       }, {passive: false});
 
-      // re-clamped by resizeAnnotationOverlay, on window resize and full screen
-      me.restoreToolbarPosition();
+      // Re-clamped by resizeAnnotationOverlay, on window resize and full screen.
+      // M4f (42e9bb8) remembered the position in localStorage; M4g dropped that
+      // (D37). Forget what M4f may have left in this browser. This cleanup can
+      // be removed once those browsers have visited again (e.g. in 2027).
+      try {
+        window.localStorage.removeItem("microdraw.toolbarPosition");
+      } catch (e) {
+        // no storage: nothing to forget
+      }
     },
 
     /**
