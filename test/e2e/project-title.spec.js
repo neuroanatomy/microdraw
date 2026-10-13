@@ -26,12 +26,21 @@ const owner = { username: 'e2e-m7-owner', password: 'e2e-m7-owner-password' };
 const EXISTING = 'e2em7title';
 const NEW = 'e2em7newtitle';
 const NOLISTS = 'e2em7nolists';
+const MARKUP = 'e2en1markup';
 
 const projectOf = (shortname, name) => {
   const project = U.createProjectWithPermission(shortname, {});
   project.name = name;
   project.owner = owner.username;
   project.collaborators.list = project.collaborators.list.filter((c) => c.username === 'anyone');
+
+  return project;
+};
+
+// Stored directly, as a legacy project could be (saves are sanitised since M3a)
+const markupProject = () => {
+  const project = projectOf(MARKUP, 'Markup');
+  project.files.list = [{ name: '<img src=x onerror="window.__n1=1">cat', source: 'https://microdraw.pasteur.fr/test_data/cat.json' }];
 
   return project;
 };
@@ -69,6 +78,11 @@ const typeInTitle = async (page, text) => {
 
 const titleOf = (page) => page.$eval('span.title[contenteditable]', (span) => span.textContent);
 
+// The placeholder shown by the title (its ::before content when it has the class `empty`), or null
+const placeholderOf = (page) => page.$eval('span.title[contenteditable]', (span) => (span.classList.contains('empty')
+  ? getComputedStyle(span, '::before').content
+  : null));
+
 // Put the caret at the end of the title, as a click after the last letter would.
 const focusTitleEnd = (page) => page.$eval('span.title[contenteditable]', (span) => {
   span.focus();
@@ -80,7 +94,7 @@ const focusTitleEnd = (page) => page.$eval('span.title[contenteditable]', (span)
   selection.addRange(range);
 });
 
-// eslint-disable-next-line max-statements -- setup, helpers and six tests
+// eslint-disable-next-line max-statements -- setup, helpers and eight tests
 describe('Project title and settings pages (M7)', () => {
   let context;
   let page;
@@ -91,12 +105,13 @@ describe('Project title and settings pages (M7)', () => {
   };
 
   before(async () => {
-    await Promise.all([EXISTING, NEW, NOLISTS].map((shortname) => U.removeProject(shortname)));
+    await Promise.all([EXISTING, NEW, NOLISTS, MARKUP].map((shortname) => U.removeProject(shortname)));
     await U.insertProject(projectOf(EXISTING, 'Initial Name'));
     const noLists = projectOf(NOLISTS, 'No lists');
     delete noLists.files;
     delete noLists.annotations.list;
     await U.insertProject(noLists);
+    await U.insertProject(markupProject());
     context = await H.newContext();
     page = await context.newPage();
     await H.logIn(page, owner);
@@ -107,7 +122,7 @@ describe('Project title and settings pages (M7)', () => {
     try {
       await H.closeContext(context);
     } finally {
-      await Promise.all([EXISTING, NEW, NOLISTS].map((shortname) => U.removeProject(shortname)));
+      await Promise.all([EXISTING, NEW, NOLISTS, MARKUP].map((shortname) => U.removeProject(shortname)));
       await U.removeLocalUser(owner.username);
     }
   });
@@ -117,14 +132,18 @@ describe('Project title and settings pages (M7)', () => {
     assert.equal(await titleOf(page), 'Initial Name');
   }).timeout(U.mediumTimeout);
 
-  // nwl-components 1.3.19 adds an "Embed Project" button with no option to
-  // hide it; microdraw has no embed route, so projectSettings-style.css hides it.
+  // nwl-components 1.3.19 added an "Embed Project" button; microdraw has no
+  // embed route. From 1.4.0 the config's showEmbedButton: false leaves it out
+  // (before, a CSS rule hid it). Neither the button nor its dialog is rendered.
   it('the settings page does not show the Embed Project button', async () => {
     await openSettings(EXISTING);
     const buttons = await page.$$eval('.description .actions button', (bs) => bs
       .filter((b) => b.offsetParent !== null)
       .map((b) => b.textContent.trim()));
     assert.deepEqual(buttons, ['Save Changes', 'Delete Project', 'Go to Project']);
+    // not rendered at all (1.4.0), rather than hidden
+    const embed = await page.$$eval('button', (bs) => bs.filter((b) => (/embed/i).test(b.textContent)).length);
+    assert.equal(embed, 0);
   }).timeout(U.mediumTimeout);
 
   it('typing in an empty title writes left to right', async () => {
@@ -134,6 +153,21 @@ describe('Project title and settings pages (M7)', () => {
     const writes = await typeInTitle(page, 'Hello');
     assert.equal(await titleOf(page), 'Hello');
     assert.equal(writes, 0, 'the page rewrote the title while it was typed');
+  }).timeout(U.mediumTimeout);
+
+  // 1.3.19 (6134ba2) kept the placeholder next to the typed text and never
+  // showed it again after clearing; 1.4.0 has the d4773a4 fix (BrainBox's)
+  it('an empty title shows the placeholder, hidden while there is text, back once cleared', async () => {
+    await openSettings(NEW);
+    assert.equal(await placeholderOf(page), '"Enter a project name"');
+    await focusTitleEnd(page);
+    await page.keyboard.type('Hi');
+    assert.equal(await titleOf(page), 'Hi');
+    assert.isNull(await placeholderOf(page), 'placeholder shown next to the typed text');
+    await page.keyboard.press('Backspace');
+    await page.keyboard.press('Backspace');
+    assert.equal(await titleOf(page), '');
+    assert.equal(await placeholderOf(page), '"Enter a project name"');
   }).timeout(U.mediumTimeout);
 
   it('typing after an existing name appends left to right, and Save stores it', async () => {
@@ -161,6 +195,25 @@ describe('Project title and settings pages (M7)', () => {
     // an empty annotation list gets one placeholder row (as in 0.0.15)
     assert.equal(await page.$eval('#numAnnotations', (el) => el.textContent), '1');
     assert.equal(await titleOf(page), 'No lists');
+  }).timeout(U.mediumTimeout);
+
+  // N1: dompurify 3 in nwl-components 1.4.0 is used only by its AnnotationCell
+  // (BrainBox's TextAnnotations), which microdraw does not use; the settings
+  // page shows file names in inputs and sources as text
+  it('the settings page shows markup in a stored file name as text, never runs it', async () => {
+    await openSettings(MARKUP);
+    await page.waitForSelector('#files tbody td input', { timeout: U.shortTimeout });
+    const row = await page.$eval('#files tbody tr', (tr) => ({
+      source: tr.cells[0].textContent,
+      name: tr.cells[1].querySelector('input').value,
+      elements: tr.querySelectorAll('img, a, [onerror]').length
+    }));
+    assert.deepEqual(row, {
+      source: 'https://microdraw.pasteur.fr/test_data/cat.json',
+      name: '<img src=x onerror="window.__n1=1">cat',
+      elements: 0
+    });
+    assert.isUndefined(await page.evaluate(() => window.__n1));
   }).timeout(U.mediumTimeout);
 
   it('the new-project page checks the short name as it is typed', async () => {
