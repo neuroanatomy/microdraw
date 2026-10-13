@@ -5,7 +5,6 @@
     <link rel="stylesheet" type="text/css" href="css/index-style.css"/>
     <link rel="stylesheet" type="text/css" href="css/ui.css" />
     <link href='/lib/roboto/roboto.css' rel='stylesheet' type='text/css'>
-    <script src="lib/jquery-1.11.0.min.js"></script>
 </head>
 
 <body>
@@ -81,7 +80,7 @@
             <section class="column last">
                 <h2>Application</h2>
                 <p>MicroDraw is based on open source frameworks to ensure its maintainability and extensibility. The interactive multi-resolution visualisation is based on <a href="https://openseadragon.github.io">OpenSeadragon</a>. The vectorial annotation is based on <a href="https://paperjs.org">Paper</a>. The concurrent versioning is based on Git</p>
-                <p>MicroDraw is written in JavaScript, using HTML5, CSS3 and jQuery.</p>
+                <p>MicroDraw is written in JavaScript, using HTML5 and CSS3.</p>
                 <ul class="links">
                     <li class="download"><a href="https://github.com/neuroanatomy/microdraw">Get it on GitHub</a></li>
                     <li class="document"><a href="https://github.com/r03ert0/microdraw/wiki">Documentation</a></li>
@@ -104,46 +103,59 @@ vid.muted = true;
 vid.loop = true;
 vid.playbackRate = 0.5;
 
-$(".download>a").each(function(){
-    $(this).attr('href',$(this).attr('href').replace("%%localhost%%",localhost));
-})
+// No jQuery since M4c (2026-10-13); test/e2e/landing-page.spec.js was written
+// on the jQuery version and passes unchanged. (The `.download>a` links that a
+// jQuery loop rewrote are all inside the HTML comment above: nothing to do.)
+var slide = document.querySelector(".slide");
+var neurons = document.querySelector("#neurons");
+var menu = document.querySelector("#menu");
+var footer = document.querySelector("#footer");
+var urlField = document.querySelector("#url");
+var list = document.querySelector("#list");
 
-$(".slide").height(window.innerHeight);
-$(window).on('resize',function() {
-    $(".slide").height(window.innerHeight);
-    $("#neurons").css({width:window.innerWidth});
+slide.style.height = window.innerHeight + "px";
+window.addEventListener('resize', function() {
+    slide.style.height = window.innerHeight + "px";
+    neurons.style.width = window.innerWidth + "px";
 });
 
 // List of brains
-$("#list").change(function(e) {
-    $("#url").val($("#list").val());
+list.addEventListener('change', function() {
+    urlField.value = list.value;
 });
 
 var menuShowing = true;
-$(window).on('scroll',function() {
+window.addEventListener('scroll', function() {
     var y = window.pageYOffset;
     if(y>100 && menuShowing) {
-        $("#menu").css({top:-32, opacity:0});
+        menu.style.top = "-32px";
+        menu.style.opacity = "0";
         menuShowing = false;
 
-        $("#footer").show();
+        // jQuery's show(): clear an inline display:none (the CSS shows it)
+        if(footer.style.display === "none") {
+            footer.style.display = "";
+        }
     }
     if(y<100 && !menuShowing) {
-        $("#menu").css({top:0, opacity:1});
+        menu.style.top = "0px";
+        menu.style.opacity = "1";
         menuShowing = true;
     }
 });
 
-$("h2").css({marginLeft:0,opacity:1});
+document.querySelectorAll("h2").forEach(function(h2) {
+    h2.style.marginLeft = "0px";
+    h2.style.opacity = "1";
+});
 
 function goToURL(e) {
-    var url=$("#url").val();
+    var url=urlField.value;
     location="/data?source="+url;
 }
 
 // Add URL loading
-$("#url").keyup(function(e) {
-    //console.log(e,e.target);
+urlField.addEventListener('keyup', function(e) {
     if (e.keyCode == 13) {
         goToURL(e);
     }
