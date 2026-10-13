@@ -1379,6 +1379,9 @@ const Microdraw = (function () {
         height
       ];
       me.transform();
+      // the viewer changed size (window, full screen, the project page's resize
+      // handle): keep a dragged toolbar inside it (M4f)
+      me.clampToolbar();
     },
 
     _convertDBAnnotationsToRegions: (data) => {
@@ -2010,20 +2013,54 @@ const Microdraw = (function () {
       case "left":
       case "right":
         me.dom.querySelector("body").setAttribute("data-toolbarDisplay", display);
-        me.toolbarDockSide = display;
         me.clearFreeToolbar();
+        me.storeToolbarPosition(null);
         break;
       }
     },
-
-    /** Side where the toolbar was last docked, "left" or "right" (M4e) */
-    toolbarDockSide: "left",
 
     /**
      * @desc Whether the viewer is in full screen (set by the fullscreen tool)
      * @returns {boolean} True in full screen
      */
     isFullscreen: () => me.dom.querySelector("body").hasAttribute("data-fullscreen"),
+
+    /** localStorage key of the dragged toolbar's position (M4f, D36) */
+    toolbarStorageKey: "microdraw.toolbarPosition",
+
+    /**
+     * @desc The toolbar position remembered in this browser, if any
+     * @returns {object|null} {left, top} in px from the viewer's top left corner
+     */
+    storedToolbarPosition: () => {
+      try {
+        const pos = JSON.parse(window.localStorage.getItem(me.toolbarStorageKey));
+        if (pos && Number.isFinite(pos.left) && Number.isFinite(pos.top)) {
+          return pos;
+        }
+      } catch (e) {
+        // no storage (private mode, blocked): start docked
+      }
+
+      return null;
+    },
+
+    /**
+     * @desc Remembers the toolbar position in this browser, or forgets it (null)
+     * @param {object|null} pos {left, top}
+     * @returns {void}
+     */
+    storeToolbarPosition: (pos) => {
+      try {
+        if (pos) {
+          window.localStorage.setItem(me.toolbarStorageKey, JSON.stringify(pos));
+        } else {
+          window.localStorage.removeItem(me.toolbarStorageKey);
+        }
+      } catch (e) {
+        // no storage: the position is not remembered
+      }
+    },
 
     /**
      * @desc Removes the position a drag gave the toolbar, so that its side's CSS places it again
@@ -2035,19 +2072,57 @@ const Microdraw = (function () {
     },
 
     /**
-     * @desc Docks a dragged ("free") toolbar back on the side where it was docked; called when leaving full screen
+     * @desc Puts the toolbar "free" at (left, top) px from the viewer's (#microdrawView) top
+     * left corner, kept inside the viewer: at its top when it is taller than the viewer
+     * @param {number} left Left, in px
+     * @param {number} top Top, in px
+     * @returns {object} The position used, {left, top}
+     */
+    placeToolbar: (left, top) => {
+      const panel = me.dom.querySelector("#menuBar");
+      const view = me.dom.querySelector("#microdrawView");
+      const maxLeft = Math.max(0, view.clientWidth - panel.offsetWidth);
+      const maxTop = Math.max(0, view.clientHeight - panel.offsetHeight);
+      const pos = {
+        left: Math.min(Math.max(0, left), maxLeft),
+        top: Math.min(Math.max(0, top), maxTop)
+      };
+      panel.style.position = "absolute";
+      panel.style.left = pos.left + "px";
+      panel.style.top = pos.top + "px";
+      panel.style.right = "auto";
+      me.dom.querySelector("body").setAttribute("data-toolbarDisplay", "free");
+
+      return pos;
+    },
+
+    /**
+     * @desc Keeps a free toolbar inside the viewer, after the viewer changed size
+     * (window resize, entering or leaving full screen)
      * @returns {void}
      */
-    dockFreeToolbar: () => {
-      if (me.dom.querySelector("body").getAttribute("data-toolbarDisplay") === "free") {
-        me.changeToolbarDisplay(me.toolbarDockSide);
+    clampToolbar: () => {
+      if (me.dom.querySelector("body").getAttribute("data-toolbarDisplay") !== "free") { return; }
+      const panel = me.dom.querySelector("#menuBar");
+      me.placeToolbar(parseFloat(panel.style.left) || 0, parseFloat(panel.style.top) || 0);
+    },
+
+    /**
+     * @desc Puts the toolbar where it was last dropped in this browser (clamped), if it was
+     * @returns {void}
+     */
+    restoreToolbarPosition: () => {
+      const pos = me.storedToolbarPosition();
+      if (pos) {
+        me.placeToolbar(pos.left, pos.top);
       }
     },
 
     /**
-     * @desc In full screen, the toolbar (#menuBar) follows a mouse or finger drag that starts on
-     * its header (#toolsDragHandle), as BrainBox's initToolsDrag (M4e). The toolbar becomes "free":
-     * fixed where it was dropped, until a dock button or leaving full screen docks it again.
+     * @desc The toolbar (#menuBar) follows a mouse or finger drag that starts on its header's
+     * middle cell (#toolsDragHandle), in normal view and in full screen (M4e; always since M4f,
+     * D36). It becomes "free", kept inside the viewer, and its position is remembered in
+     * localStorage until a dock button docks it again.
      * @returns {void}
      */
     initToolsDrag: () => {
@@ -2055,32 +2130,31 @@ const Microdraw = (function () {
       const panel = me.dom.querySelector("#menuBar");
       if (!handle || !panel) { return; }
       let startLeft, startTop, startX, startY;
+      let pos = null;
 
       const start = (x, y) => {
-        const rect = panel.getBoundingClientRect();
         startX = x;
         startY = y;
-        startLeft = rect.left;
-        startTop = rect.top;
-        panel.style.position = "fixed";
-        panel.style.left = startLeft + "px";
-        panel.style.top = startTop + "px";
-        panel.style.right = "auto";
-        me.dom.querySelector("body").setAttribute("data-toolbarDisplay", "free");
+        // offsetLeft/Top: from the viewer (#microdrawView, the toolbar's offsetParent)
+        pos = me.placeToolbar(panel.offsetLeft, panel.offsetTop);
+        startLeft = pos.left;
+        startTop = pos.top;
       };
       const move = (x, y) => {
-        panel.style.left = (startLeft + x - startX) + "px";
-        panel.style.top = (startTop + y - startY) + "px";
+        pos = me.placeToolbar(startLeft + x - startX, startTop + y - startY);
+      };
+      const end = () => {
+        me.storeToolbarPosition(pos);
       };
 
       handle.addEventListener("mousedown", (e) => {
-        if (!me.isFullscreen()) { return; }
         e.preventDefault();
         handle.classList.add("dragging");
         start(e.clientX, e.clientY);
         const onMouseMove = (ev) => { move(ev.clientX, ev.clientY); };
         const onMouseUp = () => {
           handle.classList.remove("dragging");
+          end();
           document.removeEventListener("mousemove", onMouseMove);
           document.removeEventListener("mouseup", onMouseUp);
         };
@@ -2089,7 +2163,6 @@ const Microdraw = (function () {
       });
 
       handle.addEventListener("touchstart", (e) => {
-        if (!me.isFullscreen()) { return; }
         e.preventDefault(); // no page scroll, no mouse events
         start(e.touches[0].clientX, e.touches[0].clientY);
         const onTouchMove = (ev) => {
@@ -2097,12 +2170,16 @@ const Microdraw = (function () {
           move(ev.touches[0].clientX, ev.touches[0].clientY);
         };
         const onTouchEnd = () => {
+          end();
           document.removeEventListener("touchmove", onTouchMove);
           document.removeEventListener("touchend", onTouchEnd);
         };
         document.addEventListener("touchmove", onTouchMove, {passive: false});
         document.addEventListener("touchend", onTouchEnd);
       }, {passive: false});
+
+      // re-clamped by resizeAnnotationOverlay, on window resize and full screen
+      me.restoreToolbarPosition();
     },
 
     /**

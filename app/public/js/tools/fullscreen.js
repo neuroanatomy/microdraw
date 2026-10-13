@@ -26,8 +26,9 @@ window.ToolFullscreen = { fullscreen : (function() {
         document.querySelector("#resizeButton").style.display = "none";
       }
 
-      // the toolbar can be dragged by its header (M4e)
       Microdraw.dom.querySelector("body").setAttribute("data-fullscreen", "true");
+      // a dragged toolbar stays inside the (larger) viewer (M4f)
+      Microdraw.clampToolbar();
     },
 
     _exitFullscreen: () => {
@@ -40,9 +41,9 @@ window.ToolFullscreen = { fullscreen : (function() {
         document.querySelector("#resizeButton").style.display = "";
       }
 
-      // a toolbar dragged in full screen goes back to its side (M4e)
       Microdraw.dom.querySelector("body").removeAttribute("data-fullscreen");
-      Microdraw.dockFreeToolbar();
+      // a dragged toolbar stays inside the (smaller) viewer (M4f)
+      Microdraw.clampToolbar();
     },
 
     /**
