@@ -1,4 +1,3 @@
-/*eslint-env jquery*/
 /*eslint no-multi-spaces: ["error", { ignoreEOLComments: true }]*/
 /*eslint max-statements: ["error", 80]*/
 /*eslint max-lines: ["error", 3000]*/
@@ -7,6 +6,107 @@
 /*global OpenSeadragon*/
 /*global MUI*/
 /* exported Microdraw */
+
+/*
+  What microdraw.js used jQuery 1.11 for, without jQuery (M4a, 2026-10-13).
+  test/e2e/microdraw.requests.spec.js was written on the jQuery version and
+  passes unchanged on this one.
+*/
+
+/**
+ * jQuery.param for a flat object of scalars (all microdraw sends): undefined
+ * values left out (jQuery.ajax deep-copies `data` first, which drops them),
+ * null as '', keys and values through encodeURIComponent, then %20 as '+'.
+ * @param {object} obj Query parameters
+ * @returns {string} Query string, without '?'
+ */
+const jqParam = (obj) => Object.keys(obj)
+  .filter((key) => typeof obj[key] !== 'undefined')
+  .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(obj[key] === null ? '' : obj[key])}`)
+  .join('&')
+  .replace(/%20/g, '+');
+
+/**
+ * An Error carrying what jQuery passed to its error callbacks.
+ * @param {string} textStatus 'error' or 'parsererror'
+ * @param {*} errorThrown The status text, or the SyntaxError
+ * @param {number} status HTTP status (0 if unreachable)
+ * @returns {Error} The error
+ */
+const jqError = (textStatus, errorThrown, status) => Object.assign(new Error(textStatus), { textStatus, errorThrown, status });
+
+/**
+ * A GET for JSON that fails as jQuery.ajax({dataType: 'json'}) did: on a
+ * non-2xx status (textStatus 'error', errorThrown the status text), on a body
+ * that is not JSON (textStatus 'parsererror', errorThrown the SyntaxError,
+ * even with status 200), and when the server cannot be reached ('error', '').
+ * jQuery's request headers are kept.
+ * @param {string} url URL
+ * @param {object} [headers] Extra request headers
+ * @returns {Promise<any>} The parsed JSON; rejects with an Error carrying textStatus, errorThrown, status
+ */
+const jqGetJSON = async (url, headers = {}) => {
+  let res;
+  try {
+    res = await fetch(url, {
+      headers: {
+        'Accept': 'application/json, text/javascript, */*; q=0.01',
+        'X-Requested-With': 'XMLHttpRequest',
+        ...headers
+      }
+    });
+  } catch (e) {
+    throw jqError('error', '', 0);
+  }
+  const text = await res.text();
+  const ok = (res.status >= 200 && res.status < 300) || res.status === 304;
+  if (!ok) {
+    throw jqError('error', res.statusText, res.status);
+  }
+  if (res.status === 204) {
+    return undefined; // eslint-disable-line no-undefined
+  }
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    throw jqError('parsererror', e, res.status);
+  }
+};
+
+/**
+ * jQuery.ajax({dataType: 'jsonp', jsonpCallback: 'f'}) on a URL ending in
+ * '?callback=?': the script is requested with callback=f and a cache buster
+ * `_` (jQuery's default for scripts), the global f is set while it loads and
+ * restored afterwards. Fails if the script does not load or does not call f.
+ * @param {string} url URL of the .jsonp file, without query
+ * @returns {Promise<any>} The value passed to f
+ */
+const jqGetJSONP = (url) => new Promise((resolve, reject) => {
+  const name = 'f';
+  const previous = window[name];
+  let called = false;
+  let result;
+  window[name] = (obj) => { called = true; result = obj; };
+  const script = document.createElement('script');
+  const done = () => {
+    window[name] = previous;
+    script.remove();
+  };
+  script.onload = () => {
+    done();
+    if (called) {
+      resolve(result);
+    } else {
+      reject(new Error(`${name} was not called`));
+    }
+  };
+  script.onerror = () => {
+    done();
+    reject(new Error(`could not load ${url}`));
+  };
+  script.src = `${url}?callback=${name}&_=${Date.now()}`;
+  document.head.appendChild(script);
+});
 
 const Microdraw = (function () {
   const me = {
@@ -550,36 +650,6 @@ const Microdraw = (function () {
       console.log("WARNING: Region with name " + name + " not found");
 
       return null;
-    },
-
-    /**
-       * @param {array} o Array with ontology terms
-       * @returns {void}
-       */
-    appendRegionTagsFromOntology: function (o) {
-      if( me.debug>1 ) { console.log("> appendRegionTagsFromOntology"); }
-
-      for( let i = 0; i < o.length; i += 1 ) {
-        if( o[i].parts ) {
-          const el = document.createElement("div");
-          el.textContent = o[i].name;
-          me.dom.querySelector("#regionPicker").appendChild(el);
-          me.appendRegionTagsFromOntology(o[i].parts);
-        } else {
-          const tag = me.regionTag(o[i].name);
-          const el = me.dom.querySelector(tag);
-          el.classList.add("ontology");
-          me.dom.querySelector("#regionPicker").appendChild(el);
-
-          // handle single click on computers
-          el.click(me.singlePressOnRegion);
-
-          // handle double click on computers
-          el.dblclick(me.doublePressOnRegion);
-
-          el.on("touchstart", me.handleRegionTap);
-        }
-      }
     },
 
     /**
@@ -1143,8 +1213,8 @@ const Microdraw = (function () {
         if(typeof Microdraw.project !== 'undefined') {
           query.project = Microdraw.project;
         }
-        $.getJSON('/api', query)
-          .success(function (data) {
+        jqGetJSON('/api?' + jqParam(query))
+          .then(function (data) {
             Microdraw.annotationLoadingFlag = false;
 
             // data.forEach((d) => {
@@ -1168,7 +1238,7 @@ const Microdraw = (function () {
 
             resolve(data);
 
-            // if( $.isEmptyObject(data) ) {
+            // if( Object.keys(data).length === 0 ) {
             //   Microdraw.ImageInfo[Microdraw.currentImage].Hash = Microdraw.hash(JSON.stringify(Microdraw.ImageInfo[Microdraw.currentImage].Regions)).toString(16);
             //   if( Microdraw.debug ) {
             //     console.log("< save.js microdrawDBLoad: returned data is an empty object");
@@ -1178,7 +1248,7 @@ const Microdraw = (function () {
             //   resolve(data);
             // }
           })
-          .error(function(jqXHR, textStatus, err) {
+          .catch(function({textStatus, errorThrown: err}) {
             console.log("< microdrawDBLoad resolve ERROR: " + textStatus + " " + err);
             Microdraw.annotationLoadingFlag = false;
             reject(err);
@@ -1784,34 +1854,13 @@ const Microdraw = (function () {
           ext = ext[ext.length - 1];
           if( ext === "jsonp" ) {
             if( me.debug ) { console.log("Reading cross-origin jsonp file"); }
-            $.ajax({
-              type: 'GET',
-              url: me.params.source + "?callback=?",
-              jsonpCallback: 'f',
-              dataType: 'jsonp',
-              contentType: "application/json",
-              success: function(obj) {
-                rs(obj);
-              },
-              error: function(err) {
-                rj(err);
-              }
-            });
+            jqGetJSONP(me.params.source)
+              .then(rs, rj);
           } else
           if( ext === "json" ) {
             if( me.debug ) { console.log("Reading local json file"); }
-            $.ajax({
-              type: 'GET',
-              url: me.params.source,
-              dataType: "json",
-              contentType: "application/json",
-              success: function(obj) {
-                rs(obj);
-              },
-              error: function(err) {
-                rj(err);
-              }
-            });
+            jqGetJSON(me.params.source, { 'Content-Type': 'application/json' })
+              .then(rs, rj);
           } else {
             fetch(me.params.source)
               .then((data) => data.json())
@@ -1847,7 +1896,7 @@ const Microdraw = (function () {
        */
     loadConfiguration: async () => {
       await Promise.all([
-        me.loadScript("/lib/jquery-1.11.0.min.js"),
+        me.loadScript("/lib/jquery-1.11.0.min.js"), // only for muijs, until M4b
         me.loadScript("/lib/paper-full-0.12.15.min.js"),
         me.loadScript("/lib/openseadragon/openseadragon.js"),
         me.loadScript("/lib/hippy-hippo/hippy-hippo-umd.js"), // vendored: hippy-hippo@0.0.1
@@ -1888,15 +1937,15 @@ const Microdraw = (function () {
       /* global ToolCloseMenu */
       /* global ToolOpenMenu */
 
-      $.extend(me.tools, ToolFullscreen);
-      $.extend(me.tools, ToolHome);
-      $.extend(me.tools, ToolNavigate);
-      $.extend(me.tools, ToolZoomIn);
-      $.extend(me.tools, ToolZoomOut);
-      $.extend(me.tools, ToolPrevious);
-      $.extend(me.tools, ToolNext);
-      $.extend(me.tools, ToolCloseMenu);
-      $.extend(me.tools, ToolOpenMenu);
+      Object.assign(me.tools, ToolFullscreen);
+      Object.assign(me.tools, ToolHome);
+      Object.assign(me.tools, ToolNavigate);
+      Object.assign(me.tools, ToolZoomIn);
+      Object.assign(me.tools, ToolZoomOut);
+      Object.assign(me.tools, ToolPrevious);
+      Object.assign(me.tools, ToolNext);
+      Object.assign(me.tools, ToolCloseMenu);
+      Object.assign(me.tools, ToolOpenMenu);
 
       // load configuration file, then load the tools accordingly
       const r = await fetch("/js/configuration.json");
@@ -1912,8 +1961,8 @@ const Microdraw = (function () {
         item.exportedVar.forEach( (variable) => {
 
           /** @todo use ES 6 for proper module import. eval should be avoided when possible */
-          $.extend(me.tools, this[variable]);
-          // eval(`$.extend(me.tools,${variable})`);
+          // jQuery's extend(a, b) was shallow: same as Object.assign for these plain tool objects
+          Object.assign(me.tools, this[variable]);
         });
       });
     },
@@ -2054,7 +2103,7 @@ const Microdraw = (function () {
 
       Consolita.init(me.dom.querySelector("#logScript"), me.dom);
 
-      $(window).resize(function() {
+      window.addEventListener("resize", function() {
         me.resizeAnnotationOverlay();
       });
 

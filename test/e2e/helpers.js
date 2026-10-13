@@ -127,6 +127,23 @@ const instrumentPage = async (page) => {
 
       return send.apply(this, args);
     };
+    // The same count for GET /api made with fetch (M4a: the annotation load no
+    // longer goes through jQuery's XMLHttpRequest). A request ends when its
+    // body has arrived (as XHR's loadend), or when it fails.
+    const originalFetch = window.fetch;
+    window.fetch = function (input, init, ...rest) {
+      const reqUrl = typeof input === 'string' || input instanceof URL ? String(input) : input.url;
+      const method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+      const promise = originalFetch.call(window, input, init, ...rest);
+      if (method === 'GET' && (/\/api(\?|$)/).test(reqUrl)) {
+        window.__mdTest.pendingApiGets += 1;
+        const done = () => { window.__mdTest.pendingApiGets -= 1; };
+        promise.then((res) => res.clone().arrayBuffer())
+          .then(done, done);
+      }
+
+      return promise;
+    };
   });
 };
 
