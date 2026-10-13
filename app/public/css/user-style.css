@@ -17,8 +17,8 @@ td {
     width:100%;
     border-collapse:collapse;
 }
-#dataFiles td, #atlasFiles td, #projects td,
-#dataFiles th, #atlasFiles th, #projects th {
+#dataFiles td, #atlasFiles td,
+#dataFiles th, #atlasFiles th {
     padding:0px 4px;
 }
 #dataFiles, #atlasFiles, #projects,
