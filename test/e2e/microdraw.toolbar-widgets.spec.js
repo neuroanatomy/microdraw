@@ -47,6 +47,7 @@ const waitForThumb = (p, percent) => p.waitForFunction(
   percent
 );
 
+
 const pressed = (container) => page.evaluate((c) => Array.from(window.Microdraw.dom.querySelectorAll(`${c} .mui`))
   .filter((el) => el.classList.contains('mui-pressed'))
   .map((el) => el.id), container);
@@ -223,25 +224,32 @@ describe('Toolbar widgets (M4b)', () => {
 
   describe('on a tablet', () => {
     let tab;
+    // The tablet page is the only page of the context, so it is the one in
+    // front: touch moves are dispatched with animation frames, which a page
+    // behind another may not get (CI, 2026-10-13: the moves never arrived, then
+    // every later touch and screenshot of that page hung). The context, with
+    // this page, is closed by the outer after hook (closeContext gives up
+    // after shortTimeout).
     before(async () => {
+      await page.close();
       tab = await context.newPage();
       await tab.setViewport(TABLET);
-    });
-    after(async () => {
-      await tab.close();
+      await tab.bringToFront();
     });
 
     // eslint-disable-next-line max-statements
     it('drags the slider with a finger', async () => {
-      await tab.bringToFront();
       await H.openData(tab, U.url(DATA_URL));
+      await H.recordTouches(tab);
       const { track, thumb } = await sliderBoxes(tab);
       const y = thumb.y + (thumb.height / 2);
       await tab.touchscreen.touchStart(thumb.x + (thumb.width / 2), y);
       await tab.touchscreen.touchMove(track.x + (track.width * 0.5), y);
       await tab.touchscreen.touchMove(track.x + (track.width * 0.75), y);
       try {
-        await waitForThumb(tab, 75);
+        await waitForThumb(tab, 75).catch(async (err) => {
+          throw new Error(`${err.message}; ${await H.touchReport(tab, thumb.x + (thumb.width / 2), y)}`);
+        });
         assert.deepEqual(await sliceState(tab), { slice: 0, label: 'Slice 1', url: '0' });
       } finally {
         await tab.touchscreen.touchEnd();

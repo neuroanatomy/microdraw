@@ -100,9 +100,15 @@ describe('Dragging the viewer\'s toolbar (M4e)', () => {
     context = await H.newContext();
   });
 
+  // Each test's page is the only one open (touch moves need the page in
+  // front). A page whose renderer is stuck may never close: give up after
+  // shortTimeout, so that the hook cannot time out.
   afterEach(async () => {
-    if (viewer && viewer.page) { await viewer.page.close(); }
+    const closing = viewer && viewer.page ? viewer.page.close() : Promise.resolve();
     viewer = null;
+    let timer;
+    await Promise.race([closing, new Promise((resolve) => { timer = setTimeout(resolve, U.shortTimeout); })])
+      .finally(() => clearTimeout(timer));
   });
 
   after(async () => {

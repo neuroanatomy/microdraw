@@ -74,7 +74,18 @@ const saveDebugScreenshots = async (name) => {
   const dir = path.join(__dirname, 'debug-screenshots');
   const base = name.replace(/[^\w.-]+/g, '_').slice(0, 100);
   await fs.promises.mkdir(dir, { recursive: true });
-  await Promise.all([...openPages].map((page, i) => page.screenshot({ path: path.join(dir, `${base}.${i}.png`) }).catch(() => null)));
+  // A page whose renderer is stuck never answers: give up on it after
+  // shortTimeout, so that this afterEach hook cannot time out (a failing root
+  // hook stops the whole run; CI 2026-10-13 stopped at 96 tests).
+  await Promise.all([...openPages].map((page, i) => {
+    let timer;
+    const timeout = new Promise((resolve) => { timer = setTimeout(resolve, shortTimeout); });
+
+    return Promise.race([
+      page.screenshot({ path: path.join(dir, `${base}.${i}.png`) }).catch(() => null),
+      timeout
+    ]).finally(() => clearTimeout(timer));
+  }));
 };
 
 // Pages opened through openData count
@@ -324,6 +335,31 @@ const samplePixel = (page, which, x, y) => page.evaluate((w, px, py) => {
   return Array.from(canvas.getContext('2d').getImageData(cx, cy, 1, 1).data);
 }, which, x, y);
 
+// Diagnostics for a touch drag that does not arrive: the events the page got,
+// whether it is visible, its zoom, and what is under the touch point
+const recordTouches = (p) => p.evaluate(() => {
+  window.__mdTouches = [];
+  ['pointerdown', 'touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach((type) => {
+    document.addEventListener(type, (e) => {
+      const point = e.changedTouches ? e.changedTouches[0] : e;
+      window.__mdTouches.push(`${type}@${Math.round(point.clientX)},${Math.round(point.clientY)}`);
+    }, true);
+  });
+});
+const touchReport = (p, x, y) => p.evaluate((px, py) => {
+  const root = window.Microdraw ? window.Microdraw.dom : document;
+  const hit = root.elementFromPoint(px, py);
+
+  return JSON.stringify({
+    events: window.__mdTouches,
+    visibility: document.visibilityState,
+    scale: window.visualViewport.scale,
+    innerWidth: window.innerWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    hit: hit && (hit.id || hit.className)
+  });
+}, x, y);
+
 // The user the e2e specs save annotations as: since H3 the server refuses
 // saves without a logged-in user.
 const annotator = { username: 'e2e-annotator', password: 'e2e-annotator-password' };
@@ -367,6 +403,8 @@ module.exports = {
   expectedFillPixel,
   instrumentPage,
   newContext,
+  recordTouches,
+  touchReport,
   openData,
   regionState,
   samplePixel,
