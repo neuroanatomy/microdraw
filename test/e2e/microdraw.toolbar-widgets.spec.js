@@ -41,8 +41,8 @@ const sliderBoxes = (p = page) => p.evaluate(() => {
 
 // The thumb's CSS left, in % of the track (rounded: pointer positions are whole pixels)
 const thumbLeft = (p = page) => p.evaluate(() => Math.round(parseFloat(window.Microdraw.dom.querySelector('#slice .mui-thumb').style.left)));
-const waitForThumb = (p, percent) => p.waitForFunction(
-  (v) => Math.round(parseFloat(window.Microdraw.dom.querySelector('#slice .mui-thumb').style.left)) === v,
+const waitForThumbPast = (p, percent) => p.waitForFunction(
+  (v) => parseFloat(window.Microdraw.dom.querySelector('#slice .mui-thumb').style.left) >= v,
   { timeout: U.shortTimeout },
   percent
 );
@@ -241,13 +241,20 @@ describe('Toolbar widgets (M4b)', () => {
     it('drags the slider with a finger', async () => {
       await H.openData(tab, U.url(DATA_URL));
       await H.recordTouches(tab);
+      // positions from the boxes measured now, whatever the platform's layout
       const { track, thumb } = await sliderBoxes(tab);
       const y = thumb.y + (thumb.height / 2);
       await tab.touchscreen.touchStart(thumb.x + (thumb.width / 2), y);
-      await tab.touchscreen.touchMove(track.x + (track.width * 0.5), y);
-      await tab.touchscreen.touchMove(track.x + (track.width * 0.75), y);
+      // Chrome sends touch moves with animation frames and may hold the last
+      // one until another input event comes (CI, 2026-10-13: the move to 75 %
+      // never arrived before the release). So: several steps, and while the
+      // finger is down only check that the thumb passed the middle.
+      for (const f of [0.25, 0.5, 0.6, 0.7, 0.75]) {
+        // eslint-disable-next-line no-await-in-loop
+        await tab.touchscreen.touchMove(track.x + (track.width * f), y);
+      }
       try {
-        await waitForThumb(tab, 75).catch(async (err) => {
+        await waitForThumbPast(tab, 50).catch(async (err) => {
           throw new Error(`${err.message}; ${await H.touchReport(tab, thumb.x + (thumb.width / 2), y)}`);
         });
         assert.deepEqual(await sliceState(tab), { slice: 0, label: 'Slice 1', url: '0' });
@@ -267,6 +274,8 @@ describe('Toolbar widgets (M4b)', () => {
     }).timeout(U.mediumTimeout);
 
     it('taps the tool buttons', async () => {
+      // its own start, on the first slice, whatever the test before left
+      await H.openData(tab, U.url(DATA_URL));
       await (await inShadow(tab, '#draw')).tap();
       assert.equal(await tab.evaluate(() => window.Microdraw.selectedTool), 'draw');
       await (await inShadow(tab, '#script')).tap();
