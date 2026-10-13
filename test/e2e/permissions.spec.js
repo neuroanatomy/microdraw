@@ -37,9 +37,13 @@ describe('TESTING PERMISSIONS (settings page)', function () {
   });
 
   after(async function () {
-    await context.close();
-    await Promise.all(Object.keys(projects).map((shortname) => U.removeProject(shortname)));
-    await U.removeLocalUser(U.testingCredentials.username);
+    // DB cleanup in finally: a crashed browser must not skip it (M5f)
+    try {
+      await H.closeContext(context);
+    } finally {
+      await Promise.all(Object.keys(projects).map((shortname) => U.removeProject(shortname)));
+      await U.removeLocalUser(U.testingCredentials.username);
+    }
   });
 
   it('Check that collaborators cannot see other collaborators if not permitted', async function () {

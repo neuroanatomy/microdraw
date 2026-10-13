@@ -28,6 +28,9 @@ afterEach(async function () {
 after(async function () {
   // eslint-disable-next-line no-invalid-this -- mocha passes the hook context as this
   this.timeout(U.longTimeout);
-  await H.stopBrowser();
-  await U.closeResources();
+  try {
+    await H.stopBrowser();
+  } finally {
+    await U.closeResources();
+  }
 });

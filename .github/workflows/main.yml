@@ -25,20 +25,15 @@ jobs:
           PUPPETEER_SKIP_DOWNLOAD: 1
       - name: Lint
         run: npm run lint
-      # puppeteer 21 cannot download its Chrome on Node 26 (yargs ESM, D20; run
-      # through nyc it produced a corrupt binary on Linux). Install the same
-      # Chrome for Testing build puppeteer 21.1.0 expects, point puppeteer at it,
-      # and launch it once with its output shown so a broken browser fails here.
+      # npm 11 may skip puppeteer's postinstall (allowScripts), and the install
+      # above sets PUPPETEER_SKIP_DOWNLOAD, so fetch puppeteer's own Chrome for
+      # Testing explicitly (as BrainBox), then launch it once with its output
+      # shown so a broken browser fails here (microdraw D32).
       - name: Install Chrome for puppeteer
-        id: setup-chrome
-        uses: browser-actions/setup-chrome@v2
-        with:
-          chrome-version: 116.0.5845.96
-          install-dependencies: true
+        run: npx puppeteer browsers install chrome
+        timeout-minutes: 4
       - name: Check the e2e browser starts
-        run: |
-          echo "PUPPETEER_EXECUTABLE_PATH=${{ steps.setup-chrome.outputs.chrome-path }}" >> "$GITHUB_ENV"
-          PUPPETEER_EXECUTABLE_PATH="${{ steps.setup-chrome.outputs.chrome-path }}" npx nyc --silent node scripts/check-browser.js
+        run: node scripts/check-browser.js
         timeout-minutes: 2
       - run: npm run build-pages
       - name: Instantiate github-keys.json
@@ -91,20 +86,15 @@ jobs:
           PUPPETEER_SKIP_DOWNLOAD: 1
       - name: Lint
         run: npm run lint
-      # puppeteer 21 cannot download its Chrome on Node 26 (yargs ESM, D20; run
-      # through nyc it produced a corrupt binary on Linux). Install the same
-      # Chrome for Testing build puppeteer 21.1.0 expects, point puppeteer at it,
-      # and launch it once with its output shown so a broken browser fails here.
+      # npm 11 may skip puppeteer's postinstall (allowScripts), and the install
+      # above sets PUPPETEER_SKIP_DOWNLOAD, so fetch puppeteer's own Chrome for
+      # Testing explicitly (as BrainBox), then launch it once with its output
+      # shown so a broken browser fails here (microdraw D32).
       - name: Install Chrome for puppeteer
-        id: setup-chrome
-        uses: browser-actions/setup-chrome@v2
-        with:
-          chrome-version: 116.0.5845.96
-          install-dependencies: true
+        run: npx puppeteer browsers install chrome
+        timeout-minutes: 4
       - name: Check the e2e browser starts
-        run: |
-          echo "PUPPETEER_EXECUTABLE_PATH=${{ steps.setup-chrome.outputs.chrome-path }}" >> "$GITHUB_ENV"
-          PUPPETEER_EXECUTABLE_PATH="${{ steps.setup-chrome.outputs.chrome-path }}" npx nyc --silent node scripts/check-browser.js
+        run: node scripts/check-browser.js
         timeout-minutes: 2
       - run: npm run build-pages
       - name: Instantiate github-keys.json

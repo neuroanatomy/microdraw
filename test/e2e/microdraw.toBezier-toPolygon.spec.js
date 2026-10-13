@@ -173,6 +173,6 @@ describe('Editing tools: convert polygons to bézier and vice-versa', () => {
   }).timeout(U.shortTimeout);
 
   after(async () => {
-    await context.close();
+    await H.closeContext(context);
   });
 });

@@ -14,22 +14,48 @@ const { launchBrowser } = require('./browser');
 
 // One browser for the whole e2e run, started and closed by runner.js. Each spec
 // works in its own incognito context (separate cookies and storage), which it
-// closes in its after hook. ignoreHTTPSErrors is what permissions.spec.js used
-// to launch its own browser with.
+// closes in its after hook with closeContext. acceptInsecureCerts
+// (ignoreHTTPSErrors before puppeteer 22) is what permissions.spec.js used to
+// launch its own browser with.
 let sharedBrowser = null;
 const startBrowser = async () => {
-  sharedBrowser = await launchBrowser({ ignoreHTTPSErrors: true });
+  sharedBrowser = await launchBrowser({ acceptInsecureCerts: true });
 };
 const stopBrowser = async () => {
   if (sharedBrowser) {
-    await sharedBrowser.close();
+    const browser = sharedBrowser;
     sharedBrowser = null;
+    await browser.close();
   }
 };
 const newContext = () => {
   if (!sharedBrowser) { throw new Error('no shared browser: run the e2e specs through test/e2e/runner.js'); }
 
-  return sharedBrowser.createIncognitoBrowserContext();
+  return sharedBrowser.createBrowserContext();
+};
+
+/**
+ * Close a spec's browser context, for its after hook. A context that was never
+ * created (its before hook failed) is skipped. Waits at most shortTimeout: a
+ * dead browser may never answer. Errors are thrown, so call it in a `try` and
+ * do the DB cleanup in the `finally` (M5f): a crashed browser must not leave
+ * projects, users or annotations behind for the next run.
+ * @param {object} [context] The context from newContext()
+ * @returns {Promise} Resolves when the context is closed
+ */
+const closeContext = async (context) => {
+  if (!context) {
+    return;
+  }
+  let timer;
+  const timeout = new Promise((resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(`browser context not closed after ${shortTimeout} ms`)), shortTimeout);
+  });
+  try {
+    await Promise.race([context.close(), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
 };
 
 // Pages opened through openData, for the DEBUG_SCREENSHOTS failure hook in runner.js.
@@ -319,6 +345,7 @@ const logIn = async (page, credentials = annotator) => {
 
 module.exports = {
   annotator,
+  closeContext,
   logIn,
   expectedFillPixel,
   instrumentPage,

@@ -94,6 +94,6 @@ describe('Editing tools: Copy and paste', () => {
   }).timeout(U.shortTimeout);
 
   after(async () => {
-    await context.close();
+    await H.closeContext(context);
   });
 });

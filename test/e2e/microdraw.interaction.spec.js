@@ -50,7 +50,7 @@ describe('Viewer interactions', () => {
   });
 
   after(async () => {
-    await context.close();
+    await H.closeContext(context);
   });
 
   it('the landing page Go button opens the URL typed in the field', async () => {

@@ -178,6 +178,6 @@ describe('Editing tools: split regions', () => {
   }).timeout(U.shortTimeout);
 
   after(async () => {
-    await context.close();
+    await H.closeContext(context);
   });
 });

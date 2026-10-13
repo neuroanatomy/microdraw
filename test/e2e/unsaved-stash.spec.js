@@ -113,9 +113,13 @@ describe('Unsaved annotations are kept in the browser (H3a)', () => {
   });
 
   after(async () => {
-    await context.close();
-    await U.removeAnnotations(SOURCE);
-    await Promise.all([editable, viewOnly, unlisted].map((p) => U.removeProject(p.shortname)));
+    // DB cleanup in finally: a crashed browser must not skip it (M5f)
+    try {
+      await H.closeContext(context);
+    } finally {
+      await U.removeAnnotations(SOURCE);
+      await Promise.all([editable, viewOnly, unlisted].map((p) => U.removeProject(p.shortname)));
+    }
   });
 
   // eslint-disable-next-line max-statements

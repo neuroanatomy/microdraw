@@ -12,7 +12,7 @@ const launchBrowser = (options = {}) => {
   const { args = [], ...rest } = options;
 
   return puppeteer.launch({
-    headless: 'new',
+    headless: true,
     ...rest,
     args: [
       '--no-sandbox',

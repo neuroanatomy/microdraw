@@ -173,6 +173,6 @@ describe('Editing tools: simplify', () => {
   }).timeout(U.shortTimeout);
 
   after(async () => {
-    await context.close();
+    await H.closeContext(context);
   });
 });

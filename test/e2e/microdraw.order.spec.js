@@ -125,6 +125,6 @@ describe('Editing tools: order', () => {
   }).timeout(U.shortTimeout);
 
   after(async () => {
-    await context.close();
+    await H.closeContext(context);
   });
 });

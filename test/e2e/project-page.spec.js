@@ -65,8 +65,12 @@ describe('Project page empty states (M2)', function () {
   });
 
   after(async function () {
-    await context.close();
-    await Promise.all([emptyProject, noAnnotationsProject].map((p) => U.removeProject(p.shortname)));
+    // DB cleanup in finally: a crashed browser must not skip it (M5f)
+    try {
+      await H.closeContext(context);
+    } finally {
+      await Promise.all([emptyProject, noAnnotationsProject].map((p) => U.removeProject(p.shortname)));
+    }
   });
 
   it('a project with no files shows an empty state, without errors or redirect', async function () {
@@ -129,8 +133,12 @@ describe('Project page writes user-set names as text (H2b)', function () {
   });
 
   after(async function () {
-    await context.close();
-    await U.removeProject(injectionProject.shortname);
+    // DB cleanup in finally: a crashed browser must not skip it (M5f)
+    try {
+      await H.closeContext(context);
+    } finally {
+      await U.removeProject(injectionProject.shortname);
+    }
   });
 
   it('shows annotation names as text, runs none of them, and keeps them intact', async function () {

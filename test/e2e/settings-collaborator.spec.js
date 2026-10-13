@@ -75,10 +75,14 @@ describe('Collaborator added in the settings page (M7)', () => {
   });
 
   after(async () => {
-    await context.close();
-    await U.removeProject(SHORTNAME);
-    await U.removeAnnotations(SOURCE);
-    await Promise.all([owner, collab, outsider].map((u) => U.removeLocalUser(u.username)));
+    // DB cleanup in finally: a crashed browser must not skip it (M5f)
+    try {
+      await H.closeContext(context);
+    } finally {
+      await U.removeProject(SHORTNAME);
+      await U.removeAnnotations(SOURCE);
+      await Promise.all([owner, collab, outsider].map((u) => U.removeLocalUser(u.username)));
+    }
   });
 
   it('before: neither user may view the private project', async () => {
@@ -107,7 +111,7 @@ describe('Collaborator added in the settings page (M7)', () => {
     await page.click(`${row} td:nth-child(4) button.edit`);
     await page.click(`${row} td:nth-child(5) button.view`);
 
-    const [save] = await page.$x('//button[contains(normalize-space(.), "Save Changes")]');
+    const [save] = await page.$$('xpath///button[contains(normalize-space(.), "Save Changes")]');
     await save.click();
     await page.waitForFunction(
       () => document.querySelector('#saveFeedback').textContent.trim() !== '',

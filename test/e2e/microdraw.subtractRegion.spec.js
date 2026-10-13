@@ -105,6 +105,6 @@ describe('Editing tools: subtract regions', () => {
   }).timeout(U.shortTimeout);
 
   after(async () => {
-    await context.close();
+    await H.closeContext(context);
   });
 });

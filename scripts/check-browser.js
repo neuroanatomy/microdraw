@@ -2,8 +2,8 @@
 'use strict';
 
 // Launches the browser the e2e suite uses, once, with Chrome's own output
-// shown (dumpio), so a CI failure to start it says why. Run through nyc on
-// Node 26 (D20): `npx nyc --silent node scripts/check-browser.js`.
+// shown (dumpio), so a CI failure to start it says why:
+// `node scripts/check-browser.js` (no nyc wrapper since puppeteer 25, D32).
 
 const fs = require('fs');
 const { execFileSync } = require('child_process');
@@ -11,7 +11,7 @@ const puppeteer = require('puppeteer');
 const { launchBrowser } = require('../test/e2e/browser');
 
 const main = async () => {
-  const exe = process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath();
+  const exe = process.env.PUPPETEER_EXECUTABLE_PATH || await puppeteer.executablePath();
   await fs.promises.access(exe, fs.constants.X_OK);
   console.log(`browser: ${exe}`);
   if (process.platform === 'linux') {

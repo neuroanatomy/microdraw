@@ -64,9 +64,13 @@ describe('Admin page: projects that don\'t validate (A2)', () => {
 
   after(async () => {
     admins.setAdmins(previousAdmins);
-    await context.close();
-    await cleanup();
-    await U.removeLocalUser(adminUser.username);
+    // DB cleanup in finally: a crashed browser must not skip it (M5f)
+    try {
+      await H.closeContext(context);
+    } finally {
+      await cleanup();
+      await U.removeLocalUser(adminUser.username);
+    }
   });
 
   it('lists the projects with their problems, the fixes and a link to the settings', async () => {
@@ -110,7 +114,7 @@ describe('Admin page: projects that don\'t validate (A2)', () => {
 
   it('Name unnamed layers uses the names typed, and the project leaves the list', async () => {
     const input = `${sel(unnamedProject.shortname)} form.name-layers input`;
-    await page.click(input, { clickCount: 3 });
+    await page.click(input, { count: 3 });
     await page.type(input, 'Cortex');
     await page.click(`${sel(unnamedProject.shortname)} button.do-name-layers`);
     await waitFor((s) => !document.querySelector(s), sel(unnamedProject.shortname));

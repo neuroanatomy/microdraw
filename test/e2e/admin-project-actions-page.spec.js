@@ -56,7 +56,7 @@ describe('Admin page: delete a project, transfer ownership (A3)', () => {
       .remove({ 'value.shortname': histo.shortname });
   };
   const search = async () => {
-    await page.click('#project-tools input.project-search', { clickCount: 3 });
+    await page.click('#project-tools input.project-search', { count: 3 });
     await page.type('#project-tools input.project-search', 'A3 E2E histo');
     await page.click('#project-tools button.do-search');
     await waitFor((s) => document.querySelector(s), found);
@@ -80,10 +80,14 @@ describe('Admin page: delete a project, transfer ownership (A3)', () => {
 
   after(async () => {
     admins.setAdmins(previousAdmins);
-    await context.close();
-    await cleanup();
-    await U.removeLocalUser(adminUser.username);
-    await U.removeLocalUser(heir.username);
+    // DB cleanup in finally: a crashed browser must not skip it (M5f)
+    try {
+      await H.closeContext(context);
+    } finally {
+      await cleanup();
+      await U.removeLocalUser(adminUser.username);
+      await U.removeLocalUser(heir.username);
+    }
   });
 
   it('finds a project by name, flags its missing owner, and offers the two actions', async () => {

@@ -50,10 +50,14 @@ describe('Admin page (A1)', () => {
 
   after(async () => {
     admins.setAdmins(previousAdmins);
-    await context.close();
-    await U.removeAnnotations(SOURCE);
-    await U.getDB().get('log')
-      .remove({ key: /^admin/, 'value.fileID': `${SOURCE}&slice=0` });
+    // DB cleanup in finally: a crashed browser must not skip it (M5f)
+    try {
+      await H.closeContext(context);
+    } finally {
+      await U.removeAnnotations(SOURCE);
+      await U.getDB().get('log')
+        .remove({ key: /^admin/, 'value.fileID': `${SOURCE}&slice=0` });
+    }
   });
 
   it('lists the orphan annotations of the image, by author', async () => {

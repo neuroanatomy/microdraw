@@ -103,9 +103,13 @@ describe('Project title and settings pages (M7)', () => {
   });
 
   after(async () => {
-    await context.close();
-    await Promise.all([EXISTING, NEW, NOLISTS].map((shortname) => U.removeProject(shortname)));
-    await U.removeLocalUser(owner.username);
+    // DB cleanup in finally: a crashed browser must not skip it (M5f)
+    try {
+      await H.closeContext(context);
+    } finally {
+      await Promise.all([EXISTING, NEW, NOLISTS].map((shortname) => U.removeProject(shortname)));
+      await U.removeLocalUser(owner.username);
+    }
   });
 
   it('the settings page shows the existing project name', async () => {
@@ -139,7 +143,7 @@ describe('Project title and settings pages (M7)', () => {
     assert.equal(await titleOf(page), 'Initial Name abc');
     assert.equal(writes, 0, 'the page rewrote the title while it was typed');
 
-    const [save] = await page.$x('//button[contains(normalize-space(.), "Save Changes")]');
+    const [save] = await page.$$('xpath///button[contains(normalize-space(.), "Save Changes")]');
     await save.click();
     await page.waitForFunction(
       () => document.querySelector('#saveFeedback').textContent.trim() !== '',

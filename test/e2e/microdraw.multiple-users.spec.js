@@ -382,8 +382,12 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
   });
 
   after(async () => {
-    await context.close();
-    await U.removeProjectAnnotations(project.shortname);
-    await U.removeProject(project.shortname);
+    // DB cleanup in finally: a crashed browser must not skip it (M5f)
+    try {
+      await H.closeContext(context);
+    } finally {
+      await U.removeProjectAnnotations(project.shortname);
+      await U.removeProject(project.shortname);
+    }
   });
 });

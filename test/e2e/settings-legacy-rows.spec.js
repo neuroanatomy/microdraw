@@ -60,9 +60,13 @@ describe('Saving a project with legacy rows from the settings page (M3a2)', () =
   });
 
   after(async () => {
-    await context.close();
-    await U.removeProject(SHORTNAME);
-    await U.removeLocalUser(owner.username);
+    // DB cleanup in finally: a crashed browser must not skip it (M5f)
+    try {
+      await H.closeContext(context);
+    } finally {
+      await U.removeProject(SHORTNAME);
+      await U.removeLocalUser(owner.username);
+    }
   });
 
   // eslint-disable-next-line max-statements -- one UI flow, step by step
@@ -70,7 +74,7 @@ describe('Saving a project with legacy rows from the settings page (M3a2)', () =
     await page.goto(U.url(`/project/${SHORTNAME}/settings`), { waitUntil: 'load' });
     await page.waitForSelector('#access tbody tr', { timeout: U.shortTimeout });
     const answer = page.waitForResponse((r) => r.request().method() === 'POST' && r.url().includes(`/project/json/${SHORTNAME}`), { timeout: U.shortTimeout });
-    const [save] = await page.$x('//button[contains(normalize-space(.), "Save Changes")]');
+    const [save] = await page.$$('xpath///button[contains(normalize-space(.), "Save Changes")]');
     await save.click();
     const res = await answer;
     const body = await res.json();

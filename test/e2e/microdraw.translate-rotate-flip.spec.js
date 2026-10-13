@@ -132,6 +132,6 @@ describe('Editing tools: Translate, rotate, flip', () => {
   }).timeout(U.shortTimeout);
 
   after(async () => {
-    await context.close();
+    await H.closeContext(context);
   });
 });
