@@ -123,6 +123,16 @@ describe('Validation of POST /project/json/:projectName (M3)', function () {
       assert.equal(plainText('x?a=1&b=2'), 'x?a=1&b=2');
     });
 
+    // M5b (dompurify 2 → 3): entities, comments, javascript: links and two
+    // mutation-XSS payloads; recorded on dompurify 2.5.9.
+    it('plainText decodes entities and drops comments, links and mXSS payloads', function () {
+      assert.equal(plainText('<b>x</b>&amp;y'), 'x&y');
+      assert.equal(plainText('<!-- c -->k'), 'k');
+      assert.equal(plainText('<a href="javascript:alert(1)">l</a>'), 'l');
+      assert.equal(plainText('<noscript><p title="</noscript><img src=x onerror=alert(1)>">'), '');
+      assert.equal(plainText('<math><mi><mglyph><style><img src=x onerror=alert(1)>'), '');
+    });
+
     // eslint-disable-next-line max-statements
     it('stores names without markup, and ignores _id and backup', async function () {
       const shortname = 'm3asanitise';
