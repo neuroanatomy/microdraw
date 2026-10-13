@@ -27,8 +27,10 @@ const validator = function (req, res, next) {
 // BrainBox's escapeRegex (controller/api/api.controller.js).
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// The escaped search text of the request, or undefined (and a 400 answer) if
-// q is not a string (e.g. ?q[$ne]=).
+// The search text of the request, or undefined (and a 400 answer) if q is
+// not a string (e.g. ?q[$ne]=). Not escaped: NeuroWebLab's searchUsers
+// escapes it itself (0.2.0), and escaping it twice would make a search for
+// "a.b" look for "a\\.b". microdraw's own projects query escapes it.
 const searchText = (req, res) => {
   const { q } = req.query;
   if (typeof q !== 'string') {
@@ -37,7 +39,7 @@ const searchText = (req, res) => {
     return;
   }
 
-  return escapeRegex(q);
+  return q;
 };
 
 const serverError = (res, err) => {
@@ -69,7 +71,7 @@ const api_searchProjects = function (req, res) {
   const loggedUser = req.isAuthenticated() ? req.user.username : 'anyone';
   req.appConfig.db.mongoDB().get('projects')
     .find(
-      {shortname: {$regex: q}, backup: {$exists: false}},
+      {shortname: {$regex: escapeRegex(q)}, backup: {$exists: false}},
       {fields: {_id: 0, shortname: 1, name: 1, owner: 1, collaborators: 1}}
     )
     .then((projects) => {

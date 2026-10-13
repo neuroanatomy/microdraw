@@ -9,7 +9,8 @@ const U = require('../mocha.test.util');
 // M5d: login is NeuroWebLab's (passport 0.4, GitHub and local strategies);
 // microdraw itself doesn't require passport. These tests prove that logout,
 // the GitHub route wiring and token auth keep working when microdraw's own
-// passport dependency is removed. Recorded on passport 0.4.1 (2026-10-13).
+// passport dependency is removed. Recorded on passport 0.4.1 (2026-10-13);
+// unchanged with NWL 0.2.0's passport 0.7 (P1, session-user.spec.js).
 describe('Login session, logout, GitHub routes and token (M5d)', function () {
   const credentials = { username: 'm5d-auth-user', password: 'm5d-auth-password' };
   const project = U.createProjectWithPermission('m5dauthprivate', { files: 'none' });
