@@ -1,6 +1,6 @@
 /app/public/**/*.min.js
 /app/public/lib/
-# vendored third-party: schteppe/doc.js documentation viewer
+# the /doc page (HTML and CSS; its jQuery doc.js viewer was removed in M4d)
 app/public/doc/
 # webpack output (npm run build-pages), gitignored
 app/public/js/pages/
