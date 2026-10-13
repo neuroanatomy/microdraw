@@ -55,8 +55,9 @@
         </table>
         <button @click="addRow">+</button>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Vue.Draggable/2.24.3/vuedraggable.umd.min.js"></script>
+    <!-- Vue 2.7.16 and Vue.Draggable 2.24.3, vendored (app/public/lib/vendor.json); was the unpinned jsdelivr npm/vue/dist/vue.js -->
+    <script src="/lib/vue-2.7.16/vue.js"></script>
+    <script src="/lib/vuedraggable-2.24.3/vuedraggable.umd.min.js"></script>
     <script>
 
     const addMicrodrawLayer = (url, id, opacity, zIndex) => {
@@ -167,7 +168,7 @@
             console.log("mounted");
 
             for (const [index, layer] of this.layers.entries()) {
-                const url = `http://localhost:3000/data?source=${layer.url}&slice=0&displayTools=false`;
+                const url = `/data?source=${layer.url}&slice=0&displayTools=false`;
                 addMicrodrawLayer(
                     url,
                     `p${index + 1}`,

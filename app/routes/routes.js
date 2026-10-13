@@ -49,6 +49,12 @@ module.exports = (app) => {
 
   app.get('/image', getHttpImg);
 
+  // The example pages moved to /examples/ (M8b): keep their old URLs working
+  app.get(['/composer.html', '/composer-0.html', '/overlays.html'], (req, res) => {
+    const query = req.originalUrl.slice(req.path.length);
+    res.redirect(301, `/examples${req.path}${query}`);
+  });
+
   app.get('/microdraw', (req, res /*, next*/) => {
     res.render('partials/microdraw');
   });

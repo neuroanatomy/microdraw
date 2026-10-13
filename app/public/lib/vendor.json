@@ -4,7 +4,7 @@
     "runtime and now ships locally. Run `npm run verify-vendor` to check that every",
     "file still matches the bytes that were downloaded, and to see the exact URL to",
     "re-download from when bumping a version.",
-    "Loaded by app/public/js/microdraw.js (scripts) and the mustache views (font)."
+    "Loaded by app/public/js/microdraw.js (scripts), the mustache views (font) and the example pages in app/public/examples/ (Vue 2, Vue.Draggable)."
   ],
   "retrieved": "2026-08-05",
   "assets": [
@@ -55,6 +55,22 @@
       "sha256": "a444ef34fcd2c2410a476f795c634e4747df3afd8400cf91e65fd54f6e83dabb",
       "upstreamStable": false,
       "note": "Same gstatic re-subsetting caveat as roboto-100-latin."
+    },
+    {
+      "name": "vue",
+      "version": "2.7.16",
+      "path": "app/public/lib/vue-2.7.16/vue.js",
+      "url": "https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.js",
+      "sha256": "36b10d3b4920592a4ec26c064c429e9a3dfb4689235fdfc91e1736b681c76786",
+      "note": "Development build, used only by app/public/examples/composer.html and composer-0.html (M8b, retrieved 2026-10-13). They requested it unpinned as cdn.jsdelivr.net/npm/vue/dist/vue.js, which on that date served these exact bytes (Vue 2.7.16, the last Vue 2): the pages are Vue 2 code (new Vue, v-for with v-if)."
+    },
+    {
+      "name": "vuedraggable",
+      "version": "2.24.3",
+      "path": "app/public/lib/vuedraggable-2.24.3/vuedraggable.umd.min.js",
+      "url": "https://cdnjs.cloudflare.com/ajax/libs/Vue.Draggable/2.24.3/vuedraggable.umd.min.js",
+      "sha256": "2db16c371d58fcd4c7c2b367c8b5409cc7538d53ee1fdee6fda8ee97d685456c",
+      "note": "Used only by the example composer pages (M8b, retrieved 2026-10-13), same URL as before. It expects window.Sortable (sortablejs) when a <draggable> is mounted; the pages register the component but their <draggable> markup is commented out, and Sortable was never loaded, so it is not vendored."
     }
   ],
   "derived": [

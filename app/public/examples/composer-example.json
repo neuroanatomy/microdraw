@@ -1,0 +1,8 @@
+{
+  "anatomyLayers": [
+    { "name": "cat", "url": "/test_data/cat.json", "opacity": 100 }
+  ],
+  "annotationLayers": [
+    { "name": "cat (overlay)", "url": "/test_data/cat.json", "opacity": 50 }
+  ]
+}

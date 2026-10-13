@@ -139,13 +139,13 @@
     // Call the function to inject web page2 after the web page1 content is loaded
     window.addEventListener('load', () => {
         const iframe1 = superimposePage(
-            "http://localhost:3000/data?source=https%3A%2F%2Fbigbrain-ftp.loris.ca%2Fbigbrain-ftp%2FBigBrainRelease.2015%2FMicroDraw%2FMacaque_CellBody_071%2F41759_N_071.json&slice=0&displayTools=false",
+            "/data?source=https%3A%2F%2Fbigbrain-ftp.loris.ca%2Fbigbrain-ftp%2FBigBrainRelease.2015%2FMicroDraw%2FMacaque_CellBody_071%2F41759_N_071.json&slice=0&displayTools=false",
             "p1", 100, 100);
 
         const iframe2 = superimposePage(
-            // "http://localhost:3000/data?source=https%3A%2F%2Fbigbrain-ftp.loris.ca%2Fbigbrain-ftp%2FBigBrainRelease.2015%2FMicroDraw%2FMacaque_Annotations_071%2F41759_labels_071.json&slice=0&displayTools=false",
-            "http://localhost:3000/data?source=https%3A%2F%2Fbigbrain-ftp.loris.ca%2Fbigbrain-ftp%2FBigBrainRelease.2015%2FMicroDraw%2FMacaque_Annotations_071%2F41759_labels_071_spectral.json&slice=0&displayTools=false",
-            // "http://localhost:3000/data?source=https%3A%2F%2Fbigbrain-ftp.loris.ca%2Fbigbrain-ftp%2FBigBrainRelease.2015%2FMicroDraw%2FMacaque_Annotations_071%2F41759_labels_071_grayscale.json&slice=0&displayTools=false",
+            // "/data?source=https%3A%2F%2Fbigbrain-ftp.loris.ca%2Fbigbrain-ftp%2FBigBrainRelease.2015%2FMicroDraw%2FMacaque_Annotations_071%2F41759_labels_071.json&slice=0&displayTools=false",
+            "/data?source=https%3A%2F%2Fbigbrain-ftp.loris.ca%2Fbigbrain-ftp%2FBigBrainRelease.2015%2FMicroDraw%2FMacaque_Annotations_071%2F41759_labels_071_spectral.json&slice=0&displayTools=false",
+            // "/data?source=https%3A%2F%2Fbigbrain-ftp.loris.ca%2Fbigbrain-ftp%2FBigBrainRelease.2015%2FMicroDraw%2FMacaque_Annotations_071%2F41759_labels_071_grayscale.json&slice=0&displayTools=false",
             "p2", 50, 101);
 
         for (const eventType of [
