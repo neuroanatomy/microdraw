@@ -203,7 +203,28 @@ describe('Viewer requests and tool registry (M4a)', () => {
 
         return window.Microdraw.loadSourceJson();
       }));
-      assert.deepEqual(getJson.map((u) => new URL(u).search), ['?source=/test_data/cat.json']);
+      assert.deepEqual(getJson.map((u) => new URL(u).searchParams.get('source')), ['/test_data/cat.json']);
+    }).timeout(U.mediumTimeout);
+
+    // P3: the fallback encodes the source (encodeURIComponent). Before, a
+    // source holding & or # was requested cut there: the server got
+    // source=/test_data/cat.json?p3=a, a parameter b, and no fragment.
+    it('the /getJson fallback sends the whole source, & and # included', async () => {
+      const source = '/test_data/cat.json?p3=a&b=c#d';
+      let json;
+      const getJson = await requestsDuring('/getJson', async () => {
+        json = await page.evaluate((s) => {
+          window.Microdraw.params.source = s;
+
+          return window.Microdraw.loadSourceJson();
+        }, source);
+      });
+      assert.lengthOf(getJson, 1);
+      const url = new URL(getJson[0]);
+      assert.equal(url.searchParams.get('source'), source);
+      assert.deepEqual([...url.searchParams.keys()], ['source']);
+      assert.equal(url.hash, '');
+      assert.lengthOf(json.tileSources, expected.tileSources.length, 'the server still resolves the source');
     }).timeout(U.mediumTimeout);
 
     it('falls back to /getJson when the direct .json load fails', async () => {

@@ -1884,7 +1884,7 @@ const Microdraw = (function () {
           .catch( (err) => {
             console.warn('> loadSourceJson : direct fetching of source failed ... ', err, 'attempting to fetch via microdraw server');
 
-            fetch('/getJson?source='+me.params.source)
+            fetch('/getJson?source=' + encodeURIComponent(me.params.source))
               .then((data) => data.json())
               .then((json) => {
                 resolve(json);
