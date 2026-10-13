@@ -16,13 +16,6 @@
       "sha256": "e76bac1a0635b677ee0251aab5c15a0933083f60d593e277539b3e9c4bf9c039"
     },
     {
-      "name": "muijs",
-      "version": "v0.1.3",
-      "path": "app/public/lib/muijs/mui.js",
-      "url": "https://cdn.jsdelivr.net/gh/r03ert0/muijs@v0.1.3/mui.js",
-      "sha256": "4ff6142f98be1c0fda507eab5c6b729a7e995d6311340f075af106ba2df8d05f"
-    },
-    {
       "name": "codeflask",
       "version": "1.4.1",
       "path": "app/public/lib/codeflask/codeflask.min.js",

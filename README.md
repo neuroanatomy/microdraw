@@ -187,11 +187,13 @@ failure rejected all of them). They now live in `app/public/lib/`, pinned:
 | asset | version | upstream |
 | --- | --- | --- |
 | `hippy-hippo/` | 0.0.1 | `unpkg.com/hippy-hippo` |
-| `muijs/` | v0.1.3 | `cdn.jsdelivr.net/gh/r03ert0/muijs` |
 | `codeflask/` | 1.4.1 | `unpkg.com/codeflask` |
 | `consolita/` | 0.2.1 | `cdn.jsdelivr.net/gh/r03ert0/consolita.js` |
 | `openseadragon-screenshot/openseadragonScreenshot-v0.0.1.js` | v0.0.1 | `cdn.jsdelivr.net/gh/r03ert0/Openseadragon-screenshot` |
 | `roboto/` | Google Fonts v51, weight 100, latin + latin-ext | `fonts.googleapis.com` |
+
+muijs v0.1.3 used jQuery; since M4b it is not vendored any more but ported, as
+microdraw's own `app/public/js/mui.js`.
 
 `app/public/lib/vendor.json` is the source of truth: it records the exact download
 URL, version, and SHA-256 of every file, and `scripts/verify-vendor.js` checks them.

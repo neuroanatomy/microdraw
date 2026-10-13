@@ -1896,7 +1896,6 @@ const Microdraw = (function () {
        */
     loadConfiguration: async () => {
       await Promise.all([
-        me.loadScript("/lib/jquery-1.11.0.min.js"), // only for muijs, until M4b
         me.loadScript("/lib/paper-full-0.12.15.min.js"),
         me.loadScript("/lib/openseadragon/openseadragon.js"),
         me.loadScript("/lib/hippy-hippo/hippy-hippo-umd.js"), // vendored: hippy-hippo@0.0.1
@@ -1911,7 +1910,7 @@ const Microdraw = (function () {
         me.loadScript("/lib/openseadragon-screenshot/openseadragonScreenshot-v0.0.1.js"), // vendored: Openseadragon-screenshot@v0.0.1
         me.loadScript("/lib/FileSaver.js/FileSaver.min.js"),
         me.loadScript("/js/neurolex-ontology.js"),
-        me.loadScript("/lib/muijs/mui.js"), // vendored: muijs@v0.1.3
+        me.loadScript("/js/mui.js"), // jQuery-free port of muijs@v0.1.3 (M4b)
         me.loadScript("/lib/codeflask/codeflask.min.js"), // vendored: codeflask@1.4.1
         me.loadScript("/lib/consolita/consolita.js"), // vendored: consolita.js@0.2.1
         /* global Consolita */
