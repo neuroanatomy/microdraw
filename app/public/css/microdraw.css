@@ -402,6 +402,13 @@ body[data-toolbarDisplay=right] #menuBar,
 body[data-toolbarDisplay=right] #tools-minimized div {
     right: 0;
 }
+/* In full screen the toolbar can be dragged by its header (M4e) */
+body[data-fullscreen] #toolsDragHandle {
+    cursor: grab;
+}
+body[data-fullscreen] #toolsDragHandle.dragging {
+    cursor: grabbing;
+}
 /*------------------*/
 
 /*-------------------*/

@@ -2008,12 +2008,144 @@ const Microdraw = (function () {
         me.dom.querySelector("#tools-minimized").style.display = "none";
         break;
       case "left":
-        me.dom.querySelector("body").setAttribute("data-toolbarDisplay", "left");
-        break;
       case "right":
-        me.dom.querySelector("body").setAttribute("data-toolbarDisplay", "right");
+        me.dom.querySelector("body").setAttribute("data-toolbarDisplay", display);
+        me.toolbarDockSide = display;
+        me.clearFreeToolbar();
         break;
       }
+    },
+
+    /** Side where the toolbar was last docked, "left" or "right" (M4e) */
+    toolbarDockSide: "left",
+
+    /**
+     * @desc Whether the viewer is in full screen (set by the fullscreen tool)
+     * @returns {boolean} True in full screen
+     */
+    isFullscreen: () => me.dom.querySelector("body").hasAttribute("data-fullscreen"),
+
+    /**
+     * @desc Removes the position a drag gave the toolbar, so that its side's CSS places it again
+     * @returns {void}
+     */
+    clearFreeToolbar: () => {
+      const panel = me.dom.querySelector("#menuBar");
+      ["position", "left", "top", "right"].forEach((prop) => { panel.style[prop] = ""; });
+    },
+
+    /**
+     * @desc Docks a dragged ("free") toolbar back on the side where it was docked; called when leaving full screen
+     * @returns {void}
+     */
+    dockFreeToolbar: () => {
+      if (me.dom.querySelector("body").getAttribute("data-toolbarDisplay") === "free") {
+        me.changeToolbarDisplay(me.toolbarDockSide);
+      }
+    },
+
+    /**
+     * @desc In full screen, the toolbar (#menuBar) follows a mouse or finger drag that starts on
+     * its header (#toolsDragHandle), as BrainBox's initToolsDrag (M4e). The toolbar becomes "free":
+     * fixed where it was dropped, until a dock button or leaving full screen docks it again.
+     * @returns {void}
+     */
+    initToolsDrag: () => {
+      const handle = me.dom.querySelector("#toolsDragHandle");
+      const panel = me.dom.querySelector("#menuBar");
+      if (!handle || !panel) { return; }
+      let startLeft, startTop, startX, startY;
+
+      const start = (x, y) => {
+        const rect = panel.getBoundingClientRect();
+        startX = x;
+        startY = y;
+        startLeft = rect.left;
+        startTop = rect.top;
+        panel.style.position = "fixed";
+        panel.style.left = startLeft + "px";
+        panel.style.top = startTop + "px";
+        panel.style.right = "auto";
+        me.dom.querySelector("body").setAttribute("data-toolbarDisplay", "free");
+      };
+      const move = (x, y) => {
+        panel.style.left = (startLeft + x - startX) + "px";
+        panel.style.top = (startTop + y - startY) + "px";
+      };
+
+      handle.addEventListener("mousedown", (e) => {
+        if (!me.isFullscreen()) { return; }
+        e.preventDefault();
+        handle.classList.add("dragging");
+        start(e.clientX, e.clientY);
+        const onMouseMove = (ev) => { move(ev.clientX, ev.clientY); };
+        const onMouseUp = () => {
+          handle.classList.remove("dragging");
+          document.removeEventListener("mousemove", onMouseMove);
+          document.removeEventListener("mouseup", onMouseUp);
+        };
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+      });
+
+      handle.addEventListener("touchstart", (e) => {
+        if (!me.isFullscreen()) { return; }
+        e.preventDefault(); // no page scroll, no mouse events
+        start(e.touches[0].clientX, e.touches[0].clientY);
+        const onTouchMove = (ev) => {
+          ev.preventDefault();
+          move(ev.touches[0].clientX, ev.touches[0].clientY);
+        };
+        const onTouchEnd = () => {
+          document.removeEventListener("touchmove", onTouchMove);
+          document.removeEventListener("touchend", onTouchEnd);
+        };
+        document.addEventListener("touchmove", onTouchMove, {passive: false});
+        document.addEventListener("touchend", onTouchEnd);
+      }, {passive: false});
+    },
+
+    /**
+     * @desc The chat/script area (#textInputBlock) is resized by dragging the strip at its
+     * bottom (#textInputResize), with the mouse or a finger; at least 100 px (M4e, as BrainBox)
+     * @returns {void}
+     */
+    initTextInputResize: () => {
+      const handle = me.dom.querySelector("#textInputResize");
+      const block = me.dom.querySelector("#textInputBlock");
+      if (!handle || !block) { return; }
+      const resizer = (startY) => {
+        const startHeight = block.offsetHeight;
+
+        return (y) => { block.style.flex = "0 0 " + Math.max(100, startHeight + y - startY) + "px"; };
+      };
+
+      handle.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        const resize = resizer(e.clientY);
+        const onMouseMove = (ev) => { resize(ev.clientY); };
+        const onMouseUp = () => {
+          document.removeEventListener("mousemove", onMouseMove);
+          document.removeEventListener("mouseup", onMouseUp);
+        };
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+      });
+
+      handle.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        const resize = resizer(e.touches[0].clientY);
+        const onTouchMove = (ev) => {
+          ev.preventDefault();
+          resize(ev.touches[0].clientY);
+        };
+        const onTouchEnd = () => {
+          document.removeEventListener("touchmove", onTouchMove);
+          document.removeEventListener("touchend", onTouchEnd);
+        };
+        document.addEventListener("touchmove", onTouchMove, {passive: false});
+        document.addEventListener("touchend", onTouchEnd);
+      }, {passive: false});
     },
 
     /**
@@ -2023,13 +2155,14 @@ const Microdraw = (function () {
     toggleTextInput: function (mode) {
       switch(mode) {
       case "Chat":
-        me.dom.querySelector("#textInputBlock").style.display = "block";
+        // flex, as in toolsFull: the area shrinks with #textInputResize (M4e)
+        me.dom.querySelector("#textInputBlock").style.display = "flex";
         me.dom.getElementById("logScript").classList.add("hidden");
         me.dom.getElementById("logChat").classList.remove("hidden");
         me.dom.querySelector("#logChat #msg").focus();
         break;
       case "Script":
-        me.dom.querySelector("#textInputBlock").style.display = "block";
+        me.dom.querySelector("#textInputBlock").style.display = "flex";
         me.dom.getElementById("logScript").classList.remove("hidden");
         me.dom.getElementById("logChat").classList.add("hidden");
         me.dom.querySelector("#logScript textarea").focus();
@@ -2099,6 +2232,8 @@ const Microdraw = (function () {
       MUI.push(me.dom.querySelector(".push#display-right"), () => { me.changeToolbarDisplay("right"); });
 
       MUI.chose3state(me.dom.querySelector("#text.mui-chose"), me.toggleTextInput);
+      me.initToolsDrag();
+      me.initTextInputResize();
 
       Consolita.init(me.dom.querySelector("#logScript"), me.dom);
 

@@ -146,7 +146,8 @@ describe('Toolbar widgets (M4b)', () => {
 
       await shadowClick('#script');
       assert.deepEqual(await pressed('#text'), ['script']);
-      assert.deepEqual(await textState(), { block: 'block', chat: false, script: true });
+      // shown as flex since M4e (block before), so that it can be resized
+      assert.deepEqual(await textState(), { block: 'flex', chat: false, script: true });
 
       await shadowClick('#script');
       assert.deepEqual(await pressed('#text'), []);
@@ -154,7 +155,7 @@ describe('Toolbar widgets (M4b)', () => {
 
       await shadowClick('#bubble');
       assert.deepEqual(await pressed('#text'), ['bubble']);
-      assert.deepEqual(await textState(), { block: 'block', chat: true, script: false });
+      assert.deepEqual(await textState(), { block: 'flex', chat: true, script: false });
     }).timeout(U.shortTimeout);
   });
 
@@ -261,7 +262,7 @@ describe('Toolbar widgets (M4b)', () => {
       await (await inShadow(tab, '#draw')).tap();
       assert.equal(await tab.evaluate(() => window.Microdraw.selectedTool), 'draw');
       await (await inShadow(tab, '#script')).tap();
-      assert.equal(await tab.evaluate(() => window.Microdraw.dom.querySelector('#textInputBlock').style.display), 'block');
+      assert.equal(await tab.evaluate(() => window.Microdraw.dom.querySelector('#textInputBlock').style.display), 'flex');
       assert.isTrue(await tab.evaluate(() => window.Microdraw.dom.querySelector('#script').classList.contains('mui-pressed')));
       await (await inShadow(tab, '#next')).tap();
       await H.waitForMicrodraw(tab, 1);
