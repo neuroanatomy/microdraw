@@ -15,7 +15,7 @@ const adminAnnotations = require('../../app/controller/admin/admin.annotations')
 const owner = { username: 'm3b-owner', password: 'm3b-owner-password' };
 const stranger = { username: 'm3b-stranger', password: 'm3b-stranger-password' };
 
-// Signs up, waits until the user is stored, and logs in (U.logIn).
+// Signs up (or finds the user already there) and logs in (U.logIn).
 const login = (credentials) => U.logIn(credentials);
 
 const project = (shortname, sources = ['/test_data/cat.json']) => ({

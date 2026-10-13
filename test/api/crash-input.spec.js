@@ -21,7 +21,7 @@ const source = 'api-crash-input-source';
 // A hung request fails the test instead of the run.
 const timeout = 3000;
 
-// Signs up, waits until the user is stored, and logs in (U.logIn).
+// Signs up (or finds the user already there) and logs in (U.logIn).
 const login = (credentials) => U.logIn(credentials);
 
 const assertStillServing = async () => {

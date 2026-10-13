@@ -19,7 +19,7 @@ describe('TESTING PERMISSIONS (HTTP)', function () {
     await U.insertProject(U.privateProjectTest);
     // the collaborator the tests add: since M3 a project only names users that exist
     await U.insertUser({ username: 'foo', name: 'Foo' });
-    // waits until the user is stored (M3: logging in at once was flaky)
+    // 200 once the user is stored (NWL 0.2.0); 409 if it exists already
     await U.signUp(U.testingCredentials);
     let res = await agent.post('/localLogin').redirects(0)
       .send(U.testingCredentials);

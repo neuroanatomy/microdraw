@@ -27,7 +27,7 @@ ownedProject.owner = collaborator.username;
 ownedProject.collaborators.list[1].username = 'api-access-somebody-else';
 ownedProject.collaborators.list[1].userID = 'api-access-somebody-else';
 
-// Signs up, waits until the user is stored, and logs in (U.logIn).
+// Signs up (or finds the user already there) and logs in (U.logIn).
 const login = (credentials) => U.logIn(credentials);
 
 // All the shortnames GET /project/json returns, following its pages.

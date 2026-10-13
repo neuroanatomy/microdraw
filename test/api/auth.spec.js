@@ -11,10 +11,31 @@ describe('Local login and tokens', function () {
   const credentials = { username: 'api-auth-user', password: 'correct-password' };
 
   before(async function () {
-    // waits until the user is stored: /localSignup answers before its insert
     const res = await U.signUp(credentials);
     assert.equal(res.status, 200);
   });
+
+  // P2: NWL 0.2.0 answers /localSignup only once the user is stored, so the
+  // test helpers no longer poll for it.
+  // eslint-disable-next-line max-statements -- one scenario, step by step
+  it('/localSignup answers 200 once the user is stored; again, 409', async function () {
+    const user = { username: 'p2-signup-user', password: 'p2-password' };
+    try {
+      const res = await chai.request(U.serverURL).post('/localSignup')
+        .send(user);
+      assert.equal(res.status, 200);
+      assert.exists(await U.getDB().get('users')
+        .findOne({ username: user.username }), 'stored when the answer came');
+      const again = await chai.request(U.serverURL).post('/localSignup')
+        .send(user);
+      assert.equal(again.status, 409);
+      assert.equal((await U.signUp(user)).status, 409, 'U.signUp accepts an existing user');
+      const agent = await U.logIn(user);
+      assert.equal((await agent.get('/token')).status, 200);
+    } finally {
+      await U.removeLocalUser(user.username);
+    }
+  }).timeout(U.shortTimeout);
 
   after(async function () {
     await U.removeLocalUser(credentials.username);

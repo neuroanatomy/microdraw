@@ -11,7 +11,7 @@ const U = require('../mocha.test.util');
 // 'anyone' collaborator has no public access, and never answers 500.
 const member = { username: 'm3c-member', password: 'm3c-member-password' };
 
-// Signs up, waits until the user is stored, and logs in (U.logIn).
+// Signs up (or finds the user already there) and logs in (U.logIn).
 const login = (credentials) => U.logIn(credentials);
 
 // The value of `const <name>=…;` in a rendered page.

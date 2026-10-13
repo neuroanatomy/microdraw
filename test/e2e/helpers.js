@@ -381,19 +381,14 @@ const logIn = async (page, credentials = annotator) => {
       redirect: 'manual',
       credentials: 'same-origin'
     });
-    await post('/localSignup');
-    // /localSignup may answer before its insert has finished: retry the login
-    /* eslint-disable no-await-in-loop -- sequential retries */
-    for (let i = 0; i < 20; i += 1) {
-      await post('/localLogin');
-      if ((await fetch('/token', { credentials: 'same-origin' })).ok) { return true; }
-      await new Promise((resolve) => { setTimeout(resolve, 100); });
-    }
-    /* eslint-enable no-await-in-loop */
+    // 200 once the user is stored, 409 if it exists already (NWL 0.2.0)
+    const signUp = await post('/localSignup');
+    if (signUp.status !== 200 && signUp.status !== 409) { return `/localSignup: ${signUp.status}`; }
+    await post('/localLogin');
 
-    return false;
+    return (await fetch('/token', { credentials: 'same-origin' })).ok || '/token refused after /localLogin';
   }, credentials);
-  if (!loggedIn) { throw new Error(`could not log in as ${credentials.username}`); }
+  if (loggedIn !== true) { throw new Error(`could not log in as ${credentials.username}: ${loggedIn}`); }
 };
 
 module.exports = {

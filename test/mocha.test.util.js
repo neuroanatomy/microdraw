@@ -117,28 +117,24 @@ const removeAnnotations = function (source) {
   return db.get('annotations').remove({ fileID: new RegExp(`^${escaped}&slice=`) });
 };
 
-// Sign up a local user and wait until it is stored. NWL's /localSignup
-// answers before its insert has finished (auth/local.js does not wait for
-// addUser), so a login sent at once sometimes finds no user: that was the
-// "no session cookie" flake of permissions.spec (M3); polls, no fixed delay.
+// Sign up a local user. Since NeuroWebLab 0.2.0, /localSignup answers 200
+// only once the user is stored (before, it answered before its insert, and
+// the tests had to poll: the "no session cookie" flake of permissions.spec,
+// M3), and 409 when the name exists already, e.g. when a spec signs the same
+// user up again: that user can still log in with the same password. Any
+// other answer (400 invalid name or password, 500) is an error.
 const signUp = async (credentials) => {
   const res = await chai.request(serverOrigin()).post('/localSignup')
     .send(credentials);
-  const deadline = Date.now() + shortTimeout;
-  /* eslint-disable no-await-in-loop -- polls until the user is stored */
-  while (!await db.get('users').findOne({ username: credentials.username })) {
-    if (Date.now() > deadline) {
-      throw new Error(`user ${credentials.username} was not stored after /localSignup`);
-    }
-    await delay(20);
+  if (res.status !== 200 && res.status !== 409) {
+    throw new Error(`/localSignup ${credentials.username}: ${res.status} ${JSON.stringify(res.body)}`);
   }
-  /* eslint-enable no-await-in-loop */
 
   return res;
 };
 
-// Sign up (waiting until the user is stored), log in, and return an agent
-// with the session cookie. A login sent before the insert fails (no connect.sid).
+// Sign up (or find the user already there), log in, and return an agent
+// with the session cookie.
 const logIn = async (credentials) => {
   await signUp(credentials);
   const agent = chai.request.agent(getServer());

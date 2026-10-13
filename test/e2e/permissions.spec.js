@@ -20,7 +20,7 @@ describe('TESTING PERMISSIONS (settings page)', function () {
   // eslint-disable-next-line max-statements
   before(async function () {
     const agent = chai.request.agent(U.getServer());
-    // waits until the user is stored (M3: logging in at once was flaky)
+    // 200 once the user is stored (NWL 0.2.0); 409 if it exists already
     await U.signUp(U.testingCredentials);
     const res = await agent.post('/localLogin').redirects(0)
       .send(U.testingCredentials);

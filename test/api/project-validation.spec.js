@@ -34,7 +34,7 @@ const newProject = (shortname, extra = {}) => ({
   ...extra
 });
 
-// Signs up, waits until the user is stored, and logs in (U.logIn).
+// Signs up (or finds the user already there) and logs in (U.logIn).
 const login = (credentials) => U.logIn(credentials);
 
 const isJSON = (res) => assert.match(res.headers['content-type'], /^application\/json/);
