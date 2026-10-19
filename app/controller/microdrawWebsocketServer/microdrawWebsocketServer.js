@@ -74,7 +74,17 @@ const microdrawWebsocketServer = (function () {
     },
 
     _handleWebSocketMessage: ({msg, ws}) => {
-      const data = JSON.parse(msg);
+      let data;
+      try {
+        data = JSON.parse(msg);
+      } catch (err) {
+        data = null;
+      }
+      if (data === null || typeof data !== 'object' || Array.isArray(data)) {
+        console.log("WARNING: WebSocket message ignored, not a JSON object");
+
+        return;
+      }
 
       // handle single user messages
       me._handleUserWebSocketMessage({data, ws});
@@ -85,7 +95,14 @@ const microdrawWebsocketServer = (function () {
 
     _handleWebSocketConnection: (ws) => {
       ws.on('message', function (msg) {
-        me._handleWebSocketMessage({msg, ws});
+        try {
+          me._handleWebSocketMessage({msg, ws});
+        } catch (err) {
+          console.log("ERROR: WebSocket message handler:", err);
+        }
+      });
+      ws.on('error', (err) => {
+        console.log("ERROR: WebSocket connection:", err.message);
       });
       ws.on('close', () => {
         console.log("disconnect user");
@@ -133,6 +150,9 @@ free memory: ${os.freemem()}
           // verifyClient: me.verifyClient
         });
         websocketserver.on("connection", me._handleWebSocketConnection);
+        websocketserver.on("error", (err) => {
+          console.log("ERROR: WebSocket server:", err);
+        });
       } catch (ex) {
         console.log("ERROR: Unable to create a Web socket server", ex);
       }
