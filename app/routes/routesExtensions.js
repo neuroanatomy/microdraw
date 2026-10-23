@@ -1,6 +1,7 @@
 const url = require('url');
 const http = require('http');
 const https = require('https');
+const log = require('../log');
 
 /**
  * Make an HTTP(S) GET request, returning the response metadata and body as a Buffer.
@@ -40,6 +41,7 @@ module.exports = (app) => {
         res.end(body);
       })
       .catch((err) => {
+        (req.log || log).warn({ err, source }, 'cannot fetch tile');
         res.status(500).send(err.message);
       });
   });
@@ -66,10 +68,6 @@ module.exports = (app) => {
 
       const { statusCode, body } = await httpGet(sourceHostname + sourcePath);
 
-      if ((/error/).test(sourcePath)) {
-        console.log({body: body.toString(), statusCode});
-      }
-
       if(statusCode >= 400) {
         throw body.toString();
       }
@@ -87,14 +85,11 @@ module.exports = (app) => {
           }
         }
 
-        console.log(tileSource);
-
         return tileSource;
       });
       res.status(200).send(JSON.stringify(json));
     } catch (e) {
-      console.log("13");
-      console.log('Error at /getJson', e);
+      (req.log || log).warn({ err: e, source }, 'cannot get the tile source JSON');
       res.status(404).send(e);
     }
   });

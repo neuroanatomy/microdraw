@@ -22,6 +22,7 @@
  */
 const _ = require('lodash');
 const monk = require('monk');
+const logger = require('../../log');
 const { withProjectLock } = require('../projectLock');
 const { checkProject, duplicateLayerNames, plainText } = require('../project/project.validation');
 const {
@@ -32,7 +33,7 @@ const current = { backup: { $exists: false } };
 const fixKeys = ['adminRemoveBlankRows', 'adminNameLayers', 'adminTransferOwner'];
 
 const log = (db, key, value) => {
-  console.log(`ADMIN ${key}`, JSON.stringify(_.omit(value, ['project'])));
+  logger.info({ event: key, ..._.omit(value, ['project']) }, `admin: ${key}`);
 
   return db.get('log').insert({ key, value, date: (new Date()).toJSON() });
 };

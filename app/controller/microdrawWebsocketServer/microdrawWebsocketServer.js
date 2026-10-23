@@ -21,6 +21,7 @@ const blacklist = JSON.parse(fs.readFileSync(path.join(__dirname, "blacklist.jso
 
 // var http = require('http');
 const WebSocket = require('ws');
+const log = require('../../log').child({ module: 'websocket' });
 const WebSocketServer = WebSocket.Server;
 var websocketserver;
 
@@ -67,7 +68,7 @@ const microdrawWebsocketServer = (function () {
           try {
             client.send(cleanData);
           } catch (err) {
-            console.log("ERROR:", err);
+            log.error({ err }, 'cannot broadcast message');
           }
         }
       });
@@ -81,7 +82,7 @@ const microdrawWebsocketServer = (function () {
         data = null;
       }
       if (data === null || typeof data !== 'object' || Array.isArray(data)) {
-        console.log("WARNING: WebSocket message ignored, not a JSON object");
+        log.warn('message ignored, not a JSON object');
 
         return;
       }
@@ -98,25 +99,19 @@ const microdrawWebsocketServer = (function () {
         try {
           me._handleWebSocketMessage({msg, ws});
         } catch (err) {
-          console.log("ERROR: WebSocket message handler:", err);
+          log.error({ err }, 'message handler failed');
         }
       });
       ws.on('error', (err) => {
-        console.log("ERROR: WebSocket connection:", err.message);
+        log.error({ err }, 'connection error');
       });
       ws.on('close', () => {
-        console.log("disconnect user");
+        log.debug('user disconnected');
       });
     },
 
     initSocketConnection: () => {
-      console.log(`
-===================================
-Starting microdrawWebsocketServer.js
-date: ${new Date()}
-free memory: ${os.freemem()}
-===================================
-`);
+      log.info({ freeMemory: os.freemem() }, 'websocket server starting');
 
       me.server.on("upgrade", (req, socket) => {
         let ip = req.ip
@@ -124,20 +119,18 @@ free memory: ${os.freemem()}
           || req.socket.remoteAddress
           || req.connection.socket.remoteAddress;
         ip = ip.split(":").pop();
-        console.log("Upgrading server with IP:", ip);
+        log.debug({ ip }, 'upgrading connection');
 
         if(useWhitelist && !whitelist[ip]) {
-          console.log("------------------------------> not in whitelist", ip);
+          log.warn({ ip }, 'connection refused: not in whitelist');
           setTimeout(function() {
-            console.log("not in whitelist: end");
             socket.destroy();
           }, 5000);
         }
 
         if (useBlacklist && blacklist[ip]) {
-          console.log("------------------------------> blacklist", ip);
+          log.warn({ ip }, 'connection refused: blacklisted');
           setTimeout(function() {
-            console.log("blacklist: end");
             socket.destroy();
           }, 5000);
         }
@@ -151,10 +144,10 @@ free memory: ${os.freemem()}
         });
         websocketserver.on("connection", me._handleWebSocketConnection);
         websocketserver.on("error", (err) => {
-          console.log("ERROR: WebSocket server:", err);
+          log.error({ err }, 'server error');
         });
       } catch (ex) {
-        console.log("ERROR: Unable to create a Web socket server", ex);
+        log.error({ err: ex }, 'cannot create the websocket server');
       }
     }
   };

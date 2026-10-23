@@ -6,9 +6,10 @@ const path = require('path');
 const nwl = require('neuroweblab');
 const {authTokenMiddleware} = nwl;
 const {getHttpImg} = require('../serveHttpImages/serveHttpImages');
+const log = require('../log');
 
 module.exports = (app) => {
-  console.log(`configuring routes`);
+  log.debug('configuring routes');
 
   // view engine setup
   app.engine('mustache', mustacheExpress());

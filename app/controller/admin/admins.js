@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const logger = require('../../log');
 
 // Same module as BrainBox controller/admin/admins.js, so that the two can be
 // merged into a shared package. microdraw reads the config from CFG_PATH when
@@ -17,7 +18,7 @@ const readAdminsFromConfig = () => {
 
     return Array.isArray(cfg.admins) ? cfg.admins.filter((name) => typeof name === 'string' && name !== '') : [];
   } catch (err) {
-    console.log('WARNING: cannot read the admins list from cfg.json', err.message);
+    logger.warn({ err }, 'cannot read the admins list from cfg.json');
 
     return [];
   }

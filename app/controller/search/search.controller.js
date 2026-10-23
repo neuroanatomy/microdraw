@@ -1,5 +1,6 @@
 /* eslint-disable camelcase */
 const { AccessControlService } = require('neuroweblab');
+const log = require('../../log');
 // const async = require('async');
 // const dateFormat = require('dateformat');
 // const checkAccess = require('../checkAccess/checkAccess.js');
@@ -43,7 +44,7 @@ const searchText = (req, res) => {
 };
 
 const serverError = (res, err) => {
-  console.log('ERROR: search', err);
+  log.error({ err }, 'search failed');
   res.status(500).json({ error: 'Server error' });
 };
 

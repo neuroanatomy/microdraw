@@ -1,5 +1,6 @@
 const http = require('http');
 const https = require('https');
+const log = require('../log');
 
 /**
  * Fetch a URL following redirects, returning the final response.
@@ -40,7 +41,7 @@ const getHttpImg = function (req, res) {
       });
     })
     .catch((err) => {
-      console.error(err);
+      log.error({ err, url }, 'cannot fetch remote image');
       res.sendStatus(500);
     });
 };

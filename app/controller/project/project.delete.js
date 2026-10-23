@@ -11,6 +11,7 @@
  */
 const _ = require('lodash');
 const monk = require('monk');
+const logger = require('../../log');
 
 const deleteKeys = ['deleteProject', 'adminDeleteProject'];
 const current = { backup: { $exists: false } };
@@ -42,7 +43,7 @@ const deleteStoredProject = async (appDb, { project, username, key = 'deleteProj
   const log = String(entry._id);
   await db.get('annotations').update(annotations, { $set: { backup: true, deletedWithProject: log } }, { multi: true });
   await appDb.deleteProject({ shortname });
-  console.log(key === 'deleteProject' ? 'DELETE Project' : 'ADMIN DELETE Project', shortname, 'by', username, 'log', log);
+  logger.info({ event: key, shortname, by: username, log }, 'project deleted');
 
   return { log, annotations: entry.value.annotations };
 };
@@ -97,7 +98,7 @@ const restoreDeletedProject = async (db, { entry, username }) => {
   const doc = await db.get('projects').insert(projectId ? { _id: projectId, ...project } : project);
   await db.get('annotations').update(marked, { $unset: { backup: '', deletedWithProject: '' } }, { multi: true });
   await db.get('log').update({ _id: entry._id }, { $set: { 'value.restored': String(restore._id) } });
-  console.log('ADMIN RESTORE deleted project', shortname, 'by', username, 'log', log);
+  logger.info({ event: 'restoreDeletedProject', shortname, by: username, log }, 'project restored');
 
   return { annotations: restore.value.annotations, project: await db.get('projects').findOne({ _id: doc._id }) };
 };

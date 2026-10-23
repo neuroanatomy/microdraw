@@ -5,13 +5,12 @@ const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
 //const favicon = require('serve-favicon');
-const debug = require('debug')('microdraw:server');
 const https = require('https');
 const http = require('http');
-const morgan = require('morgan');
 const nwl = require('neuroweblab');
 const microdrawWebsocketServer = require('./controller/microdrawWebsocketServer/microdrawWebsocketServer.js');
 const routes = require('./routes/routes');
+const log = require('./log');
 let port;
 let server;
 
@@ -61,11 +60,8 @@ const listen = (srv, wanted, which) => new Promise((resolve, reject) => {
 
 // Event listener for HTTP server "listening" event.
 const onListening = function () {
-  var addr = server.address();
-  var bind = typeof addr === 'string'
-    ? 'pipe ' + addr
-    : 'port ' + addr.port;
-  debug('Listening on ' + bind);
+  const addr = server.address();
+  log.info({ address: typeof addr === 'string' ? addr : addr.port }, 'http server listening');
 };
 
 // eslint-disable-next-line max-statements
@@ -108,7 +104,7 @@ const start = async function () {
     normalizePort(process.env.WS_PORT || '8080'),
     'websocket server'
   );
-  console.log(`Listening ${Config.secure ? 'wss' : 'ws'} on port ${wsPort}`);
+  log.info({ port: wsPort, secure: Boolean(Config.secure) }, 'websocket server listening');
   microdrawWebsocketServer.initSocketConnection();
 
   // Templates need this so the browser connects to the right websocket port.
@@ -132,12 +128,10 @@ const start = async function () {
 
   // uncomment after placing your favicon in /public
   //app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
-  if (process.env.NODE_ENV === 'development') {
-    app.use(morgan('dev'));
-  }
   app.use(bodyParser.json({ limit: '50mb', extended: true }));
   app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
   app.use(express.static(path.join(__dirname, 'public')));
+  app.use(log.requestLog);
 
   /* setup DB */
   // var checkAnyoneUser = function () {
@@ -191,6 +185,9 @@ const start = async function () {
     // set locals, only providing error in development
     res.locals.message = err.message;
     res.locals.error = req.app.get('env') === 'development' ? err : {};
+
+    // logged with the request line (pino-http reads res.err)
+    res.err = err;
 
     // render the error page
     res.status(err.status || 500);

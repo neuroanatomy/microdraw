@@ -17,6 +17,7 @@
  * be undone. Every action is logged, as in BrainBox.
  */
 const monk = require('monk');
+const logger = require('../../log');
 const { withProjectLock } = require('../projectLock');
 
 const isProjectName = (name) => typeof name === 'string' && name !== '';
@@ -158,7 +159,7 @@ const orphanGroupIds = async (db, group) => {
 
 const log = (db, key, value) => {
   const { ids, ...rest } = value;
-  console.log(`ADMIN ${key}`, JSON.stringify(ids ? { ...rest, documents: ids.length } : rest));
+  logger.info({ event: key, ...(ids ? { ...rest, documents: ids.length } : rest) }, `admin: ${key}`);
 
   return db.get('log').insert({ key, value, date: (new Date()).toJSON() });
 };

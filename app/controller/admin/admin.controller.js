@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- one handler per admin route; 2026-10-12 */
+const logger = require('../../log');
 const { isAdmin, requestUsername } = require('./admins');
 const annotations = require('./admin.annotations');
 const projects = require('./admin.projects');
@@ -57,7 +58,7 @@ const adminPage = (req, res) => {
 };
 
 const serverError = (res, err) => {
-  console.log('ERROR:', err);
+  logger.error({ err }, 'admin request failed');
   res.status(500).json({ success: false, error: 'Server error' });
 };
 

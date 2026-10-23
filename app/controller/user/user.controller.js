@@ -2,6 +2,7 @@
 /* eslint-disable radix */
 // const async = require('async');
 const dateFormat = require('dateformat');
+const log = require('../../log');
 const { AccessControlService } = require('neuroweblab');
 const { scriptJSON } = require('../escape');
 const { visibleProjectParts } = require('../project/visibleProject');
@@ -71,7 +72,7 @@ const user = function (req, res) {
 
         return;
       }
-      console.log('ERROR:', err);
+      log.error({ err, profile: req.params.userName }, 'user request failed');
       res.status(500).send('Error');
     });
 };
@@ -96,7 +97,7 @@ const api_user = function (req, res) {
       if (err && err.message === 'error find one user') {
         res.status(404).send({error: 'User not found'});
       } else {
-        console.log('ERROR:', err);
+        log.error({ err, profile: req.params.userName }, 'user request failed');
         res.status(500).send({error: 'Server error'});
       }
     });
@@ -119,7 +120,7 @@ const api_userAll = async function (req, res) {
       .find({backup: {$exists: false}, username: {$type: 'string'}}, {skip: page * nItemsPerPage, limit: nItemsPerPage, fields: {_id: 0, username: 1}});
     res.send(users.map((o) => o.username));
   } catch (err) {
-    console.log('ERROR:', err);
+    log.error({ err }, 'cannot list users');
     res.status(500).json({error: 'Server error'});
   }
 };
@@ -135,11 +136,6 @@ const api_userAll = async function (req, res) {
  * @returns {void}
  */
 const api_userFiles = function (req, res) {
-  const {userName} = req.params;
-  const start = parseInt(req.query.start);
-  const length = parseInt(req.query.length);
-
-  console.log('userName:', userName, 'start:', start, 'length:', length);
   // Not implemented yet (T002 stage 3.3, 3.4): an empty list, not fake rows.
   res.send({
     success: true,
@@ -168,11 +164,6 @@ const api_userFiles = function (req, res) {
  * @returns {void}
  */
 const api_userAtlas = function (req, res) {
-  const {userName} = req.params;
-  const start = parseInt(req.query.start);
-  const length = parseInt(req.query.length);
-
-  console.log('userName:', userName, 'start:', start, 'length:', length);
   // Not implemented yet (T002 stage 3.4): an empty list, not fake rows.
   res.send({
     successful: true,
@@ -215,7 +206,7 @@ const api_userProjects = function (req, res) {
       });
     })
     .catch((err) => {
-      console.log('ERROR:', err);
+      log.error({ err, profile: req.params.userName }, 'user request failed');
       res.status(500).send({successful: false, list: []});
     });
 };

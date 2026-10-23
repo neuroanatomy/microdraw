@@ -6,6 +6,7 @@
 // const checkAccess = require('../checkAccess/checkAccess.js');
 // const dataSlices = require('../dataSlices/dataSlices.js');
 const _ = require('lodash');
+const logger = require('../../log');
 const { AccessControlService, AccessLevel, AccessType } = require('neuroweblab');
 const { checkProject, collaboratorName } = require('./project.validation');
 const { withProjectLock } = require('../projectLock');
@@ -46,7 +47,6 @@ const project = async function (req, res) {
   req.session.returnTo = req.originalUrl;
   try {
     const json = await req.appConfig.db.queryProject({shortname: requestedProject});
-    console.log('requestedProject', requestedProject);
     if (json) {
       if (!AccessControlService.canViewFiles(json, loggedUser)) {
         res.status(403).send('Not authorized to view project');
@@ -66,7 +66,7 @@ const project = async function (req, res) {
       res.status(404).send('Project Not Found');
     }
   } catch(err) {
-    console.log('ERROR:', err);
+    logger.error({ err, project: requestedProject, user: loggedUser }, 'cannot render project page');
     res.status(400).send('Error');
   }
 };
@@ -79,7 +79,6 @@ const project = async function (req, res) {
  */
 // eslint-disable-next-line max-statements -- existing handler, not refactored in a lint-only change; 2026-10-11
 var settingsUnsafe = async function(req, res) {
-  console.log("Settings");
   const requestedProject = req.params.projectName;
 
   var loggedUser = "anyone";
@@ -157,7 +156,7 @@ var settingsUnsafe = async function(req, res) {
         }
       }
     } catch(e) {
-      console.error(e);
+      logger.error({ err: e, project: requestedProject }, 'cannot resolve collaborator names');
     }
   }
 
@@ -180,7 +179,6 @@ const settings = catchErrors(settingsUnsafe, (res) => res.status(500).send('Erro
  * @returns {void}
  */
 const projectNew = function (req, res) {
-  console.log("New Project");
 
   let loggedUser = "anyone";
   if(req.isAuthenticated()) {
@@ -209,7 +207,6 @@ const projectNew = function (req, res) {
 
 // eslint-disable-next-line max-statements -- existing handler, not refactored in a lint-only change; 2026-10-11
 const apiProjectUnsafe = async function (req, res) {
-  console.log("GET project", req.params);
   let json = await req.appConfig.db.queryProject({shortname: req.params.projectName, backup: {$exists: false}});
   if (_.isNil(json)) {
     res.status(404).json({error: 'Project not found'});
@@ -277,7 +274,7 @@ const apiProjectAll = async function (req, res) {
     const names = await viewableProjectNames(req);
     res.send(names.slice(page * nItemsPerPage, (page + 1) * nItemsPerPage));
   } catch (err) {
-    console.log('ERROR:', err);
+    logger.error({ err }, 'cannot list projects');
     res.status(500).json({error: 'Server error'});
   }
 };
@@ -291,11 +288,6 @@ const apiProjectAll = async function (req, res) {
  */
 
 const apiProjectFiles = function (req, res) {
-  const {projectName} = req.params;
-  const start = parseInt(req.query.start);
-  const length = parseInt(req.query.length);
-
-  console.log('projectName:', projectName, 'start:', start, 'length:', length);
   res.send({});
 };
 
@@ -391,7 +383,7 @@ const saveProject = async function (req, res, loggedUser) {
     const o = await req.appConfig.db.upsertProject(newProject);
     res.json({success: true, response: o, message: successMessage, dropped});
   } catch (err) {
-    console.log('ERROR: postProject', err);
+    logger.error({ err, project: shortname, user: loggedUser }, 'cannot save project');
     sendError(res, 500, 'The project could not be saved');
   }
 };
@@ -431,7 +423,7 @@ const removeProject = async function (req, res, loggedUser) {
     return;
   }
   if (!AccessControlService.hasFilesAccess(AccessLevel.REMOVE, projectToDelete, loggedUser)) {
-    console.log('WARNING: user does not have remove rights');
+    logger.warn({ project: shortname, user: loggedUser }, 'delete refused: user does not have remove rights');
     res.status(403).json({ success: false, message: 'The user is not allowed to delete this project' });
 
     return;

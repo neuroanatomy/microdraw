@@ -6,6 +6,7 @@ const { AccessControlService } = require('neuroweblab');
 const { catchErrors } = require('../catchErrors');
 
 const fs = require('fs');
+const log = require('../../log');
 
 const {TMP_DIR} = process.env;
 const storage = TMP_DIR
@@ -22,28 +23,14 @@ const buildFileID = function ({ source, slice }) {
 
 // eslint-disable-next-line max-statements
 const getAnnotationsUnsafe = async function (req, res) {
-  console.warn("call to GET api");
-  console.warn(req.query);
-
   // current user
   const username = (req.user && req.user.username) || 'anyone';
-  console.log(`current user: ${username}`);
 
   // project name
   const project = (req.query.project) || '';
-  console.log(`current project: ${project}`);
 
   if(project) {
-    // project owner and project users
     const result = await req.app.db.queryProject({shortname: project});
-    const owner = result
-                    && result.owner;
-    const users = result
-                    && result.collaborators
-                    && result.collaborators.list
-                    && result.collaborators.list.map((u) => u.username) || [];
-    console.log(`project owner: ${owner}, users: ${users}`);
-
     if (!result) {
       res.status(404).json({error: 'Project not found'});
 
@@ -66,10 +53,10 @@ const getAnnotationsUnsafe = async function (req, res) {
     // user: { $in: [...users, username] },
     project: project
   };
-  console.log("api get query", query);
+  log.debug({ user: username, query }, 'get annotations');
 
   const annotations = await req.app.db.findAnnotations(query, backup);
-  console.log(`found ${annotations.length} annotations`);
+  log.debug({ count: annotations.length }, 'annotations found');
 
   res.status(200).send(annotations);
 };
@@ -220,11 +207,9 @@ const saveFromGUI = async function (req, res) {
 
   // current user
   const { username } = req.user;
-  console.log(`current user: ${username}`);
 
   // project name
   const project = (req.body.project) || '';
-  console.log(`current project: ${project}`);
 
   const refusal = await annotationEditRefusal(req, project, username);
   if (refusal) {
@@ -381,8 +366,6 @@ const saveFromAPIUnsafe = async function (req, res) {
 const saveFromAPI = catchErrors(saveFromAPIUnsafe, serverError);
 
 router.post('/', catchErrors(async function (req, res) {
-  console.warn("call to POST from GUI");
-
   if(req.body.action === 'save') {
     await saveFromGUI(req, res);
   } else {
@@ -401,8 +384,6 @@ const filterAuthorizedUserOnly = (req, res, next) => {
 };
 
 router.post('/upload', filterAuthorizedUserOnly, multer({ storage }).array('data'), function (req, res) {
-  console.warn("call to POST from API");
-
   const { action } = req.query;
   switch(action) {
   case 'save':
