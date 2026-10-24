@@ -2441,9 +2441,11 @@ const Microdraw = (function () {
 
       // add screenshot
       me.viewer.screenshot({
-        showOptions: false // Default is false
+        showOptions: false, // Default is false
         // keyboardShortcut: 'p', // Default is null
-        // showScreenshotControl: true // Default is true
+        // The screenshot tool has its own button in the toolbar. The plugin's OSD
+        // button needs selection_*.png, which OSD does not ship (they 404).
+        showScreenshotControl: false
       });
 
       // initialise paperjs

@@ -78,6 +78,7 @@ const intercepting = async (match, response, action) => {
   }
 };
 
+// eslint-disable-next-line max-statements -- one describe, one it per recorded behaviour; 2026-10-24
 describe('Viewer requests and tool registry (M4a)', () => {
   before(async () => {
     await U.insertProject(project);
@@ -93,6 +94,21 @@ describe('Viewer requests and tool registry (M4a)', () => {
       await U.removeProject(project.shortname);
     }
   });
+
+  // The screenshot plugin's own OSD button asked for selection_*.png, which OSD does not
+  // ship: every viewer load logged four 404s. The toolbar has its own screenshot button.
+  it('does not request the images of the screenshot plugin\'s OSD button', async () => {
+    const extra = await context.newPage();
+    const asked = [];
+    extra.on('request', (req) => asked.push(new URL(req.url()).pathname));
+    try {
+      await H.openData(extra, U.url(`/data?source=/test_data/cat.json&project=${project.shortname}&slice=0`));
+    } finally {
+      await extra.close();
+    }
+    assert.isNotEmpty(asked.filter((p) => p.startsWith('/lib/openseadragon/')), 'the page loaded OSD');
+    assert.deepEqual(asked.filter((p) => (/\/selection_[a-z]+\.png$/).test(p)), []);
+  }).timeout(U.mediumTimeout);
 
   it('loads the annotations with GET /api and the query string of jQuery.param', async () => {
     const seen = await requestsDuring('/api', () => H.openData(page, U.url(`/data?source=/test_data/cat.json&project=${project.shortname}&slice=0`)));
