@@ -8,6 +8,7 @@ const pinoHttp = require('pino-http');
 
 const options = {
   level: process.env.LOG_LEVEL || 'info',
+  base: null, // no pid and hostname: one process on one host
   serializers: { err: pino.stdSerializers.err }
 };
 
@@ -43,7 +44,8 @@ const requestLog = pinoHttp({
       return 'error';
     }
 
-    return res.statusCode >= 400 ? 'warn' : 'info';
+    // 404 is mostly crawlers probing for WordPress and the like: not a warning
+    return res.statusCode >= 400 && res.statusCode !== 404 ? 'warn' : 'info';
   },
   customSuccessMessage: (req, res) => `${req.method} ${req.originalUrl} ${res.statusCode}`,
   customErrorMessage: (req, res) => `${req.method} ${req.originalUrl} ${res.statusCode}`,

@@ -1,4 +1,3 @@
-const url = require('url');
 const http = require('http');
 const https = require('https');
 const log = require('../log');
@@ -55,16 +54,17 @@ module.exports = (app) => {
     }
 
     const thisHostname = req.protocol + '://' + req.get('host');
-    const sourceHostname =
-                (new RegExp('^http')).test(source) ?
-                  url.parse(source).protocol + '//' + url.parse(source).host :
-                  req.protocol + '://' + req.get('host');
-    const sourcePath = url.parse(source).path ? url.parse(source).path : null;
+    let sourceHostname;
+    let sourcePath;
 
     try {
-      if( !sourceHostname || !sourcePath ) {
-        throw new Error('ERROR: sourceurl not defined');
+      // A relative source is resolved against this server
+      const target = new URL(source, thisHostname);
+      if (!['http:', 'https:'].includes(target.protocol)) {
+        throw new Error('ERROR: sourceurl must be http or https');
       }
+      sourceHostname = target.protocol + '//' + target.host;
+      sourcePath = target.pathname + target.search;
 
       const { statusCode, body } = await httpGet(sourceHostname + sourcePath);
 
