@@ -5,6 +5,8 @@
   /user/json/:user/projects 100 at a time until a page is short), and its
   columns sort with nwl-components' SortableTh: a sort icon on every header
   from the start, a first click sorts ascending, a second reverses.
+  A project name that is one long word wraps inside its cell (nwl-components
+  >= 1.5.2): the projects table is never wider than its .content panel.
 */
 const chai = require('chai');
 const { assert } = chai;
@@ -14,6 +16,8 @@ const H = require('./helpers');
 const owner = 'e2e-user-page-owner';
 const PREFIX = 'e2euserpage';
 const COUNT = 105;
+// a project name that is a 60-character word, for the overflow check
+const LONG_NAME = 'P'.padEnd(60, 'w');
 const HEADERS = ['Name', 'Files', 'Collaborators', 'Owner', 'Last modified'];
 
 // The server order is not the sorted order: the first project is "P050" with 5 files.
@@ -144,4 +148,24 @@ describe('User page: all projects, sortable columns', () => {
     assert.lengthOf(dated, 84);
     assert.deepEqual(dated, [...dated].sort().reverse());
   }).timeout(U.shortTimeout);
+
+  it('keeps the projects table within its .content panel when a name is a 60-character word', async () => {
+    const p = project(COUNT);
+    p.name = LONG_NAME;
+    await U.insertProject(p);
+    await page.goto(U.url(`/user/${owner}`), { waitUntil: 'load' });
+    await page.waitForFunction((n) => document.querySelectorAll('#projects tbody tr').length === n,
+      { timeout: U.mediumTimeout }, COUNT + 1);
+    const { table, content, text } = await page.$eval('#projects', (el) => {
+      const t = el.tagName === 'TABLE' ? el : el.querySelector('table');
+
+      return {
+        table: t.getBoundingClientRect().width,
+        content: t.closest('.content').getBoundingClientRect().width,
+        text: t.innerText
+      };
+    });
+    assert.include(text, LONG_NAME);
+    assert.isAtMost(table, content, `the table is ${table}px wide, its .content panel ${content}px`);
+  }).timeout(U.mediumTimeout);
 });
