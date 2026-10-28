@@ -8,9 +8,6 @@
 .tab.selected {
     background:#333;
 }
-td {
-    word-break: break-word;
-}
 #dataFiles, #atlasFiles, #projects {
     color:white;
     text-align:left;

@@ -6,7 +6,10 @@
   columns sort with nwl-components' SortableTh: a sort icon on every header
   from the start, a first click sorts ascending, a second reverses.
   A project name that is one long word wraps inside its cell (nwl-components
-  >= 1.5.2): the projects table is never wider than its .content panel.
+  >= 1.5.2): the projects table is never wider than its .content panel. Only the
+  Name cell breaks inside a word (nwl-components >= 1.5.3, class
+  nwl-break-anywhere): a 16-character owner name stays on one line when the
+  panel is narrow.
 */
 const chai = require('chai');
 const { assert } = chai;
@@ -18,6 +21,8 @@ const PREFIX = 'e2euserpage';
 const COUNT = 105;
 // a project name that is a 60-character word, for the overflow check
 const LONG_NAME = 'P'.padEnd(60, 'w');
+// a 16-character owner, like "danielemarinazzo", of a project the page's user collaborates on
+const LONG_OWNER = `${PREFIX}longo`;
 const HEADERS = ['Name', 'Files', 'Collaborators', 'Owner', 'Last modified'];
 
 // The server order is not the sorted order: the first project is "P050" with 5 files.
@@ -167,5 +172,24 @@ describe('User page: all projects, sortable columns', () => {
     });
     assert.include(text, LONG_NAME);
     assert.isAtMost(table, content, `the table is ${table}px wide, its .content panel ${content}px`);
+  }).timeout(U.mediumTimeout);
+
+  it('keeps a 16-character owner name on one line when the panel is narrow', async () => {
+    const p = project(COUNT + 1);
+    p.owner = LONG_OWNER;
+    p.collaborators.list.push({ username: owner, access: { ...p.collaborators.list[0].access } });
+    await U.insertProject(p);
+    await page.setViewport({ width: 700, height: U.height });
+    await page.goto(U.url(`/user/${owner}`), { waitUntil: 'load' });
+    await page.waitForFunction((n) => document.querySelectorAll('#projects tbody tr').length === n,
+      { timeout: U.mediumTimeout }, COUNT + 2);
+    const lines = await page.$$eval('#projects tbody tr', (trs, o) => {
+      const a = trs.map((tr) => tr.cells[3].querySelector('a')).find((el) => el && el.textContent.trim() === o);
+      const range = document.createRange();
+      range.selectNodeContents(a);
+
+      return new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size;
+    }, LONG_OWNER);
+    assert.equal(lines, 1, `the owner ${LONG_OWNER} is on ${lines} lines`);
   }).timeout(U.mediumTimeout);
 });
