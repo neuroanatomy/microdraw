@@ -1,21 +1,28 @@
-'use strict';
-
 /*
-  N2: the space between table columns (app/public/css/shared-style.css, loaded
-  by every page), in the user, project, project settings and admin pages: in
-  every table, each cell but the last of its row is followed by some space, so
-  that neighbouring columns ("Collaborators", "Owner"…) do not run together.
+  N2: the space between table columns, in the user, project, project settings
+  and admin pages: in every table, each cell but the last of its row is
+  followed by 1em, so that neighbouring columns ("Collaborators", "Owner"…) do
+  not run together, and the last cell has no such space after it.
+  - nwl-components' Table (user, settings and admin pages; SortableTh in the
+    user page) spaces its own columns since nwl-components 1.5.1;
+  - the plain tables (the project page's two tables, and the table of
+    nwl-components' ImportFilesDialog in the settings page) are spaced by
+    app/public/css/shared-style.css.
   Adapted from BrainBox test/integration/table-spacing.test.js (37a4b08).
   The gap is measured as BrainBox does: padding-right of a cell plus
-  padding-left of the next one.
+  padding-left of the next one. A plain cell keeps the browser's 1px padding,
+  hence the SLACK.
 */
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const chai = require('chai');
 const { assert } = chai;
 const U = require('../mocha.test.util');
 const H = require('./helpers');
 const admins = require('../../app/controller/admin/admins');
 
-const MIN_GAP = 8; // px between the text of two neighbouring cells
+const SLACK = 2; // px: a plain cell's default 1px padding on either side
 const owner = { username: 'e2e-n2-owner', password: 'e2e-n2-owner-password' };
 const PROJECT = 'e2en2tables';
 const SOURCE = 'http://n2-table-spacing.localhost/brain.dzi';
@@ -50,35 +57,46 @@ const PAGES = {
 };
 
 /**
- * The neighbouring cells of the page's tables with less than MIN_GAP pixels between them.
+ * The spacing of the cells of the page's tables (those matching `tables`):
+ * each cell but the last of its row must be followed by 1em (its font size),
+ * and the last one by nothing.
  * @param {Object} page A puppeteer page
- * @returns {Promise<Object>} The cramped pairs, as "left|right: gap", and the number of pairs checked
+ * @param {string} tables CSS selector of the tables to check
+ * @param {number} slack Tolerance in px
+ * @returns {Promise<Object>} The badly spaced cells, as "table: left|right: gap", and the number of cells checked
  */
-const crampedCells = (page) => page.$$eval('table', (tables, minGap) => {
-  const px = (cell, side) => parseFloat(getComputedStyle(cell)[`padding${side}`]);
-  const pairs = tables.flatMap((table) => [...table.querySelectorAll('tr')].flatMap((tr) => [...tr.cells].slice(0, -1)
-    .map((cell) => ({
-      label: `${table.id || table.className}: ${cell.textContent.trim()}|${cell.nextElementSibling.textContent.trim()}`,
-      gap: px(cell, 'Right') + px(cell.nextElementSibling, 'Left')
-    }))));
+const badlySpacedCells = (page, tables, slack) => page.$$eval(tables, (elements, tolerance) => {
+  const px = (cell, prop) => parseFloat(getComputedStyle(cell)[prop]);
+  const cells = elements.flatMap((table) => [...table.querySelectorAll('tr')].flatMap((tr) => [...tr.cells].map((cell) => {
+    const next = cell.nextElementSibling;
+    const label = `${table.id || table.parentElement.id || table.parentElement.className}: ${cell.textContent.trim()}|${next ? next.textContent.trim() : '(last)'}`;
+    const gap = next ? px(cell, 'paddingRight') + px(next, 'paddingLeft') : px(cell, 'paddingRight');
+    const expected = next ? px(cell, 'fontSize') : 0;
+
+    return { label, gap, expected };
+  })));
 
   return {
-    cramped: pairs.filter((p) => p.gap < minGap).map((p) => `${p.label}: ${p.gap}px`),
-    checked: pairs.length
+    bad: cells.filter((c) => Math.abs(c.gap - c.expected) > tolerance).map((c) => `${c.label}: ${c.gap}px, expected ${c.expected}px`),
+    checked: cells.length
   };
-}, MIN_GAP);
+}, slack);
 
 describe('Space between table columns (N2)', () => {
   let context;
   let page;
   let previousAdmins;
 
-  const checkPage = async ({ path, waitFor }) => {
-    await page.goto(U.url(path), { waitUntil: 'load' });
-    await page.waitForSelector(waitFor, { timeout: U.mediumTimeout });
-    const { cramped, checked } = await crampedCells(page);
+  const checkTables = async (tables = 'table') => {
+    const { bad, checked } = await badlySpacedCells(page, tables, SLACK);
     assert.isAbove(checked, 0, 'no table cells found');
-    assert.deepEqual(cramped, []);
+    assert.deepEqual(bad, []);
+  };
+
+  const checkPage = async ({ path: pagePath, waitFor }) => {
+    await page.goto(U.url(pagePath), { waitUntil: 'load' });
+    await page.waitForSelector(waitFor, { timeout: U.mediumTimeout });
+    await checkTables();
   };
 
   before(async () => {
@@ -111,4 +129,22 @@ describe('Space between table columns (N2)', () => {
       await checkPage(p);
     }).timeout(U.mediumTimeout);
   });
+
+  it('leaves space between the columns of the settings page\'s import dialog', async () => {
+    const csv = path.join(os.tmpdir(), 'e2e-n2-import.csv');
+    await fs.promises.writeFile(csv, 'http://n2-table-spacing.localhost/a.dzi,a\nhttp://n2-table-spacing.localhost/b.dzi,b');
+    try {
+      await page.goto(U.url(PAGES.settings.path), { waitUntil: 'load' });
+      await page.waitForSelector('button[title="Upload CSV"]', { timeout: U.mediumTimeout });
+      const [chooser] = await Promise.all([
+        page.waitForFileChooser({ timeout: U.mediumTimeout }),
+        page.click('button[title="Upload CSV"]')
+      ]);
+      await chooser.accept([csv]);
+      await page.waitForSelector('.dialog table tr', { timeout: U.mediumTimeout });
+      await checkTables('.dialog table');
+    } finally {
+      await fs.promises.rm(csv, { force: true });
+    }
+  }).timeout(U.mediumTimeout);
 });

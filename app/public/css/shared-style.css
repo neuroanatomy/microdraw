@@ -47,14 +47,14 @@ tr.selected{
 }
 
 /*
-  Space between the columns of every table (N2, as BrainBox tables.css,
-  37a4b08). nwl-components' Table pads its cells by 2px 0 only, and the other
-  tables have no padding at all. `html` outranks the Table's scoped
-  `table[data-v-…] td`; the `th.nwl-sortable` selector outranks SortableTh's
-  scoped `th.nwl-sortable[data-v-…] { padding: 0 }` (nwl-components 1.5.0).
-  To be dropped once nwl-components' Table pads its cells.
+  Space between the columns of the tables that are not an nwl-components
+  Table (N2, as BrainBox tables.css, 37a4b08): nwl-components' Table and
+  SortableTh space their own columns since nwl-components 1.5.1. These are the
+  project page's two tables (app/views/scripts/src/project-page.js) and the
+  table of nwl-components' ImportFilesDialog (settings page, "Upload CSV").
 */
-html table :is(th, td):not(:last-child),
-html table th.nwl-sortable:not(:last-child) {
+#projectFiles table :is(th, td):not(:last-child),
+#vecAnnotations :is(th, td):not(:last-child),
+.dialog table :is(th, td):not(:last-child) {
     padding-right: 1em;
 }
