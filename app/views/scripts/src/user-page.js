@@ -18,13 +18,21 @@ const localDate = (iso, dateTime = false) => {
   return dateTime ? `${date} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}` : date;
 };
 
+// What the Name column shows, and sorts by: the project's display name, or its
+// short name when the display name is missing or empty
+const shownName = (project) => {
+  const name = typeof project.name === 'string' ? project.name.trim() : '';
+
+  return name === '' ? project.shortname : project.name;
+};
+
 const PageContents = {
   template: '#template',
   setup() {
     const projects = ref([]);
     // unsorted until a header is clicked: the server's order
     const sort = useSortable(projects, {
-      Name: { key: 'name' },
+      Name: { key: 'shownName' },
       Files: { key: 'numFiles', type: 'number' },
       Collaborators: { key: 'numCollaborators', type: 'number' },
       Owner: { key: 'owner' },
@@ -46,7 +54,7 @@ const PageContents = {
       const start = this.projects.length;
       const res = await (await fetch(`/user/json/${userInfo.username}/projects?start=${start}&length=${PAGE}`)).json();
       if (res.successful && res.list.length > 0) {
-        this.projects.push(...res.list);
+        this.projects.push(...res.list.map((project) => ({ ...project, shownName: shownName(project) })));
       }
       if (res.successful && res.list.length === PAGE) {
         await fetchProjects();
