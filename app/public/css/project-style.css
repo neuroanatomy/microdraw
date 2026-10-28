@@ -9,6 +9,30 @@
     border:thin solid #555;
     padding: 5px;
 }
+/* The left pane shrinks as far as the resize handle takes it, as on BrainBox's
+   project page: long cells are clipped on one line with an ellipsis (their
+   full text is in a title), as the inputs of the page before cc86d15 clipped
+   them, and do not set the pane's smallest width. */
+#left {
+    min-width: 0;
+}
+#left > div {
+    overflow: hidden;
+}
+#projectFiles table,
+#vecAnnotations {
+    table-layout: fixed;
+}
+#projectFiles th:first-child,
+#vecAnnotations th:first-child {
+    width: 35%;
+}
+#projectFiles table :is(th, td),
+#vecAnnotations :is(th, td) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 #right {
     background-color: black;
     user-select: none;

@@ -12,6 +12,9 @@
     ({{ }} interpolation, textContent): there is no v-html.
   - The cells are read only. The old page had editable inputs that were never
     saved; the project's files and layers are edited in its settings page.
+  - Long cells are clipped on one line with an ellipsis (project-style.css), as
+    the old inputs clipped them, and show their full text in a title, so the
+    left pane can be made narrower than its longest text (2026-10-28).
   - Moving to another file reloads the page with ?source=<file>&project=<name>,
     as before, both encoded with encodeURIComponent since N3; the viewer reads
     both from the URL (Microdraw.deparam decodes them).
@@ -46,13 +49,13 @@ const ProjectTables = {
           <tr>
             <th>Name</th>
             <th>File</th>
-            <th v-for="(a, i) in textAnnotations" :key="i">{{ a.name }}</th>
+            <th v-for="(a, i) in textAnnotations" :key="i" :title="a.name">{{ a.name }}</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="(f, i) in files" :key="i" :class="{selected: i === selectedFile}" @click="openFile(i)">
-            <td :class="{empty: isEmpty(f.name)}">{{ f.name }}</td>
-            <td :class="{empty: isEmpty(f.source)}">{{ f.source }}</td>
+            <td :class="{empty: isEmpty(f.name)}" :title="f.name">{{ f.name }}</td>
+            <td :class="{empty: isEmpty(f.source)}" :title="f.source">{{ f.source }}</td>
           </tr>
         </tbody>
       </table>
@@ -68,8 +71,8 @@ const ProjectTables = {
         </thead>
         <tbody>
           <tr v-for="(a, i) in layers" :key="i" :class="{selected: i === selectedLayer}" @click="selectedLayer = i">
-            <td :class="{empty: isEmpty(a.name)}">{{ a.name }}</td>
-            <td :class="{empty: isEmpty(a.values)}">{{ a.values }}</td>
+            <td :class="{empty: isEmpty(a.name)}" :title="a.name">{{ a.name }}</td>
+            <td :class="{empty: isEmpty(a.values)}" :title="a.values">{{ a.values }}</td>
           </tr>
         </tbody>
       </table>
