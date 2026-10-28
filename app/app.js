@@ -11,6 +11,7 @@ const nwl = require('neuroweblab');
 const microdrawWebsocketServer = require('./controller/microdrawWebsocketServer/microdrawWebsocketServer.js');
 const routes = require('./routes/routes');
 const log = require('./log');
+const { ensureIndexes } = require('./controller/indexes');
 let port;
 let server;
 
@@ -166,6 +167,9 @@ const start = async function () {
     projectsCollection: "projects",
     annotationsCollection: "annotations"
   });
+
+  // indexes the queries need (idempotent; an error is logged, never fatal)
+  await ensureIndexes(app.db.mongoDB());
 
   /* setup GUI routes */
   routes(app);

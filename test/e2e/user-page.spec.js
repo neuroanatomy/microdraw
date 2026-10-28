@@ -19,6 +19,15 @@ const HEADERS = ['Name', 'Files', 'Collaborators', 'Owner', 'Last modified'];
 // The server order is not the sorted order: the first project is "P050" with 5 files.
 const name = (i) => `P${String(((i * 37) + 50) % COUNT).padStart(3, '0')}`;
 const numFiles = (i) => ((i + 4) % 12) + 1;
+// Every fifth project has no date; the others one day apart from 2026-01-01, at noon (UTC)
+const modified = (i) => (i % 5 === 0 ? null : new Date(Date.UTC(2026, 0, 1 + i, 12, 34, 56)).toJSON());
+const pad = (n) => String(n).padStart(2, '0');
+// The local date, as the page shows it (the browser and the tests share the time zone)
+const localDate = (iso) => {
+  const d = new Date(iso);
+
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
 
 const project = (i) => {
   const p = U.createProjectWithPermission(`${PREFIX}${String(i).padStart(3, '0')}`, { files: 'view' });
@@ -26,18 +35,30 @@ const project = (i) => {
   p.owner = owner;
   p.collaborators.list[0].access.files = 'view';
   p.files.list = Array.from({ length: numFiles(i) }, (_, k) => ({ source: `/test_data/${i}-${k}.json`, name: `f${k}` }));
+  if (modified(i)) {
+    p.modified = modified(i);
+  }
 
   return p;
+};
+
+// In the page: the text and title of the Last modified cell of a project
+const dateCellOf = (projectName) => {
+  const tr = [...document.querySelectorAll('#projects tbody tr')].find((row) => row.cells[0].textContent.trim() === projectName);
+
+  return { text: tr.cells[4].textContent.trim(), title: tr.cells[4].getAttribute('title') };
 };
 
 const removeAll = () => U.getDB().get('projects')
   .remove({ shortname: { $regex: `^${PREFIX}` } });
 
+// eslint-disable-next-line max-statements -- one page, one `it` per column
 describe('User page: all projects, sortable columns', () => {
   let context;
   let page;
 
-  const firstRow = () => page.$eval('#projects tbody tr', (tr) => [...tr.cells].map((td) => td.textContent.trim()));
+  // the cells of the first row, or of the last with 'last'
+  const firstRow = (position = 'first') => page.$eval(`#projects tbody tr:${position}-child`, (tr) => [...tr.cells].map((td) => td.textContent.trim()));
   const clickHeader = async (label) => {
     const headers = await page.$$('#projects thead th');
     const texts = await Promise.all(headers.map((th) => th.evaluate((el) => el.textContent.trim())));
@@ -97,5 +118,28 @@ describe('User page: all projects, sortable columns', () => {
     assert.equal((await firstRow())[1], '1');
     await clickHeader('Files');
     assert.equal((await firstRow())[1], '12');
+  }).timeout(U.shortTimeout);
+
+  it('shows the last modification as a local date, the date and time as a tooltip', async () => {
+    const cell = await page.evaluate(dateCellOf, name(1));
+    assert.equal(cell.text, localDate(modified(1)));
+    assert.include(cell.title, localDate(modified(1)));
+    assert.match(cell.title, /\d{2}:\d{2}/);
+    const empty = await page.evaluate(dateCellOf, name(0));
+    assert.equal(empty.text, '');
+    assert.isNotOk(empty.title);
+  }).timeout(U.shortTimeout);
+
+  it('sorts by last modified, oldest first then newest first, undated projects last', async () => {
+    await clickHeader('Last modified');
+    assert.equal((await firstRow())[4], localDate(modified(1)));
+    assert.equal((await firstRow('last'))[4], '');
+    await clickHeader('Last modified');
+    assert.equal((await firstRow())[4], localDate(modified(104)));
+    assert.equal((await firstRow('last'))[4], '');
+    const dates = await page.$$eval('#projects tbody tr', (trs) => trs.map((tr) => tr.cells[4].textContent.trim()));
+    const dated = dates.filter((d) => d !== '');
+    assert.lengthOf(dated, 84);
+    assert.deepEqual(dated, [...dated].sort().reverse());
   }).timeout(U.shortTimeout);
 });

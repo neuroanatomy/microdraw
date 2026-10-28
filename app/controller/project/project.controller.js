@@ -373,6 +373,10 @@ const saveProject = async function (req, res, loggedUser) {
     ignoredChanges = _.union(ignoredChanges, keepListsWithoutEditRights(newProject, oldProject, loggedUser));
   }
 
+  // Set by the server, as BrainBox does: a date sent by the client is ignored
+  newProject.modified = (new Date()).toJSON();
+  newProject.modifiedBy = loggedUser;
+
   let successMessage = _.isNil(oldProject) ? 'New project created.' : 'Project settings updated.';
   if(ignoredChanges.length > 0) {
     successMessage += ` Some changes (on ${ignoredChanges.join(', ')}) were ignored due to a lack of permissions.`;
