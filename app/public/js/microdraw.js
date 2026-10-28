@@ -1373,15 +1373,25 @@ const Microdraw = (function () {
     resizeAnnotationOverlay: function () {
       if( me.debug>1 ) { console.log("> resizeAnnotationOverlay"); }
 
-      const width = me.dom.querySelector("#paperjs-container").offsetWidth;
-      const height = me.dom.querySelector("#paperjs-container").offsetHeight;
-      me.dom.querySelector("canvas.overlay").offsetWidth = width;
-      me.dom.querySelector("canvas.overlay").offsetHeight = height;
+      // Called by the project page's resize handle and on window resize, which
+      // can come before the viewer is set up (no overlay canvas yet) or before
+      // it has opened its image (no source to transform from): then there is
+      // nothing to resize, and opening the image sizes the overlay
+      // (_drawRegionsInPaper). Before 2026-10-28 these calls threw.
+      const container = me.dom && me.dom.querySelector("#paperjs-container");
+      const overlay = container && container.querySelector("canvas.overlay");
+      if (!overlay || !paper.view) { return; }
+      const width = container.offsetWidth;
+      const height = container.offsetHeight;
+      overlay.offsetWidth = width;
+      overlay.offsetHeight = height;
       paper.view.viewSize = [
         width,
         height
       ];
-      me.transform();
+      if (me.viewer && me.viewer.source) {
+        me.transform();
+      }
       // the viewer changed size (window, full screen, the project page's resize
       // handle): keep a dragged toolbar inside it (M4f)
       me.clampToolbar();

@@ -46,6 +46,7 @@ const dragHandleFarLeft = async (page) => {
   await page.evaluate(() => document.body.dispatchEvent(new MouseEvent('mouseup', { bubbles: true })));
 };
 
+// eslint-disable-next-line max-statements
 describe('Project page: left-aligned cells, the left pane shrinks freely', function () {
   let context, page;
   const pageErrors = [];
@@ -142,4 +143,61 @@ describe('Project page: left-aligned cells, the left pane shrinks freely', funct
     assert.deepEqual(fits, [true, true], 'a table is wider than its pane');
     assert.deepEqual(pageErrors, []);
   }).timeout(U.shortTimeout);
+
+  // CI (e76f0ee): on a slow machine the drag came before the viewer had opened
+  // its image, and each move threw in Microdraw.resizeAnnotationOverlay. Here
+  // a request is held until the drag is over: the source JSON (the viewer has
+  // no overlay canvas yet) or the image's tiles (the viewer exists, its image
+  // is not open).
+  const HELD = {
+    'the source JSON is': (url) => url.includes(CAT),
+    'the image tiles are': (url) => (/\/test_data\/(cat|doge)\.dzi$/).test(url)
+  };
+  const imageOpen = () => page.evaluate(() => Boolean(window.Microdraw && window.Microdraw.viewer && window.Microdraw.viewer.source));
+
+  // Hold the page's requests for which `isHeld(url)` is true until release().
+  const holdRequests = async (isHeld) => {
+    let release;
+    const held = new Promise((resolve) => { release = resolve; });
+    const hold = async (req) => {
+      if (req.isInterceptResolutionHandled()) { return; }
+      if (req.resourceType() !== 'document' && isHeld(decodeURIComponent(req.url()))) {
+        await held;
+      }
+      req.continue();
+    };
+    await page.setRequestInterception(true);
+    page.on('request', hold);
+
+    return {
+      release,
+      stop: async () => {
+        release();
+        page.off('request', hold);
+        await page.setRequestInterception(false);
+      }
+    };
+  };
+
+  Object.entries(HELD).forEach(([what, isHeld]) => {
+    // eslint-disable-next-line max-statements
+    it(`dragging the handle while ${what} loading throws nothing`, async function () {
+      const requests = await holdRequests(isHeld);
+      try {
+        await page.goto(pageURL(), { waitUntil: 'load' });
+        await page.waitForFunction(() => window.Microdraw && window.Microdraw.dom, { timeout: U.shortTimeout });
+        assert.isFalse(await imageOpen(), 'the image is already open');
+        await dragHandleFarLeft(page);
+        assert.isAtMost(await page.$eval('#left', (el) => el.getBoundingClientRect().width), OLD_LIMIT);
+        assert.deepEqual(pageErrors, []);
+        // the viewer still opens the image afterwards
+        requests.release();
+        await page.waitForFunction(() => window.Microdraw.viewer && window.Microdraw.viewer.source, { timeout: U.mediumTimeout });
+        await H.settleFrames(page);
+        assert.deepEqual(pageErrors, []);
+      } finally {
+        await requests.stop();
+      }
+    }).timeout(U.mediumTimeout);
+  });
 });
