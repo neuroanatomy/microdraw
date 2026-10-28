@@ -35,6 +35,8 @@ const project = (i) => {
   p.owner = owner;
   p.collaborators.list[0].access.files = 'view';
   p.files.list = Array.from({ length: numFiles(i) }, (_, k) => ({ source: `/test_data/${i}-${k}.json`, name: `f${k}` }));
+  // no creation date either: the listing would show it as Last modified
+  delete p.created;
   if (modified(i)) {
     p.modified = modified(i);
   }

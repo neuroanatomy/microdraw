@@ -209,7 +209,7 @@ const listLength = (part) => (part && Array.isArray(part.list) ? part.list.lengt
  */
 const projectRow = (project, loggedUser, annotated) => {
   const { modified: saved, ...rest } = visibleProjectParts(project, loggedUser);
-  const modified = lastModified(saved, annotated.get(project.shortname));
+  const modified = lastModified(saved, annotated.get(project.shortname), rest.created);
 
   return {
     ...rest,
@@ -236,8 +236,8 @@ const userProjectsPage = async (req) => {
  * The projects of a user that the visitor may see, `length` of them from
  * `start` (query parameters; by default all of them), each with its number of
  * files and of visible collaborators, and its last modification date (the
- * later of its last save and its newest annotation; none when neither is
- * known).
+ * later of its last save and its newest annotation, else its creation date;
+ * none when none of them is known).
  * @param {object} req Request object
  * @param {object} res Response object
  * @returns {void}

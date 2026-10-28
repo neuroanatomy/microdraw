@@ -1,7 +1,7 @@
 /**
  * The "Last modified" date of a project on the user page: the later of its
  * last save (`modified`, set by POST /project/json/:projectName) and its
- * newest annotation.
+ * newest annotation; its creation date when it has neither.
  */
 
 // The aggregation of newestAnnotations, which the index {project: 1, _id: -1}
@@ -30,14 +30,18 @@ const newestAnnotations = async (db, shortnames) => {
 };
 
 /**
- * The later of a project's last save (`modified`, an ISO string) and its
- * newest annotation, as an ISO string, or null when neither is known
+ * The latest of a project's last save (`modified`, an ISO string), its newest
+ * annotation and its creation (`created`, an ISO string), as an ISO string,
+ * or null when none is known. `created` fills the gap of projects never saved
+ * since saves set `modified` and without annotations; it is never later than
+ * the others, the maximum is taken anyway.
  * @param {string} saved The project's `modified`
  * @param {Date} annotated The date of its newest annotation
+ * @param {string} created The project's `created`
  * @returns {string|null} The date
  */
-const lastModified = (saved, annotated) => {
-  const times = [Date.parse(saved), annotated ? annotated.getTime() : NaN].filter(Number.isFinite);
+const lastModified = (saved, annotated, created) => {
+  const times = [Date.parse(saved), annotated ? annotated.getTime() : NaN, Date.parse(created)].filter(Number.isFinite);
 
   return times.length > 0 ? new Date(Math.max(...times)).toJSON() : null;
 };

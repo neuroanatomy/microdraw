@@ -28,9 +28,16 @@ const annotationAt = (project, iso, extra = {}) => ({
   ...extra
 });
 
-const stored = (shortname, { modified, anyone = 'view', ownerName = owner.username } = {}) => {
+// created: the project's creation date (U.createProjectWithPermission's, from
+// 2022, by default), null for none
+const stored = (shortname, { modified, created, anyone = 'view', ownerName = owner.username } = {}) => {
   const p = U.createProjectWithPermission(shortname, { files: 'view' });
   p.owner = ownerName;
+  if (created === null) {
+    delete p.created;
+  } else if (created) {
+    p.created = created;
+  }
   p.collaborators.list[0].access.files = anyone;
   if (modified) {
     p.modified = modified;
@@ -124,7 +131,10 @@ describe('Last modified of a project (save date, newest annotation)', function (
         stored(`${PREFIX}annotlater`, { modified: '2026-01-01T10:00:00.000Z' }),
         { ...stored(`${PREFIX}savelater`, { modified: '2026-09-01T10:00:00.000Z' }), modifiedBy: 'api-modified-hidden' },
         stored(`${PREFIX}annotonly`),
-        stored(`${PREFIX}neither`),
+        stored(`${PREFIX}neither`, { created: null }),
+        stored(`${PREFIX}createdonly`, { created: '2024-06-01T08:00:00.000Z' }),
+        stored(`${PREFIX}savedafter`, { created: '2024-06-01T08:00:00.000Z', modified: '2024-07-01T08:00:00.000Z' }),
+        stored(`${PREFIX}annotatedafter`, { created: '2024-06-01T08:00:00.000Z' }),
         stored(`${PREFIX}private`, { anyone: 'none' })
       ]);
       await U.insertAnnotations([
@@ -133,6 +143,7 @@ describe('Last modified of a project (save date, newest annotation)', function (
         annotationAt(`${PREFIX}annotlater`, '2026-04-01T00:00:00.000Z'),
         annotationAt(`${PREFIX}savelater`, '2026-02-01T00:00:00.000Z'),
         annotationAt(`${PREFIX}annotonly`, '2025-12-24T18:00:00.000Z'),
+        annotationAt(`${PREFIX}annotatedafter`, '2024-08-01T08:00:00.000Z'),
         annotationAt(`${PREFIX}private`, '2026-10-01T12:34:56.000Z')
       ]);
     });
@@ -153,7 +164,18 @@ describe('Last modified of a project (save date, newest annotation)', function (
       assert.equal(byName(res, `${PREFIX}annotonly`).modified, '2025-12-24T18:00:00.000Z');
     }).timeout(U.shortTimeout);
 
-    it('gives no modified to a project with neither', async function () {
+    it('gives the creation date to a project with no save date and no annotation', async function () {
+      const res = await listing();
+      assert.equal(byName(res, `${PREFIX}createdonly`).modified, '2024-06-01T08:00:00.000Z');
+    }).timeout(U.shortTimeout);
+
+    it('does not give the creation date when a later save or annotation exists', async function () {
+      const res = await listing();
+      assert.equal(byName(res, `${PREFIX}savedafter`).modified, '2024-07-01T08:00:00.000Z');
+      assert.equal(byName(res, `${PREFIX}annotatedafter`).modified, '2024-08-01T08:00:00.000Z');
+    }).timeout(U.shortTimeout);
+
+    it('gives no modified to a project with no save date, no annotation and no creation date', async function () {
       const res = await listing();
       assert.notProperty(byName(res, `${PREFIX}neither`), 'modified');
     }).timeout(U.shortTimeout);
