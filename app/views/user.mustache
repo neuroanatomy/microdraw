@@ -24,15 +24,15 @@
                 <Table id="projects">
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Files</th>
-                            <th>Collaborators</th>
-                            <th>Owner</th>
-                            <th>Last modified</th>
+                            <sortable-th :sort="sort" column="Name">Name</sortable-th>
+                            <sortable-th :sort="sort" column="Files">Files</sortable-th>
+                            <sortable-th :sort="sort" column="Collaborators">Collaborators</sortable-th>
+                            <sortable-th :sort="sort" column="Owner">Owner</sortable-th>
+                            <sortable-th :sort="sort" column="Last modified">Last modified</sortable-th>
                         </tr>
                     </thead>
                     <tbody>
-                    <tr v-for="project in projects">
+                    <tr v-for="project in sortedRows">
                         <td>
                             <a :href="`/project/${project.shortname}/settings`" class="settings">
                                 <img style="width:11px; margin:3px 8px 0 0" src="/img/settings.svg"/>

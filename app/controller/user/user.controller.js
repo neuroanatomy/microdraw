@@ -183,23 +183,46 @@ const api_userAtlas = function (req, res) {
 };
 
 /**
- * Projects of a user that the visitor may view, each with only the parts the
- * visitor may view.
+ * A non-negative integer query parameter, or `fallback` when it is missing or not one.
+ * @param {string} value The query value
+ * @param {number} fallback The default
+ * @returns {number} The integer
+ */
+const queryInt = (value, fallback) => {
+  const n = Number(value);
+
+  return Number.isInteger(n) && n >= 0 ? n : fallback;
+};
+
+// The length of a project's `files.list` or `collaborators.list`, 0 when missing.
+// (No `?.`/`??`: the eslint config parses an older ECMAScript.)
+const listLength = (part) => (part && Array.isArray(part.list) ? part.list.length : 0);
+
+/**
+ * The projects of a user that the visitor may see, `length` of them from
+ * `start` (query parameters; by default all of them), each with its number of
+ * files and of visible collaborators.
  * @param {object} req Request object
  * @param {object} res Response object
  * @returns {void}
  */
 const api_userProjects = function (req, res) {
   const {userName} = req.params;
-  // const start = parseInt(req.query.start);
-  // const length = parseInt(req.query.length);
+  const start = queryInt(req.query.start, 0);
+  const length = queryInt(req.query.length, Infinity);
   const loggedUser = req.user ? req.user.username : 'anyone';
 
   req.appConfig.db.queryUserProjects(userName)
     .then((result) => {
       const filteredList = result
         .filter((project) => AccessControlService.canViewFiles(project, loggedUser))
-        .map((project) => visibleProjectParts(project, loggedUser));
+        .slice(start, start + length)
+        .map((project) => visibleProjectParts(project, loggedUser))
+        .map((project) => ({
+          ...project,
+          numFiles: listLength(project.files),
+          numCollaborators: listLength(project.collaborators)
+        }));
       res.send({
         successful: true,
         list: filteredList
