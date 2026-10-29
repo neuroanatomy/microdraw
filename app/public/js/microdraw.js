@@ -220,11 +220,37 @@ const Microdraw = (function () {
       return value;
     },
 
-    sectionHash: function (section) {
-      const value = me.sectionValueForHashing(section);
-      const hash = me.hash(JSON.stringify(value)).toString(16);
+    /**
+       * @param {object} value {Regions, RegionsToRemove}, as sectionValueForHashing makes it
+       * @returns {string} Its hash, as stored in ImageInfo[slice].Hash
+       */
+    valueHash: function (value) {
+      return me.hash(JSON.stringify({
+        Regions: value.Regions,
+        RegionsToRemove: value.RegionsToRemove
+      })).toString(16);
+    },
 
-      return hash;
+    sectionHash: function (section) {
+      return me.valueHash(me.sectionValueForHashing(section));
+    },
+
+    /**
+       * @desc The unsaved changes of a section: its annotations differ from
+       * those it had when it was loaded or last saved (its Hash). A section
+       * never loaded (no Hash) has none. Used by the save tool and when a
+       * slice is opened (2026-10-29).
+       * @param {object} section An entry of ImageInfo
+       * @returns {object|null} {value, h}: what a save sends and its hash; null if unchanged
+       */
+    sectionChanges: function (section) {
+      const value = me.sectionValueForHashing(section);
+      const h = me.valueHash(value);
+      if (typeof section.Hash !== "undefined" && h !== section.Hash) {
+        return {value, h};
+      }
+
+      return null;
     },
 
     /**
@@ -1554,35 +1580,80 @@ const Microdraw = (function () {
 
       paper.project.activeLayer.removeChildren();
 
-      let regions;
-      if(me.ImageInfo[me.currentImage].Regions.length > 0) {
-        ({Regions: regions} = me.ImageInfo[me.currentImage]);
-      } else {
-        // first time this section is accessed: create its canvas, project,
-        // and load its regions from the database
-        // me._createCanvasAndAddToPaper();
+      const slice = me.currentImage;
+      const section = me.ImageInfo[slice];
+      // a later visit of this slice replaces this one's fetch
+      const token = {};
+      section.loadToken = token;
+      const loaded = typeof section.Hash !== "undefined";
 
-        // load regions from database
-        // eslint-disable-next-line no-lonely-if
-        if( me.config.useDatabase ) {
-          const data = await me.microdrawDBLoad();
-          let slice;
-          ({regions, slice} = me._addRegions(data));
-          if (slice !== Microdraw.currentImage) {
-            return;
-          }
-          me._drawRegionsInPaper(regions);
+      // A slice with unsaved changes keeps its copy in memory. A slice
+      // already loaded and unchanged is fetched again, so that it shows what
+      // other users saved since (2026-10-29). (Regions without a Hash: not
+      // loaded from the database, kept as before.)
+      if (!me.config.useDatabase ||
+          (loaded && me.sectionChanges(section) !== null) ||
+          (!loaded && section.Regions.length > 0)) {
+        me._drawRegionsInPaper(section.Regions);
 
-          // the regions as on the server; annotations kept in this browser (H3a)
-          /* global UnsavedStash */
-          UnsavedStash.snapshot(me, slice);
-          UnsavedStash.offerImport(me, slice);
-
-          return;
-        }
+        return;
       }
 
+      // no flicker: the copy in memory stays on screen until the answer
+      if (loaded) {
+        me._drawRegionsInPaper(section.Regions);
+      }
+
+      const data = await me.microdrawDBLoad();
+
+      // The user moved to another slice, or came back to this one (a newer
+      // fetch is out): drop the answer.
+      if (slice !== me.currentImage || section.loadToken !== token) {
+        return;
+      }
+      // The user started editing the slice while the fetch was out (its hash
+      // is no longer the one it had when loaded or saved, e.g. a region was
+      // drawn, moved or selected, or a polygon is being drawn): keep the edit,
+      // drop the answer.
+      if (loaded && (me.sectionChanges(section) !== null || me.drawingPolygonFlag)) {
+        return;
+      }
+      if (loaded) {
+        me._dropSliceRegions(slice);
+      }
+
+      const {regions} = me._addRegions(data);
       me._drawRegionsInPaper(regions);
+
+      // the regions as on the server; annotations kept in this browser (H3a)
+      /* global UnsavedStash */
+      UnsavedStash.snapshot(me, slice);
+      UnsavedStash.offerImport(me, slice);
+    },
+
+    /**
+       * @desc Before a fresh fetch replaces a slice's regions: remove them, and
+       * the slice's undo and redo steps. An undo step restores a copy of the
+       * whole slice from before the fetch: applying it would mark another
+       * user's newer regions for removal, and the next save would remove them
+       * on the server (2026-10-29).
+       * @param {string} slice Slice name (a key of ImageInfo)
+       * @returns {void}
+       */
+    _dropSliceRegions: function (slice) {
+      const section = me.ImageInfo[slice];
+      for (const reg of section.Regions) {
+        reg.path.remove();
+      }
+      section.Regions = [];
+      section.RegionsToRemove = [];
+
+      const otherSlice = (undo) => undo.imageNumber !== slice;
+      me.UndoStack = me.UndoStack.filter(otherSlice);
+      me.RedoStack = me.RedoStack.filter(otherSlice);
+      if (me.mouseUndo && me.mouseUndo.imageNumber === slice) {
+        me.mouseUndo = null;
+      }
     },
 
     /**

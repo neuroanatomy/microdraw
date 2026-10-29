@@ -344,7 +344,9 @@ window.UnsavedStash = (function () {
     if (check.offered) {
       showImportDialog(M, slice, stash);
     } else if (reason === 'image not in project') {
-      showDialog(M.dom.querySelector('#importDialog'), ['Add this image to the project to import your unsaved annotations.'], [{ action: 'close', label: 'Close' }]);
+      // closed, it is not shown again in this page: a slice is fetched again
+      // each time it is opened (2026-10-29), as "Not now"
+      showDialog(M.dom.querySelector('#importDialog'), ['Add this image to the project to import your unsaved annotations.'], [{ action: 'close', label: 'Close', onClick: () => { postponed.add(check.key); } }]);
     }
     window.UnsavedStash.lastCheck = check;
 

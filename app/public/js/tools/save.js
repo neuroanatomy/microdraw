@@ -42,9 +42,24 @@ const _dialog = async ({el, message, doFadeOut=true, delay=2000, background="#33
   });
 };
 
+// eslint-disable-next-line max-statements
 window.ToolSave = { save: (function() {
 
-  const _processOneSection = async function (query) {
+  // What was sent is now the server's version (H3a). The regions it removed
+  // are removed: take them off the list, otherwise each later save would
+  // remove them again, also after another user saved them anew (2026-10-29).
+  // The hash is that of the regions sent with an empty list, so the slice is
+  // unchanged unless it was edited while the save was out.
+  const _saved = function (sl, value) {
+    const section = Microdraw.ImageInfo[sl];
+    const removed = new Set(value.RegionsToRemove);
+    section.RegionsToRemove = section.RegionsToRemove.filter((uid) => !removed.has(uid));
+    section.Hash = Microdraw.valueHash({ Regions: value.Regions, RegionsToRemove: [] });
+    UnsavedStash.snapshot(Microdraw, sl);
+  };
+
+  // `value` is the {Regions, RegionsToRemove} sent in query.annotation.
+  const _processOneSection = async function (query, value) {
     const sl = query.slice;
 
     const res = await fetch('/api', {
@@ -59,9 +74,7 @@ window.ToolSave = { save: (function() {
       throw err;
     }
 
-    // update hash; what was sent is now the server's version (H3a)
-    Microdraw.ImageInfo[sl].Hash = query.Hash;
-    UnsavedStash.snapshot(Microdraw, sl);
+    _saved(sl, value);
 
     return sl;
   };
@@ -138,15 +151,10 @@ window.ToolSave = { save: (function() {
 
     Object.keys(Microdraw.ImageInfo).forEach((sl) => {
       if ((Microdraw.config.multiImageSave) || (sl === Microdraw.currentImage)) {
-        // configure value to be saved
-        var section = Microdraw.ImageInfo[sl];
-        const value = Microdraw.sectionValueForHashing(section);
-        const h = Microdraw.hash(JSON.stringify(value)).toString(16);
-
-        // check if the section annotations have changed since loaded by computing a hash
-        // if the section hash is undefined, this section has not yet been loaded.
-        // Do not save anything for this section
-        if (typeof section.Hash !== "undefined" && h !== section.Hash) {
+        // a section never loaded (no Hash) is not saved
+        const changes = Microdraw.sectionChanges(Microdraw.ImageInfo[sl]);
+        if (changes !== null) {
+          const {value, h} = changes;
           value.Hash = h;
           changed.push({sl, value, h});
         }
@@ -181,7 +189,7 @@ window.ToolSave = { save: (function() {
       project: Microdraw.project,
       Hash: h,
       annotation: JSON.stringify(value)
-    }).catch((err) => {
+    }, value).catch((err) => {
       const refused = new Error('save refused');
       refused.cause = err;
       refused.status = err.status;
