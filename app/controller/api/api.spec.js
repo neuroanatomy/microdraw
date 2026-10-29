@@ -299,7 +299,9 @@ describe('controller/api/index.js', () => {
           source: '/path/to/json.json',
           slice: 24,
           Hash: 'testworld',
-          annotation: '{"Regions": [], "RegionsToRemove": []}',
+          // one new region: since the editor save applies only its changes
+          // (2026-10-29), an empty save writes nothing
+          annotation: JSON.stringify({ Regions: [{ uid: 'newregion', name: 'new', path: ['Path', {}] }], RegionsToRemove: [] }),
           project: 'alreadyTestedPreviously'
         };
         let res;

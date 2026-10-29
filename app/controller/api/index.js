@@ -4,6 +4,7 @@ const router = new express.Router();
 const multer = require('multer');
 const { AccessControlService } = require('neuroweblab');
 const { catchErrors } = require('../catchErrors');
+const { saveEditorChanges } = require('./editorSave');
 
 const fs = require('fs');
 const log = require('../../log');
@@ -102,6 +103,9 @@ const getAnnotationPermissionsUnsafe = async function (req, res) {
 
 router.get('/permissions', catchErrors(getAnnotationPermissionsUnsafe));
 
+// The API upload's save (POST /api/upload): merges with the saver's own
+// regions, marks every current document of the slice as backup, then inserts
+// all regions under the saver's name. The editor save uses editorSave.js.
 // eslint-disable-next-line max-statements
 const updateAnnotation = async (req, {
   fileID,
@@ -222,8 +226,10 @@ const saveFromGUI = async function (req, res) {
     return;
   }
 
+  // only this save's changes, region by region (editorSave.js); the API
+  // upload below still replaces the slice through updateAnnotation
   const fileID = buildFileID(req.body);
-  updateAnnotation(req, {
+  saveEditorChanges(req, {
     fileID,
     user: username,
     project,

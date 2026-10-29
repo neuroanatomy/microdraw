@@ -1403,9 +1403,13 @@ const Microdraw = (function () {
       for( let i = 0; i < data.length; i += 1 ) {
         const json = data[i].annotation.path;
         const [type] = json;
+        // a region stored without uid (older data) takes its document's _id,
+        // so that it keeps the same uid from one load to the next: the save
+        // matches regions by uid (2026-10-29)
+        const {uid} = data[i].annotation;
         const reg = {
           name: data[i].annotation.name,
-          uid: data[i].annotation.uid
+          uid: (typeof uid === 'undefined' || uid === null || uid === '') && data[i]._id ? String(data[i]._id) : uid
         };
         switch(type) {
         case 'Path': {
