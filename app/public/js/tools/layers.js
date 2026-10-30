@@ -56,22 +56,17 @@ window.ToolLayers = { layers : (function() {
       console.log("addRow");
     },
     deleteLayer: (e) => {
-      console.log("deleteLayer", e);
+      const div = e.target.closest("div.layer");
 
-      // get layer from UI
-      const el = e.target;
-      const div = el.closest("div.layer");
-
-      // get layer data before deleting
-      const url = div.querySelectorAll("span")[0].innerText;
-      // const name = div.querySelectorAll("span")[1].innerText;
+      // delete layer from layers array
+      const index = tool.layers.findIndex((layer) => layer.el === div);
+      if (index >= 0) {
+        tool.layers.splice(index, 1);
+      }
 
       // delete layer from UI
       div.remove();
-
-      // delete layer from layers array
-      const index = tool.layers.findIndex((layer) => layer.url === url);
-      tool.layers.splice(index, 1);
+      tool.updateURL();
 
       // reload the viewer
       const currentImageIndex = Microdraw.imageOrder.indexOf(Microdraw.currentImage);
@@ -92,6 +87,7 @@ window.ToolLayers = { layers : (function() {
       }
 
       tool.layers[layerIndex].opacity = value / 100;
+      tool.updateURL();
       // the tiled image may not be in the world yet (it is added asynchronously)
       const item = Microdraw.viewer.world.getItemAt(layerIndex + 1);
       if (item) {
@@ -165,8 +161,8 @@ window.ToolLayers = { layers : (function() {
       const el = document.createElement("div");
       el.className = "layer";
       const rowInstance = tool.rowTemplate
-        .replace("layer.name", name)
-        .replace("layer.url", url)
+        .replace("layer.name", () => tool._escapeHtml(name))
+        .replace("layer.url", () => tool._escapeHtml(url))
         .replaceAll("layer.opacity", opacityPercent)
         .replaceAll("layer.maxSlice", dzi.tileSources.length - 1);
       el.innerHTML = rowInstance;
@@ -179,13 +175,14 @@ window.ToolLayers = { layers : (function() {
         x: 0,
         y: 0,
         rotation: 0,
-        opacity: 0.5,
+        opacity: opacityPercent / 100,
         imageSources: dzi,
         firstSlice: 0,
         lastSlice: dzi.tileSources.length - 1
       });
 
       tool.updateLastLayer();
+      tool.updateURL();
     },
     _updateLayersFromTable: () => {
       // update layer slice
@@ -229,6 +226,128 @@ window.ToolLayers = { layers : (function() {
 
       // update the layer
       tool._updateLayersFromTable();
+    },
+
+    _escapeHtml: (text) => String(text)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;"),
+
+    /**
+     * @desc Parse a description of layers. Accepted formats: a JSON array of
+     * [name, url] or [name, url, opacityPercent]; or text with one layer per row,
+     * as "name", "url" (quotes optional; comma, semicolon or tab separated)
+     * @param {string} text Description of the layers
+     * @returns {Array} Array of {name, url, opacity}, opacity in percent
+     */
+    parseLayers: (text) => {
+      const toLayer = ([name, url, opacity]) => ({
+        name: String(name).trim(),
+        url: String(url).trim(),
+        opacity: Number.isFinite(Number(opacity)) && opacity !== "" && typeof opacity !== "undefined" ? Number(opacity) : 50
+      });
+      const isValid = (layer) => layer.name && layer.url;
+      const trimmed = text.trim();
+
+      if (trimmed.startsWith("[")) {
+        try {
+          const data = JSON.parse(trimmed);
+          if (Array.isArray(data)) {
+            return data.filter(Array.isArray).map(toLayer)
+              .filter(isValid);
+          }
+        } catch (error) {
+          // not JSON: fall through to the row format
+        }
+      }
+
+      const strip = (field) => field.trim().replace(/^["']|["']$/g, "");
+
+      return trimmed.split(/\r?\n/)
+        .map((row) => row.trim().replace(/[,;]$/, ""))
+        .filter((row) => row)
+        .map((row) => {
+          // the url may contain commas, so split on the first separator only
+          const match = row.match(/^("[^"]*"|'[^']*'|[^,;\t]*)\s*[,;\t]\s*(.*)$/);
+
+          return match ? toLayer([strip(match[1]), strip(match[2])]) : null;
+        })
+        .filter((layer) => layer && isValid(layer));
+    },
+
+    /**
+     * @desc Add several layers, fetching their description
+     * @param {Array} list Array of {name, url, opacity}, opacity in percent
+     * @returns {Promise<number>} Number of layers added
+     */
+    addLayers: async (list) => {
+      let added = 0;
+      for (const {name, url, opacity} of list) {
+        // eslint-disable-next-line no-await-in-loop
+        const dzi = await tool.fetchDZI(url);
+        if (dzi && dzi.tileSources) {
+          tool.addLayer(name, url, opacity, dzi);
+          added += 1;
+        } else {
+          console.log("layers: could not load", url);
+        }
+      }
+
+      return added;
+    },
+
+    /**
+     * @desc Configure layers from the value of the layers URL parameter: either the
+     * JSON format [["name","url"],...] or the older "url,name,opacity;..." format
+     * @param {string} value Value of the parameter
+     * @returns {Promise<number>} Number of layers added
+     */
+    loadFromParam: (value) => {
+      let list = tool.parseLayers(value);
+      if (list.length === 0 && !value.trim().startsWith("[")) {
+        list = value.split(";").map((layer) => {
+          const [url, name, opacity] = layer.split(",");
+
+          return {name, url, opacity: typeof opacity === "undefined" ? 50 : parseFloat(opacity) * 100};
+        })
+          .filter((layer) => layer.name && layer.url);
+      }
+
+      return tool.addLayers(list);
+    },
+
+    /** @returns {void} Reflect the current layers in the URL, so that it can be bookmarked */
+    updateURL: () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (tool.layers.length === 0) {
+        urlParams.delete("layers");
+      } else {
+        urlParams.set("layers", JSON.stringify(tool.layers.map(({name, url, opacity}) => {
+          const percent = Math.round(opacity * 100);
+
+          return percent === 50 ? [name, url] : [name, url, percent];
+        })));
+      }
+      const query = urlParams.toString();
+      history.replaceState(history.state, "", window.location.pathname + (query ? "?" + query : ""));
+    },
+
+    /**
+     * @desc Import layers from pasted text
+     * @param {Event} e The paste event
+     * @returns {Promise<void>} Resolves when the layers are loaded
+     */
+    pasteLayers: async (e) => {
+      e.preventDefault();
+      const text = e.clipboardData.getData("text");
+      const list = tool.parseLayers(text);
+      const status = dom.querySelector("#paste-layers-status");
+      status.textContent = list.length === 0 ? "No layer found in the pasted text" : "Loading...";
+      if (list.length === 0) { return; }
+
+      const added = await tool.addLayers(list);
+      status.textContent = `${added} of ${list.length} layers added`;
     },
 
     // eslint-disable-next-line max-statements

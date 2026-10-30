@@ -1679,12 +1679,14 @@ const Microdraw = (function () {
     deparam: function () {
       if( me.debug>1 ) { console.log("> deparam"); }
 
-      /** @todo Use URLSearchParams instead */
+      const result = {};
       const search = location.search.substring(1);
-      const result = search?
-        JSON.parse('{"' + search.replace(/[&]/g, '","').replace(/[=]/g, '":"') + '"}',
-          function(key, value) { return key === "" ? value : decodeURIComponent(value); }) :
-        {};
+      for (const pair of search ? search.split("&") : []) {
+        // values may contain "=" (e.g. urls in the layers parameter)
+        const eq = pair.indexOf("=");
+        const key = eq < 0 ? pair : pair.slice(0, eq);
+        result[decodeURIComponent(key)] = eq < 0 ? "" : decodeURIComponent(pair.slice(eq + 1));
+      }
       if( me.debug>1 ) {
         console.log("url parametres:", result);
       }
@@ -2378,24 +2380,10 @@ const Microdraw = (function () {
      * @returns {void}
      */
     _configureLayersFromParams: () => {
-      const timer = setInterval(async () => {
+      const timer = setInterval(() => {
         if (me.tools.layers) {
-          console.log("layers tool loaded");
           clearInterval(timer);
-          const layers = me.params.layers.split(";").map( (layer) => layer.split(",") );
-          for (const layer of layers) {
-            const [source, name, rawOpacity] = layer;
-            const opacity = parseFloat(rawOpacity);
-            // eslint-disable-next-line no-await-in-loop, dot-notation
-            const dzi = await me.tools["layers"].fetchDZI(source);
-            if (!dzi) {
-              continue;
-            }
-            // eslint-disable-next-line dot-notation
-            me.tools["layers"].addLayer(name, source, opacity * 100, dzi);
-          }
-        } else {
-          console.log("layers tool not loaded yet");
+          me.tools.layers.loadFromParam(me.params.layers);
         }
       }, 200);
     },
