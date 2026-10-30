@@ -235,11 +235,9 @@ window.ToolLayers = { layers : (function() {
       .replaceAll('"', "&quot;"),
 
     /**
-     * @desc Parse a description of layers. Accepted formats: a JSON array of
-     * [name, url] or [name, url, opacityPercent]; or text with one layer per row,
-     * as "name", "url" (quotes optional; comma, semicolon or tab separated)
+     * @desc Parse a JSON description of layers: an array of [name, url] or [name, url, opacityPercent]
      * @param {string} text Description of the layers
-     * @returns {Array} Array of {name, url, opacity}, opacity in percent
+     * @returns {Array} Array of {name, url, opacity}, opacity in percent; empty if the text is not valid
      */
     parseLayers: (text) => {
       const toLayer = ([name, url, opacity]) => ({
@@ -247,33 +245,18 @@ window.ToolLayers = { layers : (function() {
         url: String(url).trim(),
         opacity: Number.isFinite(Number(opacity)) && opacity !== "" && typeof opacity !== "undefined" ? Number(opacity) : 50
       });
-      const isValid = (layer) => layer.name && layer.url;
-      const trimmed = text.trim();
 
-      if (trimmed.startsWith("[")) {
-        try {
-          const data = JSON.parse(trimmed);
-          if (Array.isArray(data)) {
-            return data.filter(Array.isArray).map(toLayer)
-              .filter(isValid);
-          }
-        } catch (error) {
-          // not JSON: fall through to the row format
+      try {
+        const data = JSON.parse(text);
+        if (Array.isArray(data)) {
+          return data.filter(Array.isArray).map(toLayer)
+            .filter((layer) => layer.name && layer.url);
         }
+      } catch (error) {
+        // not JSON
       }
 
-      const strip = (field) => field.trim().replace(/^["']|["']$/g, "");
-
-      return trimmed.split(/\r?\n/)
-        .map((row) => row.trim().replace(/[,;]$/, ""))
-        .filter((row) => row)
-        .map((row) => {
-          // the url may contain commas, so split on the first separator only
-          const match = row.match(/^("[^"]*"|'[^']*'|[^,;\t]*)\s*[,;\t]\s*(.*)$/);
-
-          return match ? toLayer([strip(match[1]), strip(match[2])]) : null;
-        })
-        .filter((layer) => layer && isValid(layer));
+      return [];
     },
 
     /**
@@ -331,23 +314,6 @@ window.ToolLayers = { layers : (function() {
       }
       const query = urlParams.toString();
       history.replaceState(history.state, "", window.location.pathname + (query ? "?" + query : ""));
-    },
-
-    /**
-     * @desc Import layers from pasted text
-     * @param {Event} e The paste event
-     * @returns {Promise<void>} Resolves when the layers are loaded
-     */
-    pasteLayers: async (e) => {
-      e.preventDefault();
-      const text = e.clipboardData.getData("text");
-      const list = tool.parseLayers(text);
-      const status = dom.querySelector("#paste-layers-status");
-      status.textContent = list.length === 0 ? "No layer found in the pasted text" : "Loading...";
-      if (list.length === 0) { return; }
-
-      const added = await tool.addLayers(list);
-      status.textContent = `${added} of ${list.length} layers added`;
     },
 
     // eslint-disable-next-line max-statements
