@@ -77,6 +77,7 @@ window.ToolLayers = { layers : (function() {
       const currentImageIndex = Microdraw.imageOrder.indexOf(Microdraw.currentImage);
       Microdraw.loadImage(currentImageIndex);
     },
+    // eslint-disable-next-line max-statements
     changeOpacity: (e) => {
       const {value} = e.target;
       // closest parent element of type table
@@ -91,7 +92,11 @@ window.ToolLayers = { layers : (function() {
       }
 
       tool.layers[layerIndex].opacity = value / 100;
-      Microdraw.viewer.world.getItemAt(layerIndex + 1).setOpacity(value / 100);
+      // the tiled image may not be in the world yet (it is added asynchronously)
+      const item = Microdraw.viewer.world.getItemAt(layerIndex + 1);
+      if (item) {
+        item.setOpacity(value / 100);
+      }
     },
     changeX: (e) => {
       let {value} = e.target;
@@ -118,8 +123,32 @@ window.ToolLayers = { layers : (function() {
       const {value} = e.target;
       tool.layers[0].lastSlice = Number(value);
     },
+
+    /**
+     * @desc Index of the layer's tile source matching the viewer's current slice
+     * @param {object} layer A layer of tool.layers
+     * @returns {number} Index into layer.imageSources.tileSources
+     */
+    _tileIndex: ({firstSlice, lastSlice, imageSources}) => {
+      const currentImage = Microdraw.imageOrder.indexOf(Microdraw.currentImage);
+      const lastViewerSlice = Microdraw.imageOrder.length - 1;
+      let index = firstSlice;
+
+      // with a single slice in the viewer there is no range to interpolate
+      if (lastViewerSlice > 0) {
+        index = Math.floor(firstSlice + currentImage * (lastSlice - firstSlice) / lastViewerSlice);
+      }
+      const maxIndex = imageSources.tileSources.length - 1;
+
+      return Math.min(Math.max(index, 0), maxIndex);
+    },
     _addLayerToViewer: (url, tileIndex, imageSources, opacity) => {
       let tileSource = imageSources.tileSources[tileIndex];
+      if (!tileSource) {
+        console.log("layers: no tile source for index", tileIndex);
+
+        return;
+      }
       if (tileSource[0] === "/") {
         const tmp = new URL(url);
         tileSource = tmp.origin + tileSource;
@@ -172,77 +201,31 @@ window.ToolLayers = { layers : (function() {
       }
     },
 
-    /** update viewer layers with all available layers added */
-    // eslint-disable-next-line max-statements
+    /**
+     * @desc Update viewer layers with all available layers added
+     * @returns {void}
+     */
     updateAllLayers: () => {
-      // return if there's no layers
-      if (tool.layers.length === 0) {
-        return;
-      }
-
-      // current slice index
-      // this line fails when currentImage is a non-numeric display name
-      // const currentImage = Number(Microdraw.currentImage);
-      const currentImage = Microdraw.imageOrder.indexOf(Microdraw.currentImage);
-
-      // total number of slices
-      const totalImages = Microdraw.imageOrder.length;
-
-      // get 1st and last slice of layers[0]
-      for (let layerIndex =0; layerIndex < tool.layers.length; layerIndex++) {
-        const {url, opacity, firstSlice, lastSlice, imageSources} = tool.layers[layerIndex];
-
-        // get the sliceIndex in layers[0] corresponding to sliceIndex in the viewer
-        const [a0, a1, l0, l1] = [0, totalImages - 1, firstSlice, lastSlice];
-        // ia = (il) => {a0=6;a1=58;l0=94;l1=12;m=(l0-l1)/(a0-a1);n=l0-a0*m;return (il-n)/m};
-        const il = (ia) => {
-          const m=(l0-l1)/(a0-a1);
-          const n=l0-a0*m;
-
-          return ia*m+n;
-        };
-        const tileIndex = Math.floor(il(currentImage));
-
-        // add layer to viewer
-        tool._addLayerToViewer(url, tileIndex, imageSources, opacity);
-      }
+      tool.layers.forEach((layer) => {
+        tool._addLayerToViewer(layer.url, tool._tileIndex(layer), layer.imageSources, layer.opacity);
+      });
 
       // update the layer
       tool._updateLayersFromTable();
     },
 
-    /** update viewer layers with the last layer added */
-    // eslint-disable-next-line max-statements
+    /**
+     * @desc Update viewer layers with the last layer added
+     * @returns {void}
+     */
     updateLastLayer: () => {
       // return if there's no layers
       if (tool.layers.length === 0) {
         return;
       }
 
-      // current slice index
-      // const currentImage = Number(Microdraw.currentImage);
-      const currentImage = Microdraw.imageOrder.indexOf(Microdraw.currentImage);
-
-      // total number of slices
-      const totalImages = Microdraw.imageOrder.length;
-
-      // get 1st and last slice of layers[0]
-      const layerIndex = tool.layers.length - 1;
-      const {url, opacity, firstSlice, lastSlice, imageSources} = tool.layers[layerIndex];
-
-      // get the sliceIndex in layers[0] corresponding to sliceIndex in the viewer
-      const [a0, a1, l0, l1] = [0, totalImages - 1, firstSlice, lastSlice];
-      // ia = (il) => {a0=6;a1=58;l0=94;l1=12;m=(l0-l1)/(a0-a1);n=l0-a0*m;return (il-n)/m};
-      const il = (ia) => {
-        const m=(l0-l1)/(a0-a1);
-        const n=l0-a0*m;
-
-        return ia*m+n;
-      };
-      const tileIndex = Math.floor(il(currentImage));
-
-      // add layer to viewer
-      tool._addLayerToViewer(url, tileIndex, imageSources, opacity);
+      const layer = tool.layers[tool.layers.length - 1];
+      tool._addLayerToViewer(layer.url, tool._tileIndex(layer), layer.imageSources, layer.opacity);
 
       // update the layer
       tool._updateLayersFromTable();
