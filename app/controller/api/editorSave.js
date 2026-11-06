@@ -14,7 +14,7 @@
  *
  * The API upload (POST /api/upload) still uses updateAnnotation in index.js.
  */
-const monk = require('monk');
+const { ObjectId } = require('neuroweblab');
 
 const current = { backup: { $exists: false } };
 
@@ -123,7 +123,7 @@ const saveEditorChanges = async (req, { fileID, user, project, Hash, annotationS
       if (docs.length === 1 && sameRegion(docs[0].annotation, region)) {
         result.unchanged.push(region.uid);
       } else {
-        const _id = monk.id();
+        const _id = new ObjectId();
         // eslint-disable-next-line no-await-in-loop
         await db.insertAnnotations([{ _id, fileID, user, project, Hash, annotation: region }]);
         // eslint-disable-next-line no-await-in-loop

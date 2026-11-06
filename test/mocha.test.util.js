@@ -4,7 +4,7 @@ const microdrawApp = require('../app/app');
 
 chai.use(chaiHttp);
 
-let appServer, db, wsServer;
+let appServer, db, nwlDb, wsServer;
 let serverPort = 3000;
 
 // permissions.spec.js cookies against 127.0.0.1, the browser specs localhost.
@@ -20,7 +20,8 @@ const initResources = async () => {
   process.env.CFG_PATH = process.env.CFG_PATH || './cfg.json.example';
   ({ server: appServer, app, wsServer, port } = await microdrawApp.start());
   serverPort = port;
-  db = app.db.mongoDB();
+  nwlDb = app.db;
+  db = nwlDb.mongoDB();
 };
 
 const closeServer = (server) =>
@@ -35,8 +36,8 @@ const closeServer = (server) =>
   });
 
 const closeResources = async () => {
-  if (db) {
-    db.close();
+  if (nwlDb) {
+    await nwlDb.close();
   }
   if (wsServer) {
     await closeServer(wsServer);

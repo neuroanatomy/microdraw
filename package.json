@@ -28,7 +28,7 @@
     "monk": "^7.1.1",
     "multer": "^2.4.0",
     "mustache-express": "^1.3.2",
-    "neuroweblab": "github:neuroanatomy/neuroweblab#v0.2.0",
+    "neuroweblab": "github:neuroanatomy/neuroweblab#v0.3.0",
     "nwl-components": "^1.5.3",
     "pino": "^10.4.0",
     "pino-http": "^11.0.0",
