@@ -41,7 +41,7 @@ const log = (db, key, value) => {
 /**
  * The stored projects that have problems, as scripts/check-projects.js lists
  * them
- * @param {object} db Monk database
+ * @param {object} db Native MongoDB Db
  * @returns {Promise<object>} { total, refused, list }
  */
 const findInvalidProjects = (db) => checkStoredProjects(db);
@@ -49,7 +49,7 @@ const findInvalidProjects = (db) => checkStoredProjects(db);
 // The default way changeProject stores a change: the validation of a
 // settings save (rows stored unchanged are accepted), then NWL's upsertProject
 const validatedSave = async (appDb, stored, data) => {
-  const { project, error } = await checkProject({ data, shortname: stored.shortname, oldProject: stored, owner: stored.owner, db: appDb.mongoDB() });
+  const { project, error } = await checkProject({ data, shortname: stored.shortname, oldProject: stored, owner: stored.owner, db: appDb.nativeMongoDB() });
   if (error) {
     return { status: 400, error: `The project would not validate after this change: ${error}` };
   }

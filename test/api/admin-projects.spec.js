@@ -10,6 +10,7 @@ const { assert } = chai;
 const U = require('../mocha.test.util');
 const admins = require('../../app/controller/admin/admins');
 const lock = require('../../app/controller/projectLock');
+const { projectVersion } = require('../../app/controller/project/project.check');
 
 // A2: the admin section for the stored projects that don't validate
 // (decisions D29). The list is computed by the same module as
@@ -135,6 +136,12 @@ describe('Admin: projects that don\'t validate (A2)', function () {
   const logs = (shortname) => db().get('log')
     .find({ key: /^admin/, 'value.shortname': shortname });
 
+  const script = path.join(__dirname, '../../scripts/check-projects.js');
+  const runScript = (args) => new Promise((resolve) => {
+    execFile(process.execPath, [script, ...args], (err, stdout, stderr) => resolve({ code: err ? err.code : 0, stdout, stderr }));
+  });
+  const testDb = process.env.MONGODB_TEST || '127.0.0.1:27017/circleci_test';
+
   const list = async () => {
     const res = await get('/admin/json/projects/invalid');
     assert.equal(res.status, 200, res.text);
@@ -247,10 +254,8 @@ describe('Admin: projects that don\'t validate (A2)', function () {
     }).timeout(U.shortTimeout);
 
     it('lists the same projects as scripts/check-projects.js (one shared module)', async function () {
-      const script = path.join(__dirname, '../../scripts/check-projects.js');
-      const output = await new Promise((resolve, reject) => {
-        execFile(process.execPath, [script, '--db', process.env.MONGODB_TEST || '127.0.0.1:27017/circleci_test'], (err, stdout) => (err ? reject(err) : resolve(stdout)));
-      });
+      const { code, stdout: output } = await runScript(['--db', testDb]);
+      assert.equal(code, 0);
       const listed = output.split('\n')
         .map((line) => line.match(/^(\S+) \(owner /))
         .filter(Boolean)
@@ -260,6 +265,69 @@ describe('Admin: projects that don\'t validate (A2)', function () {
       assert.include(output, 'cannot be saved again unchanged');
       assert.include(output, 'refused: The collaborators list needs an \'anyone\' entry');
     }).timeout(U.mediumTimeout);
+
+    it('counts the stored projects and the refused ones, without the backups', async function () {
+      const counts = async () => {
+        const { body } = await get('/admin/json/projects/invalid');
+
+        return { total: body.total, refused: body.refused, listed: body.list.filter((p) => p.shortname === 'a2noanyone').length };
+      };
+      const before = await counts();
+      assert.equal(before.total, await db().get('projects')
+        .count({ backup: { $exists: false } }));
+      assert.isAtLeast(before.refused, 1);
+      assert.equal(before.listed, 1);
+
+      const [, , , refusedProject] = fixtures();
+      assert.equal(refusedProject.shortname, 'a2noanyone');
+      await U.insertProject({ ...refusedProject, backup: true });
+      assert.deepEqual(await counts(), before);
+
+      await U.insertProject({ ...refusedProject });
+      assert.deepEqual(await counts(), { total: before.total + 1, refused: before.refused + 1, listed: 2 });
+    }).timeout(U.shortTimeout);
+
+    it('the script prints only the list and its count', async function () {
+      const { stdout } = await runScript(['--db', testDb]);
+      const { body } = await get('/admin/json/projects/invalid');
+      const lines = stdout.split('\n').filter(Boolean);
+      assert.equal(lines.pop(), `${body.total} projects, ${body.refused} cannot be saved again unchanged.`);
+      for (const line of lines) {
+        assert.match(line, /^(\S+ \(owner .*\):| {2}- .+)$/);
+      }
+    }).timeout(U.mediumTimeout);
+
+    it('the script exits with 2 and its usage without --db', async function () {
+      const { code, stdout, stderr } = await runScript([]);
+      assert.equal(code, 2);
+      assert.equal(stdout, '');
+      assert.include(stderr, 'Usage: node scripts/check-projects.js --db');
+    }).timeout(U.mediumTimeout);
+
+    it('the script exits with 1 and says so if it cannot connect', async function () {
+      const { code, stdout, stderr } = await runScript(['--db', '127.0.0.1:1/nothing?serverSelectionTimeoutMS=200']);
+      assert.equal(code, 1);
+      assert.equal(stdout, '');
+      assert.match(stderr, /^Cannot connect to the database: /);
+    }).timeout(U.mediumTimeout);
+
+    it('reads through the native driver', async function () {
+      const res = await U.withoutMonkReads([['users', 'distinct'], ['projects', 'find']], () => get('/admin/json/projects/invalid'));
+      assert.equal(res.status, 200, res.text);
+      assert.isAtLeast(res.body.total, 1);
+    }).timeout(U.shortTimeout);
+
+    // The list reads natively, the fixes through monk until they move.
+    it('a version listed is the one a fix computes, whatever the stored types', async function () {
+      await db().get('projects')
+        .update(
+          { shortname: 'a2blank' },
+          { $set: { date: new Date(0), id: db().id('0123456789abcdef01234567'), numbers: [1, 1.5, null, 2 ** 40] } }
+        );
+      const { version } = await entry('a2blank');
+      assert.equal(version, projectVersion(await db().get('projects')
+        .findOne({ shortname: 'a2blank' })));
+    }).timeout(U.shortTimeout);
   });
 
   describe('POST /admin/json/projects/remove-blank-rows', function () {
@@ -334,6 +402,14 @@ describe('Admin: projects that don\'t validate (A2)', function () {
       release();
       await held;
       assert.equal((await action).status, 200);
+    }).timeout(U.shortTimeout);
+  });
+
+  describe('the validation of a fix', function () {
+    it('checks the users through the native driver', async function () {
+      const { version } = await entry('a2blank');
+      const res = await U.withoutMonkReads([['users', 'distinct']], () => post('/admin/json/projects/remove-blank-rows', { project: 'a2blank', version }));
+      assert.equal(res.status, 200, res.text);
     }).timeout(U.shortTimeout);
   });
 

@@ -360,7 +360,7 @@ const saveProject = async function (req, res, loggedUser) {
     shortname,
     oldProject,
     owner: _.isNil(oldProject) ? loggedUser : oldProject.owner,
-    db: req.appConfig.db.mongoDB()
+    db: req.appConfig.db.nativeMongoDB()
   });
   if (error) {
     sendError(res, 400, error);

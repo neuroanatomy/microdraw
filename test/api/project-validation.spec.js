@@ -188,6 +188,19 @@ describe('Validation of POST /project/json/:projectName (M3)', function () {
       await refused('m3anouser', project, /m3a-no-such-user/);
     }).timeout(U.shortTimeout);
 
+    it('several collaborators: names only those who do not exist, once each', async function () {
+      const project = newProject('m3aunknown');
+      const access = { collaborators: 'none', annotations: 'view', files: 'view' };
+      project.collaborators.list.push(
+        { username: 'm3a-no-such-user', access },
+        { username: collaborator.username, access },
+        { username: 'm3a-no-such-user', access },
+        { username: 'm3a-other-missing', access }
+      );
+      const res = await refused('m3aunknown', project);
+      assert.equal(res.body.message, 'Unknown users: m3a-no-such-user, m3a-other-missing');
+    }).timeout(U.shortTimeout);
+
     it('a collaborator with a different username and userID', async function () {
       const project = newProject('m3anoname');
       project.collaborators.list.push({ username: collaborator.username, userID: member.username, access: { collaborators: 'none', annotations: 'view', files: 'view' } });
@@ -278,6 +291,15 @@ describe('Validation of POST /project/json/:projectName (M3)', function () {
       const res = await postAs(editorAgent, project);
       assert.equal(res.status, 200, res.text);
       assert.deepEqual((await U.queryProject(shortname)).annotations.list, stored().annotations.list);
+    }).timeout(U.shortTimeout);
+
+    it('checks the users through the native driver, for a new and for a stored project', async function () {
+      created.push('m3anative');
+      const reads = [['users', 'distinct']];
+      const added = await U.withoutMonkReads(reads, () => post('m3anative', newProject('m3anative')));
+      assert.equal(added.status, 200, added.text);
+      const updated = await U.withoutMonkReads(reads, () => postAs(agent, { ...stored(), name: 'read natively' }));
+      assert.equal(updated.status, 200, updated.text);
     }).timeout(U.shortTimeout);
 
     it('saving again a project that names a removed user is still possible', async function () {

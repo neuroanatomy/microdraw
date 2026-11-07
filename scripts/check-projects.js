@@ -15,19 +15,45 @@
 //   node scripts/check-projects.js --db 127.0.0.1:27017/microdraw-copy
 // There is no default database, so that it cannot run on one by accident.
 
-const monk = require('monk');
+const nwlDb = require('neuroweblab/db/db');
 const { checkStoredProjects, formatProblem } = require('../app/controller/project/project.check');
 
-const main = async (dbURL) => {
-  const db = monk(dbURL);
+// NeuroWebLab's init prints to stdout, and logs a connection error there
+// instead of throwing: it stays out of the output of the script, and the
+// error is returned.
+const quietInit = async (dbURL) => {
+  const { log } = console;
+  const said = [];
+  console.log = (...args) => said.push(args);
   try {
-    const { total, refused, list } = await checkStoredProjects(db);
-    for (const project of list) {
-      console.log(`${project.shortname} (owner ${project.owner}):\n  - ${project.problems.map(formatProblem).join('\n  - ')}`);
-    }
-    console.log(`\n${total} projects, ${refused} cannot be saved again unchanged.`);
+    await nwlDb.init({ MONGO_DB: dbURL });
   } finally {
-    await db.close();
+    console.log = log;
+  }
+
+  return (said.find(([first]) => first === 'connection error') || [])[1];
+};
+
+const report = async (db) => {
+  const { total, refused, list } = await checkStoredProjects(db);
+  for (const project of list) {
+    console.log(`${project.shortname} (owner ${project.owner}):\n  - ${project.problems.map(formatProblem).join('\n  - ')}`);
+  }
+  console.log(`\n${total} projects, ${refused} cannot be saved again unchanged.`);
+};
+
+const main = async (dbURL) => {
+  try {
+    const error = await quietInit(dbURL);
+    const db = nwlDb.nativeMongoDB();
+    if (db) {
+      await report(db);
+    } else {
+      console.error(`Cannot connect to the database: ${error ? error.message : 'no answer'}`);
+      process.exitCode = 1;
+    }
+  } finally {
+    await nwlDb.close();
   }
 };
 

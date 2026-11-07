@@ -338,13 +338,13 @@ const structureError = (project, { shortname, isNew, stored = {} }) => {
 
 /**
  * Usernames among `names` that have no user document
- * @param {object} db Monk database
+ * @param {object} db Native MongoDB Db
  * @param {Array<string>} names Usernames
  * @returns {Promise<Array<string>>} The missing ones
  */
 const missingUsers = async (db, names) => {
   const unique = _.uniq(names);
-  const found = await db.get('users').distinct('username', { username: { $in: unique } });
+  const found = await db.collection('users').distinct('username', { username: { $in: unique } });
 
   return unique.filter((name) => !found.includes(name));
 };
@@ -375,7 +375,7 @@ const usersToCheck = (project, oldProject, owner, stored = new Set()) => {
  * Parse, sanitise and validate the project sent to POST /project/json/:projectName
  * @param {object} params { data: req.body.data, shortname: the name in the URL,
  *   oldProject: the stored project or undefined, owner: the owner to keep or set,
- *   db: Monk database }
+ *   db: native MongoDB Db (app.db.nativeMongoDB()) }
  * @returns {Promise<object>} { project, dropped: blank new rows removed, by
  *   list } or { error } (a 400 answer)
  */

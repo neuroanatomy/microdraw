@@ -191,7 +191,7 @@ const assignOrphans = (req, res) => {
  * @returns {void}
  */
 const getInvalidProjects = (req, res) => {
-  sendResult(res, projects.findInvalidProjects(db(req)));
+  sendResult(res, projects.findInvalidProjects(req.app.db.nativeMongoDB()));
 };
 
 // { project, version } from the body of a fix, or the reason it is invalid

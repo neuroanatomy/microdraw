@@ -177,14 +177,15 @@ const checkStoredProject = (project, users) => ({
 
 /**
  * Check every stored (non-backup) project. Read-only.
- * @param {object} db Monk database
+ * @param {object} db Native MongoDB Db (app.db.nativeMongoDB())
  * @returns {Promise<object>} { total, refused, list }: the number of
  *   projects, of those that cannot be saved again unchanged, and the
  *   projects that have problems (checkStoredProject)
  */
 const checkStoredProjects = async (db) => {
-  const users = new Set(await db.get('users').distinct('username'));
-  const projects = await db.get('projects').find({ backup: { $exists: false } });
+  const users = new Set(await db.collection('users').distinct('username'));
+  const projects = await db.collection('projects').find({ backup: { $exists: false } })
+    .toArray();
   const list = projects.map((project) => checkStoredProject(project, users))
     .filter((p) => p.problems.length > 0);
 

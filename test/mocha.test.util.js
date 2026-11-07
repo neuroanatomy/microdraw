@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 const microdrawApp = require('../app/app');
@@ -53,6 +54,23 @@ const getServer = () => appServer;
 // The Monk database of the running app (the test DB), for fixtures, and its native Db.
 const getDB = () => db;
 const getNativeDB = () => nativeDb;
+
+// Runs fn with monk reads made to fail, as [[collection, method]]: the proof
+// that a flow reads through the native driver, since a monk object also has
+// `collection` (an alias of `get`) and its distinct takes the same arguments.
+const withoutMonkReads = async (reads, fn) => {
+  const originals = reads.map(([name, method]) => [db.get(name), method, db.get(name)[method]]);
+  for (const [collection, method] of originals) {
+    collection[method] = () => Promise.reject(new Error(`monk read: ${collection.name}.${method}`));
+  }
+  try {
+    return await fn();
+  } finally {
+    for (const [collection, method, original] of originals) {
+      collection[method] = original;
+    }
+  }
+};
 
 const width = 800;
 const height = 600;
@@ -288,6 +306,7 @@ module.exports = {
   getServer,
   getDB,
   getNativeDB,
+  withoutMonkReads,
   parseCookies,
   url,
   testingCredentials,
