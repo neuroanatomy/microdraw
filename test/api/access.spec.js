@@ -110,6 +110,43 @@ describe('Route access checks: project list and search (M1)', function () {
       const names = await listAllProjects(anonymous);
       assert.equal(new Set(names).size, names.length);
     }).timeout(U.shortTimeout);
+
+    // What the read gives, whichever driver reads it.
+    describe('over several pages', function () {
+      const PREFIX = 'apiaccesslist';
+      const shortname = (i) => `${PREFIX}${String(i).padStart(2, '0')}`;
+      const stored = (i, files) => {
+        const p = U.createProjectWithPermission(shortname(i), { files: 'view' });
+        p.collaborators.list[0].access.files = files;
+
+        return p;
+      };
+      const count = 25;
+      const shown = Array.from({ length: count }, (_, i) => i).filter((i) => i % 5 !== 0);
+      const removeAll = () => U.removeProject({ $regex: `^${PREFIX}` });
+
+      before(async function () {
+        await removeAll();
+        await U.insertProject([
+          ...Array.from({ length: count }, (_, i) => stored(i, i % 5 === 0 ? 'none' : 'view')),
+          { ...stored(count, 'view'), backup: true }
+        ]);
+      });
+
+      after(removeAll);
+
+      it('lists what the visitor may see in stored order, with no backup', async function () {
+        const names = await listAllProjects(anonymous);
+        assert.deepEqual(names.filter((name) => name.startsWith(PREFIX)), shown.map(shortname));
+      }).timeout(U.shortTimeout);
+
+      it('fills a page with 20 visible projects when more follow', async function () {
+        const res = await anonymous().get('/project/json')
+          .query({ page: 0 });
+        assert.isArray(res.body);
+        assert.lengthOf(res.body, 20);
+      }).timeout(U.shortTimeout);
+    });
   });
 
   describe('GET /search/json/projects', function () {

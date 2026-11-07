@@ -16,7 +16,7 @@ const newestAnnotationsPipeline = (shortnames) => [
  * aggregation, the time read from the _id of the annotation documents
  * (backups included: a save marks the previous version as backup, and the
  * documents keep their _id).
- * @param {object} db Monk database
+ * @param {object} db Native MongoDB database
  * @param {Array<string>} shortnames Project shortnames
  * @returns {Promise<Map<string, Date>>} shortname → date
  */
@@ -24,7 +24,8 @@ const newestAnnotations = async (db, shortnames) => {
   if (shortnames.length === 0) {
     return new Map();
   }
-  const rows = await db.get('annotations').aggregate(newestAnnotationsPipeline(shortnames));
+  const rows = await db.collection('annotations').aggregate(newestAnnotationsPipeline(shortnames))
+    .toArray();
 
   return new Map(rows.map((row) => [row._id, row.last.getTimestamp()]));
 };

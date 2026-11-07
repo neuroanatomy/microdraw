@@ -129,6 +129,46 @@ describe('Search and user routes (M3)', function () {
     }
   });
 
+  // What the read gives, whichever driver reads it: the first 10 projects
+  // the visitor may see, in stored order, and no backup.
+  describe('what the project search reads', function () {
+    const PREFIX = 'searchread';
+    const shortname = (i) => `${PREFIX}${String(i).padStart(2, '0')}`;
+    const hidden = (i) => U.createProjectWithPermission(shortname(i), { files: 'view' });
+    const visible = (i) => {
+      const p = hidden(i);
+      p.name = `Project ${i}`;
+      p.collaborators.list[0].access.files = 'view';
+
+      return p;
+    };
+    const removeAll = () => U.removeProject({ $regex: `^${PREFIX}` });
+
+    before(async function () {
+      await removeAll();
+      await U.insertProject([
+        hidden(0),
+        visible(1),
+        hidden(2),
+        ...Array.from({ length: 12 }, (_, i) => visible(i + 3)),
+        { ...visible(20), backup: true }
+      ]);
+    });
+
+    after(removeAll);
+
+    it('keeps the first 10 the visitor may see, in stored order, with shortname and name only', async function () {
+      const res = await get('/search/json/projects', { q: PREFIX });
+      assert.equal(res.status, 200);
+      assert.deepEqual(res.body, [1, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => ({ shortname: shortname(i), name: `Project ${i}` })));
+    }).timeout(U.shortTimeout);
+
+    it('does not find a backup', async function () {
+      const res = await get('/search/json/projects', { q: shortname(20) });
+      assert.deepEqual(res.body, []);
+    }).timeout(U.shortTimeout);
+  });
+
   it('GET /user/<unknown> answers 404', async function () {
     const res = await get('/user/m3d-no-such-user');
     assert.equal(res.status, 404);

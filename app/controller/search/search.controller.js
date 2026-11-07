@@ -70,11 +70,12 @@ const api_searchProjects = function (req, res) {
     return;
   }
   const loggedUser = req.isAuthenticated() ? req.user.username : 'anyone';
-  req.appConfig.db.mongoDB().get('projects')
+  req.appConfig.db.nativeMongoDB().collection('projects')
     .find(
       {shortname: {$regex: escapeRegex(q)}, backup: {$exists: false}},
-      {fields: {_id: 0, shortname: 1, name: 1, owner: 1, collaborators: 1}}
+      {projection: {_id: 0, shortname: 1, name: 1, owner: 1, collaborators: 1}}
     )
+    .toArray()
     .then((projects) => {
       const found = projects
         .filter((p) => AccessControlService.canViewFiles(p, loggedUser))

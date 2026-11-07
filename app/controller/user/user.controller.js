@@ -117,8 +117,9 @@ const api_userAll = async function (req, res) {
   const nItemsPerPage = 20;
 
   try {
-    const users = await req.appConfig.db.mongoDB().get('users')
-      .find({backup: {$exists: false}, username: {$type: 'string'}}, {skip: page * nItemsPerPage, limit: nItemsPerPage, fields: {_id: 0, username: 1}});
+    const users = await req.appConfig.db.nativeMongoDB().collection('users')
+      .find({backup: {$exists: false}, username: {$type: 'string'}}, {skip: page * nItemsPerPage, limit: nItemsPerPage, projection: {_id: 0, username: 1}})
+      .toArray();
     res.send(users.map((o) => o.username));
   } catch (err) {
     log.error({ err }, 'cannot list users');
@@ -245,7 +246,7 @@ const userProjectsPage = async (req) => {
 const api_userProjects = async function (req, res) {
   try {
     const { page, loggedUser } = await userProjectsPage(req);
-    const annotated = await newestAnnotations(req.appConfig.db.mongoDB(), page.map((project) => project.shortname));
+    const annotated = await newestAnnotations(req.appConfig.db.nativeMongoDB(), page.map((project) => project.shortname));
     res.send({
       successful: true,
       list: page.map((project) => projectRow(project, loggedUser, annotated))

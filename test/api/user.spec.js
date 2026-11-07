@@ -129,5 +129,38 @@ describe('Public user data (/user/json/:userName, /user/:userName)', function ()
       assert.equal(res.status, 200);
       assert.isArray(res.body);
     }).timeout(U.shortTimeout);
+
+    // What the read gives, whichever driver reads it.
+    describe('GET /user/json over several pages', function () {
+      const marker = 'api-user-list-fixture';
+      const username = (i) => `api-user-list-${String(i).padStart(2, '0')}`;
+      const count = 25;
+      const expected = Array.from({ length: count }, (_, i) => username(i));
+      const removeAll = () => U.getDB().get('users')
+        .remove({ name: marker });
+
+      before(async function () {
+        await removeAll();
+        await U.insertUser([
+          ...expected.map((name) => ({ username: name, name: marker })),
+          { username: username(count), name: marker, backup: true },
+          { username: 7, name: marker }
+        ]);
+      });
+
+      after(removeAll);
+
+      it('lists usernames in stored order, with no backup and no name that is not a string', async function () {
+        const names = await listAllUsers();
+        assert.deepEqual(names.filter((name) => (/^api-user-list-/).test(name)), expected);
+        names.forEach((name) => assert.isString(name));
+      }).timeout(U.shortTimeout);
+
+      it('fills a page with 20 usernames when more follow', async function () {
+        const res = await get('/user/json?page=0');
+        assert.isArray(res.body);
+        assert.lengthOf(res.body, 20);
+      }).timeout(U.shortTimeout);
+    });
   });
 });

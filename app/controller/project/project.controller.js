@@ -249,8 +249,9 @@ const apiProject = catchErrors(apiProjectUnsafe);
 // Shortnames of all the projects the requester may view.
 const viewableProjectNames = async (req) => {
   const loggedUser = getLoggedUser(req);
-  const projects = await req.appConfig.db.mongoDB().get('projects')
-    .find({backup: {$exists: false}}, {fields: {_id: 0, shortname: 1, owner: 1, collaborators: 1}});
+  const projects = await req.appConfig.db.nativeMongoDB().collection('projects')
+    .find({backup: {$exists: false}}, {projection: {_id: 0, shortname: 1, owner: 1, collaborators: 1}})
+    .toArray();
 
   return projects
     .filter((o) => AccessControlService.canViewFiles(o, loggedUser))

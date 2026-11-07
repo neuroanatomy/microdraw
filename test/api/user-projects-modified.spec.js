@@ -6,6 +6,7 @@ chai.use(chaiHttp);
 const { assert } = chai;
 const monk = require('monk');
 const U = require('../mocha.test.util');
+const { newestAnnotations } = require('../../app/controller/user/lastModified');
 
 // The "Last modified" date of a project (user page): the later of its last
 // save (POST /project/json/:projectName sets `modified` and `modifiedBy`, as
@@ -125,6 +126,7 @@ describe('Last modified of a project (save date, newest annotation)', function (
     }).timeout(U.shortTimeout);
   });
 
+  // eslint-disable-next-line max-statements -- fixtures and their tests
   describe('the user\'s projects list', function () {
     before(async function () {
       await U.insertProject([
@@ -194,6 +196,18 @@ describe('Last modified of a project (save date, newest annotation)', function (
       assert.notInclude(anonymous.text, 'api-modified-hidden');
       const asOwner = await listing(ownerAgent);
       assert.equal(byName(asOwner, `${PREFIX}savelater`).modifiedBy, 'api-modified-hidden');
+    }).timeout(U.shortTimeout);
+
+    it('newestAnnotations answers a Map of dates, with nothing for a project with no annotation', async function () {
+      const dates = await newestAnnotations(U.getNativeDB(), [`${PREFIX}annotlater`, `${PREFIX}neither`]);
+      assert.instanceOf(dates, Map);
+      assert.deepEqual([...dates.keys()], [`${PREFIX}annotlater`]);
+      assert.instanceOf(dates.get(`${PREFIX}annotlater`), Date);
+      assert.equal(dates.get(`${PREFIX}annotlater`).toJSON(), '2026-05-02T03:04:05.000Z');
+    }).timeout(U.shortTimeout);
+
+    it('newestAnnotations answers an empty Map for no project', async function () {
+      assert.equal((await newestAnnotations(U.getNativeDB(), [])).size, 0);
     }).timeout(U.shortTimeout);
 
     it('pages as before, each page with its own dates', async function () {

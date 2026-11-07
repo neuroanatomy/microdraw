@@ -4,7 +4,7 @@ const microdrawApp = require('../app/app');
 
 chai.use(chaiHttp);
 
-let appServer, db, nwlDb, wsServer;
+let appServer, db, nativeDb, nwlDb, wsServer;
 let serverPort = 3000;
 
 // permissions.spec.js cookies against 127.0.0.1, the browser specs localhost.
@@ -22,6 +22,7 @@ const initResources = async () => {
   serverPort = port;
   nwlDb = app.db;
   db = nwlDb.mongoDB();
+  nativeDb = nwlDb.nativeMongoDB();
 };
 
 const closeServer = (server) =>
@@ -49,8 +50,9 @@ const closeResources = async () => {
 
 const getServer = () => appServer;
 
-// The Monk database of the running app (the test DB), for fixtures.
+// The Monk database of the running app (the test DB), for fixtures, and its native Db.
 const getDB = () => db;
+const getNativeDB = () => nativeDb;
 
 const width = 800;
 const height = 600;
@@ -285,6 +287,7 @@ module.exports = {
   closeResources,
   getServer,
   getDB,
+  getNativeDB,
   parseCookies,
   url,
   testingCredentials,
