@@ -175,7 +175,7 @@ describe('Project lock and project deletion (M3)', function () {
       // the viewer no longer gets them, and they are not orphans for the admin page
       const viewer = await agent.get('/api').query({ source: img, slice: 0, project: 'm3bdelete' });
       assert.notEqual(viewer.status, 200);
-      const orphans = await adminAnnotations.findOrphanAnnotations(U.getDB(), { source: img });
+      const orphans = await adminAnnotations.findOrphanAnnotations(U.getNativeDB(), { source: img });
       assert.lengthOf(orphans.list, 0);
     }).timeout(U.shortTimeout);
 
@@ -204,7 +204,7 @@ describe('Project lock and project deletion (M3)', function () {
       await U.insertAnnotations([region(`${img}&slice=0`, '', 6)]);
       let release;
       const held = lock.withProjectLock('m3bassign', () => new Promise((resolve) => { release = resolve; }));
-      const assign = adminAnnotations.assignOrphans(U.getDB(), {
+      const assign = adminAnnotations.assignOrphans(U.getNativeDB(), {
         group: { fileID: `${img}&slice=0`, user: owner.username, project: '' },
         target: 'm3bassign',
         username: 'm3b-admin'

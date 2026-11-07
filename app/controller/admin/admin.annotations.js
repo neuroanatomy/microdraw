@@ -16,9 +16,9 @@
  * save does, and is logged with their ids in the `log` collection, so it can
  * be undone. Every action is logged, as in BrainBox.
  */
-const monk = require('monk');
 const logger = require('../../log');
 const { withProjectLock } = require('../projectLock');
+const { toId } = require('../toId');
 
 const isProjectName = (name) => typeof name === 'string' && name !== '';
 
@@ -26,11 +26,11 @@ const current = { backup: { $exists: false } };
 
 /**
  * Shortnames of the projects that exist
- * @param {object} db Monk database
+ * @param {object} db Native Db
  * @returns {Promise<Array<string>>} Project shortnames
  */
 const liveProjects = async (db) => {
-  const shortnames = await db.get('projects').distinct('shortname', current);
+  const shortnames = await db.collection('projects').distinct('shortname', current);
 
   return shortnames.filter(isProjectName);
 };
@@ -66,7 +66,7 @@ const dateOf = (id) => {
  * Find the orphan annotations, grouped by image (fileID), author (user) and
  * the project value they carry ('' / null for none, or the name of a project
  * that does not exist), most recent first.
- * @param {object} db Monk database
+ * @param {object} db Native Db
  * @param {object} options { skip, limit, source }: paging, and an optional
  *   image source to restrict the search to
  * @returns {Promise<object>} { total, list: [{ fileID, source, slice, user,
@@ -80,7 +80,7 @@ const findOrphanAnnotations = async (db, { skip = 0, limit = 50, source } = {}) 
   if (typeof source === 'string' && source !== '') {
     match.fileID = new RegExp(`^${escapeRegExp(source)}&slice=`);
   }
-  const [result] = await db.get('annotations').aggregate([
+  const cursor = db.collection('annotations').aggregate([
     { $match: match },
     {
       $group: {
@@ -97,6 +97,7 @@ const findOrphanAnnotations = async (db, { skip = 0, limit = 50, source } = {}) 
       }
     }
   ], { allowDiskUse: true });
+  const [result] = await cursor.toArray();
 
   const total = (result && result.total.length) ? result.total[0].n : 0;
   const list = (result ? result.list : []).map((row) => ({
@@ -138,18 +139,19 @@ const groupQuery = ({ fileID, user, project }) => ({ fileID, user, project, ...c
 
 /**
  * The current documents of an orphan group, or the reason it is not one
- * @param {object} db Monk database
+ * @param {object} db Native Db
  * @param {object} group { fileID, user, project }
  * @returns {Promise<object>} { ids } or { status, error }
  */
 const orphanGroupIds = async (db, group) => {
   if (isProjectName(group.project)) {
-    const project = await db.get('projects').findOne({ shortname: group.project, ...current });
+    const project = await db.collection('projects').findOne({ shortname: group.project, ...current });
     if (project) {
       return { status: 409, error: `Project ${group.project} exists: these annotations are not orphans` };
     }
   }
-  const docs = await db.get('annotations').find(groupQuery(group), { projection: { _id: 1 } });
+  const docs = await db.collection('annotations').find(groupQuery(group), { projection: { _id: 1 } })
+    .toArray();
   if (docs.length === 0) {
     return { status: 404, error: 'No orphan annotations for that image, user and project' };
   }
@@ -157,17 +159,19 @@ const orphanGroupIds = async (db, group) => {
   return { ids: docs.map((d) => d._id) };
 };
 
-const log = (db, key, value) => {
+const log = async (db, key, value) => {
   const { ids, ...rest } = value;
   logger.info({ event: key, ...(ids ? { ...rest, documents: ids.length } : rest) }, `admin: ${key}`);
+  const entry = { key, value, date: (new Date()).toJSON() };
+  await db.collection('log').insertOne(entry); // sets entry._id
 
-  return db.get('log').insert({ key, value, date: (new Date()).toJSON() });
+  return entry;
 };
 
 /**
  * Remove an orphan group: mark its documents backup: true, as a save does.
  * Logged with the ids of the documents, so that restoreOrphans can undo it.
- * @param {object} db Monk database
+ * @param {object} db Native Db
  * @param {object} params { group: { fileID, user, project }, username }
  * @returns {Promise<object>} { removed, log } or { status, error }
  */
@@ -177,7 +181,7 @@ const removeOrphans = async (db, { group, username }) => {
     return found;
   }
   const { ids } = found;
-  await db.get('annotations').update({ _id: { $in: ids }, ...current }, { $set: { backup: true } }, { multi: true });
+  await db.collection('annotations').updateMany({ _id: { $in: ids }, ...current }, { $set: { backup: true } });
   const entry = await log(db, 'adminRemoveOrphans', {
     username,
     fileID: group.fileID,
@@ -189,40 +193,31 @@ const removeOrphans = async (db, { group, username }) => {
   return { removed: ids.length, log: String(entry._id) };
 };
 
-const toId = (id) => {
-  try {
-    return monk.id(id);
-  } catch (err) {
-    return null;
-  }
-};
-
 /**
  * Undo removeOrphans: the documents it marked as backup become current again.
  * Refused if the group has current documents again (a save since then).
- * @param {object} db Monk database
+ * @param {object} db Native Db
  * @param {object} params { logId, username }
  * @returns {Promise<object>} { restored } or { status, error }
  */
 // eslint-disable-next-line max-statements
 const restoreOrphans = async (db, { logId, username }) => {
   const id = toId(logId);
-  const entry = id && await db.get('log').findOne({ _id: id, key: 'adminRemoveOrphans' });
+  const entry = id && await db.collection('log').findOne({ _id: id, key: 'adminRemoveOrphans' });
   if (!entry) {
     return { status: 404, error: 'No orphan removal with that log id' };
   }
   const { fileID, user, project, ids } = entry.value;
-  const now = await db.get('annotations').count(groupQuery({ fileID, user, project }));
+  const now = await db.collection('annotations').countDocuments(groupQuery({ fileID, user, project }));
   if (now > 0) {
     return { status: 409, error: 'These annotations have current documents again (restored already, or saved since)' };
   }
   const objectIds = ids.map(toId).filter(Boolean);
-  const result = await db.get('annotations').update(
+  const result = await db.collection('annotations').updateMany(
     { _id: { $in: objectIds }, backup: true },
-    { $unset: { backup: '' } },
-    { multi: true }
+    { $unset: { backup: '' } }
   );
-  const restored = (result && (result.nModified || result.modifiedCount)) || 0;
+  const restored = result.modifiedCount;
   await log(db, 'adminRestoreOrphans', { username, removal: String(entry._id), fileID, user, project, restored });
 
   return { restored };
@@ -246,28 +241,29 @@ const listsSourceQuery = (source) => ({ $or: [{ 'files.list.source': source }, {
 
 /**
  * Number of current annotations of a project on an image, in all and by a user
- * @param {object} db Monk database
+ * @param {object} db Native Db
  * @param {object} params { fileID, project, user }
  * @returns {Promise<object>} { existing, existingByUser }
  */
 const existingAnnotations = async (db, { fileID, project, user }) => ({
-  existing: await db.get('annotations').count({ fileID, project, ...current }),
-  existingByUser: await db.get('annotations').count({ fileID, project, user, ...current })
+  existing: await db.collection('annotations').countDocuments({ fileID, project, ...current }),
+  existingByUser: await db.collection('annotations').countDocuments({ fileID, project, user, ...current })
 });
 
 /**
  * The projects an orphan group can be assigned to without changing their
  * file list: those that list its image
- * @param {object} db Monk database
+ * @param {object} db Native Db
  * @param {object} group { fileID, user }
  * @returns {Promise<Array<object>>} [{ shortname, name, owner, existing, existingByUser }]
  */
 const candidateProjects = async (db, { fileID, user }) => {
   const { source } = splitFileID(fileID);
-  const projects = await db.get('projects').find(
+  const projects = await db.collection('projects').find(
     { ...current, ...listsSourceQuery(source) },
     { projection: { _id: 0, shortname: 1, name: 1, owner: 1 }, sort: { shortname: 1 } }
-  );
+  )
+    .toArray();
   const list = [];
   for (const p of projects.filter((q) => isProjectName(q.shortname))) {
     // eslint-disable-next-line no-await-in-loop
@@ -287,14 +283,14 @@ const candidateProjects = async (db, { fileID, user }) => {
  * that a save cannot read the project before the image is added and write it
  * back after. A settings page loaded earlier still sends the file list it
  * had: saving it drops the image again (no versions yet, T002 step 2.1).
- * @param {object} db Monk database
+ * @param {object} db Native Db
  * @param {object} params { group, target, addImage, username }
  * @returns {Promise<object>} { assigned, addedImage, existing, existingByUser, log }
  *   or { status, error }
  */
 // eslint-disable-next-line max-statements
 const assignOrphansUnlocked = async (db, { group, target, addImage, username }) => {
-  const project = await db.get('projects').findOne({ shortname: target, ...current });
+  const project = await db.collection('projects').findOne({ shortname: target, ...current });
   if (!project) {
     return { status: 404, error: `Project ${target} not found` };
   }
@@ -309,15 +305,15 @@ const assignOrphansUnlocked = async (db, { group, target, addImage, username }) 
       return { status: 409, error: `Project ${target} does not list this image: add it to the project's files, or ask to add it` };
     }
     // Atomic on this document: only pushes if the image is still not listed.
-    const result = await db.get('projects').update(
+    const result = await db.collection('projects').updateOne(
       { _id: project._id, 'files.list.source': { $ne: source }, 'files.list': { $ne: source } },
       { $push: { 'files.list': { name: fileName(source), source } } }
     );
-    addedImage = Boolean(result && (result.nModified || result.modifiedCount));
+    addedImage = Boolean(result.modifiedCount);
   }
   const existing = await existingAnnotations(db, { fileID: group.fileID, project: target, user: group.user });
   const { ids } = found;
-  await db.get('annotations').update({ _id: { $in: ids }, ...current }, { $set: { project: target } }, { multi: true });
+  await db.collection('annotations').updateMany({ _id: { $in: ids }, ...current }, { $set: { project: target } });
   const entry = await log(db, 'adminAssignOrphans', {
     username,
     fileID: group.fileID,

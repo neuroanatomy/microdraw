@@ -81,6 +81,7 @@ const sendResult = async (res, action) => {
 };
 
 const db = (req) => req.app.db.mongoDB();
+const nativeDb = (req) => req.app.db.nativeMongoDB();
 
 const intParam = (value, fallback, max) => {
   const n = parseInt(value, 10);
@@ -103,7 +104,7 @@ const getOrphans = async (req, res) => {
   const limit = intParam(req.query.limit, 50, 500) || 50;
   const source = typeof req.query.source === 'string' ? req.query.source : '';
   try {
-    const { total, list } = await annotations.findOrphanAnnotations(db(req), { skip, limit, source });
+    const { total, list } = await annotations.findOrphanAnnotations(nativeDb(req), { skip, limit, source });
     res.json({ success: true, total, skip, limit, list });
   } catch (err) {
     serverError(res, err);
@@ -125,7 +126,7 @@ const removeOrphans = (req, res) => {
   if (error) {
     return res.status(400).json({ success: false, error });
   }
-  sendResult(res, annotations.removeOrphans(db(req), { group, username: requestUsername(req) }));
+  sendResult(res, annotations.removeOrphans(nativeDb(req), { group, username: requestUsername(req) }));
 };
 
 /**
@@ -139,7 +140,7 @@ const restoreOrphans = (req, res) => {
   if (typeof log !== 'string' || log === '') {
     return res.status(400).json({ success: false, error: 'Provide the log id of the removal' });
   }
-  sendResult(res, annotations.restoreOrphans(db(req), { logId: log, username: requestUsername(req) }));
+  sendResult(res, annotations.restoreOrphans(nativeDb(req), { logId: log, username: requestUsername(req) }));
 };
 
 /**
@@ -155,7 +156,7 @@ const getOrphanProjects = (req, res) => {
   if (typeof fileID !== 'string' || fileID === '') {
     return res.status(400).json({ success: false, error: 'Provide the fileID' });
   }
-  sendResult(res, annotations.candidateProjects(db(req), { fileID, user }).then((list) => ({ list })));
+  sendResult(res, annotations.candidateProjects(nativeDb(req), { fileID, user }).then((list) => ({ list })));
 };
 
 /**
@@ -175,7 +176,7 @@ const assignOrphans = (req, res) => {
   if (typeof body.target !== 'string' || body.target === '') {
     return res.status(400).json({ success: false, error: 'Provide the target project' });
   }
-  sendResult(res, annotations.assignOrphans(db(req), {
+  sendResult(res, annotations.assignOrphans(nativeDb(req), {
     group,
     target: body.target,
     addImage: body.addImage === true,

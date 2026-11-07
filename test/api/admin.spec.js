@@ -6,7 +6,10 @@ const chaiHttp = require('chai-http');
 chai.use(chaiHttp);
 const { assert } = chai;
 const U = require('../mocha.test.util');
+const { ObjectId } = require('neuroweblab');
 const admins = require('../../app/controller/admin/admins');
+const adminAnnotations = require('../../app/controller/admin/admin.annotations');
+const { toId } = require('../../app/controller/toId');
 
 // A1: the admin page and its orphan-annotation tools (decisions D26).
 // Orphans = current (non-backup) annotation documents whose project is empty,
@@ -21,6 +24,7 @@ describe('Admin: orphan annotations (A1)', function () {
   const img1 = 'http://a1-admin-test.localhost/img1.dzi';
   const img2 = 'http://a1-admin-test.localhost/img2.dzi';
   const img3 = 'http://a1-admin-test.localhost/img3.dzi';
+  const lookalike = 'http://a1-admin-test.localhost/img1xdzi';
   const fileID = (source, slice) => `${source}&slice=${slice}`;
 
   const project = (shortname, sources, backup) => ({
@@ -96,8 +100,8 @@ describe('Admin: orphan annotations (A1)', function () {
   let previousAdmins;
 
   const cleanup = async () => {
-    await Promise.all([img1, img2, img3].map((s) => U.removeAnnotations(s)));
-    await Promise.all([live, otherProject, goneBackup].map((p) => U.removeProject(p.shortname)));
+    await Promise.all([img1, img2, img3, lookalike].map((s) => U.removeAnnotations(s)));
+    await Promise.all([live, otherProject, goneBackup, { shortname: 'a1adminold' }].map((p) => U.removeProject(p.shortname)));
     await db().get('log')
       .remove({ key: /^admin/, 'value.fileID': new RegExp('^http://a1-admin-test\\.localhost/') });
   };
@@ -306,5 +310,341 @@ describe('Admin: orphan annotations (A1)', function () {
       assert.equal(gone.status, 404, 'a deleted project (backup only) does not exist');
       assert.equal((await orphans(img1)).total, 3);
     }).timeout(U.shortTimeout);
+  });
+
+  // What the tools leave in the database, read through the native driver: they
+  // change production's annotations, so documents, flags, log entries and id
+  // types are compared in full, not only the answers.
+  // eslint-disable-next-line max-statements
+  describe('What ends in the database', function () {
+    const aliceEmpty = { fileID: fileID(img1, 0), user: 'alice', project: '' };
+    const carolGone = { fileID: fileID(img2, 0), user: 'carol', project: 'a1admingone' };
+    const testFiles = { fileID: /^http:\/\/a1-admin-test\.localhost\// };
+    const native = () => U.getNativeDB();
+    const plain = (doc) => JSON.parse(JSON.stringify(doc));
+    const byId = (a, b) => String(a._id).localeCompare(String(b._id));
+    const annotationDocs = async () => plain((await native().collection('annotations')
+      .find(testFiles)
+      .toArray()).sort(byId));
+    const projectDocs = async () => plain((await native().collection('projects')
+      .find({ shortname: /^a1admin/ })
+      .toArray()).sort(byId));
+    const logEntries = (key) => native().collection('log')
+      .find({ key, 'value.fileID': testFiles.fileID })
+      .toArray();
+    const isCurrent = (doc) => !('backup' in doc);
+    const idsOf = (docs, group) => docs
+      .filter((d) => isCurrent(d) && d.user === group.user && d.project === group.project)
+      .map((d) => d._id);
+    const assertIdsAreObjectIds = async () => {
+      const annotations = await native().collection('annotations')
+        .countDocuments({ ...testFiles, _id: { $not: { $type: 'objectId' } } });
+      assert.equal(annotations, 0, 'annotation ids');
+      const logs = await native().collection('log')
+        .countDocuments({ key: /^admin/, 'value.fileID': testFiles.fileID, _id: { $not: { $type: 'objectId' } } });
+      assert.equal(logs, 0, 'log ids');
+    };
+    // The whole entry: nothing added, nothing missing, ids stored as strings.
+    const assertLogEntry = (entry, key, value, ids) => {
+      const { _id, date, ...rest } = entry;
+      assert.match(date, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/);
+      assert.equal(String(_id).length, 24);
+      if (ids) {
+        assert.sameMembers(rest.value.ids, ids);
+        rest.value.ids.forEach((id) => assert.isString(id));
+      }
+      assert.deepEqual(rest, { key, value: { ...value, ...(ids ? { ids: rest.value.ids } : {}) } });
+    };
+
+    // eslint-disable-next-line max-statements
+    it('remove sets backup on the group only, and logs its ids', async function () {
+      const before = await annotationDocs();
+      const ids = idsOf(before, aliceEmpty);
+      assert.lengthOf(ids, 2);
+      const res = await post('/admin/json/orphans/remove', aliceEmpty);
+      assert.equal(res.status, 200);
+      assert.deepEqual(Object.keys(res.body).sort(), ['log', 'removed', 'success']);
+      assert.deepEqual(await annotationDocs(), before.map((d) => (ids.includes(d._id) ? { ...d, backup: true } : d)));
+      const entries = await logEntries('adminRemoveOrphans');
+      assert.lengthOf(entries, 1);
+      assert.equal(String(entries[0]._id), res.body.log);
+      assertLogEntry(entries[0], 'adminRemoveOrphans', { username: admin.username, ...aliceEmpty }, ids);
+      await assertIdsAreObjectIds();
+    }).timeout(U.shortTimeout);
+
+    // eslint-disable-next-line max-statements
+    it('restore gives back the documents as they were, and logs it', async function () {
+      const before = await annotationDocs();
+      const removal = await post('/admin/json/orphans/remove', aliceEmpty);
+      const res = await post('/admin/json/orphans/restore', { log: removal.body.log });
+      assert.equal(res.status, 200);
+      assert.deepEqual(res.body, { success: true, restored: 2 });
+      assert.deepEqual(await annotationDocs(), before, 'no backup key left, the older backup still one');
+      const entries = await logEntries('adminRestoreOrphans');
+      assert.lengthOf(entries, 1);
+      assertLogEntry(entries[0], 'adminRestoreOrphans', { username: admin.username, removal: removal.body.log, ...aliceEmpty, restored: 2 });
+      assert.lengthOf(await logEntries('adminRemoveOrphans'), 1, 'the removal stays logged');
+      await assertIdsAreObjectIds();
+    }).timeout(U.shortTimeout);
+
+    it('restore counts the documents it changed, not the ids logged', async function () {
+      const removal = await post('/admin/json/orphans/remove', aliceEmpty);
+      const [entry] = await logEntries('adminRemoveOrphans');
+      await native().collection('annotations')
+        .deleteOne({ _id: new ObjectId(entry.value.ids[0]) });
+      const res = await post('/admin/json/orphans/restore', { log: removal.body.log });
+      assert.equal(res.body.restored, 1);
+      const [restoreEntry] = await logEntries('adminRestoreOrphans');
+      assert.equal(restoreEntry.value.restored, 1);
+    }).timeout(U.shortTimeout);
+
+    it('restore skips a logged id that is not one', async function () {
+      const removal = await post('/admin/json/orphans/remove', aliceEmpty);
+      const [entry] = await logEntries('adminRemoveOrphans');
+      await native().collection('log')
+        .updateOne({ _id: entry._id }, { $set: { 'value.ids': [entry.value.ids[0], 'not-an-id', 'z'.repeat(24)] } });
+      const res = await post('/admin/json/orphans/restore', { log: removal.body.log });
+      assert.equal(res.status, 200);
+      assert.equal(res.body.restored, 1);
+    }).timeout(U.shortTimeout);
+
+    // eslint-disable-next-line max-statements
+    it('restore refuses (409) once the group has current documents again, and changes nothing', async function () {
+      const removal = await post('/admin/json/orphans/remove', aliceEmpty);
+      await U.insertAnnotations([region(aliceEmpty)]);
+      const before = await annotationDocs();
+      const res = await post('/admin/json/orphans/restore', { log: removal.body.log });
+      assert.equal(res.status, 409);
+      assert.isFalse(res.body.success);
+      assert.match(res.body.error, /current documents again/);
+      assert.deepEqual(await annotationDocs(), before);
+      assert.lengthOf(await logEntries('adminRestoreOrphans'), 0);
+    }).timeout(U.shortTimeout);
+
+    // eslint-disable-next-line max-statements
+    it('restore answers 404 on a bad, an unknown or another action\'s log id, and 400 on no string', async function () {
+      const assign = await post('/admin/json/orphans/assign', { ...carolGone, target: otherProject.shortname, addImage: true });
+      const removal = await post('/admin/json/orphans/remove', aliceEmpty);
+      const before = await annotationDocs();
+      const notFound = ['not-an-id', 'abc', '0123456789ab', 'z'.repeat(24), `${'0'.repeat(23)}g`, ` ${'0'.repeat(23)}`, '0'.repeat(24), assign.body.log];
+      for (const log of notFound) {
+        // eslint-disable-next-line no-await-in-loop
+        const res = await post('/admin/json/orphans/restore', { log });
+        assert.equal(res.status, 404, log);
+        assert.equal(res.body.error, 'No orphan removal with that log id');
+      }
+      for (const log of ['', 5, null, {}, [removal.body.log], true]) {
+        // eslint-disable-next-line no-await-in-loop
+        const res = await post('/admin/json/orphans/restore', { log });
+        assert.equal(res.status, 400, JSON.stringify(log));
+      }
+      assert.deepEqual(await annotationDocs(), before);
+      assert.lengthOf(await logEntries('adminRestoreOrphans'), 0);
+    }).timeout(U.shortTimeout);
+
+    it('toId takes a 24-digit hex string, in either case, and nothing else', function () {
+      const hex = '0123456789abcdef01234567';
+      assert.instanceOf(toId(hex), ObjectId);
+      assert.equal(String(toId(hex)), hex);
+      assert.equal(String(toId(hex.toUpperCase())), hex);
+      for (const bad of ['', 'not-an-id', '0123456789ab', 'z'.repeat(24), `${hex}0`, ` ${hex.slice(1)}`, `${hex}\n`, null, undefined, 5, {}, [hex]]) { // eslint-disable-line no-undefined
+        assert.isNull(toId(bad), JSON.stringify(bad));
+      }
+    });
+
+    it('restore takes a log id in capitals', async function () {
+      const removal = await post('/admin/json/orphans/remove', aliceEmpty);
+      const res = await post('/admin/json/orphans/restore', { log: removal.body.log.toUpperCase() });
+      assert.equal(res.status, 200);
+      assert.equal(res.body.restored, 2);
+    }).timeout(U.shortTimeout);
+
+    // eslint-disable-next-line max-statements
+    it('assign sets project on the current documents only, and logs it', async function () {
+      const before = await annotationDocs();
+      const projects = await projectDocs();
+      const ids = idsOf(before, aliceEmpty);
+      const res = await post('/admin/json/orphans/assign', { ...aliceEmpty, target: live.shortname });
+      assert.equal(res.status, 200);
+      assert.deepEqual(Object.keys(res.body).sort(), ['addedImage', 'assigned', 'existing', 'existingByUser', 'log', 'success']);
+      assert.deepEqual(await annotationDocs(), before.map((d) => (ids.includes(d._id) ? { ...d, project: live.shortname } : d)));
+      assert.deepEqual(await projectDocs(), projects, 'the project lists the image already');
+      const entries = await logEntries('adminAssignOrphans');
+      assert.lengthOf(entries, 1);
+      assert.equal(String(entries[0]._id), res.body.log);
+      assertLogEntry(entries[0], 'adminAssignOrphans', {
+        username: admin.username,
+        fileID: aliceEmpty.fileID,
+        user: 'alice',
+        from: '',
+        to: live.shortname,
+        addedImage: false,
+        existing: 1,
+        existingByUser: 1
+      }, ids);
+      await assertIdsAreObjectIds();
+    }).timeout(U.shortTimeout);
+
+    // eslint-disable-next-line max-statements
+    it('assign with addImage pushes one file on the project, and logs it', async function () {
+      const before = await annotationDocs();
+      const projects = await projectDocs();
+      const ids = idsOf(before, carolGone);
+      const res = await post('/admin/json/orphans/assign', { ...carolGone, target: otherProject.shortname, addImage: true });
+      assert.equal(res.status, 200);
+      assert.deepEqual(await annotationDocs(), before.map((d) => (ids.includes(d._id) ? { ...d, project: otherProject.shortname } : d)));
+      assert.deepEqual(await projectDocs(), projects.map((p) => (p.shortname === otherProject.shortname
+        ? { ...p, files: { list: [{ name: 'img2.dzi', source: img2 }] } }
+        : p)));
+      const [entry] = await logEntries('adminAssignOrphans');
+      assertLogEntry(entry, 'adminAssignOrphans', {
+        username: admin.username,
+        fileID: carolGone.fileID,
+        user: 'carol',
+        from: 'a1admingone',
+        to: otherProject.shortname,
+        addedImage: true,
+        existing: 0,
+        existingByUser: 0
+      }, ids);
+    }).timeout(U.shortTimeout);
+
+    it('assign does not add an image the project lists, also as a plain string', async function () {
+      await native().collection('projects')
+        .updateOne({ shortname: otherProject.shortname, backup: { $exists: false } }, { $set: { 'files.list': [img2] } });
+      const projects = await projectDocs();
+      const res = await post('/admin/json/orphans/assign', { ...carolGone, target: otherProject.shortname, addImage: true });
+      assert.equal(res.status, 200);
+      assert.isFalse(res.body.addedImage);
+      assert.deepEqual(await projectDocs(), projects);
+    }).timeout(U.shortTimeout);
+
+    // eslint-disable-next-line max-statements
+    it('assign does not push an image listed since the project was read', async function () {
+      await native().collection('projects')
+        .updateOne({ shortname: otherProject.shortname, backup: { $exists: false } }, { $set: { 'files.list': [{ name: 'img1.dzi', source: img1 }] } });
+      const projects = await projectDocs();
+      const staleProjects = Object.create(native().collection('projects'));
+      staleProjects.findOne = async (query) => {
+        const stored = await native().collection('projects')
+          .findOne(query);
+
+        return { ...stored, files: { list: [] } };
+      };
+      const staleDb = { collection: (name) => (name === 'projects' ? staleProjects : native().collection(name)) };
+      const result = await adminAnnotations.assignOrphans(staleDb, { group: aliceEmpty, target: otherProject.shortname, addImage: true, username: admin.username });
+      assert.equal(result.assigned, 2);
+      assert.isFalse(result.addedImage);
+      assert.deepEqual(await projectDocs(), projects);
+      const [entry] = await logEntries('adminAssignOrphans');
+      assert.isFalse(entry.value.addedImage);
+    }).timeout(U.shortTimeout);
+
+    // eslint-disable-next-line max-statements
+    it('refused actions leave the database as it was, and no log entry', async function () {
+      const before = await annotationDocs();
+      const projects = await projectDocs();
+      const unknown = { fileID: fileID(img3, 0), user: 'dan', project: '' };
+      const liveGroup = { ...aliceEmpty, project: live.shortname };
+      const refused = [
+        ['remove', liveGroup, 409],
+        ['remove', unknown, 404],
+        ['assign', { ...liveGroup, target: otherProject.shortname }, 409],
+        ['assign', { ...unknown, target: live.shortname }, 404],
+        ['assign', { ...carolGone, target: otherProject.shortname }, 409],
+        ['assign', { ...carolGone, target: 'a1adminnosuch', addImage: true }, 404]
+      ];
+      for (const [action, body, status] of refused) {
+        // eslint-disable-next-line no-await-in-loop
+        const res = await post(`/admin/json/orphans/${action}`, body);
+        assert.equal(res.status, status, `${action} ${JSON.stringify(body)}`);
+      }
+      assert.deepEqual(await annotationDocs(), before);
+      assert.deepEqual(await projectDocs(), projects);
+      assert.lengthOf(await native().collection('log')
+        .find({ key: /^admin/, 'value.fileID': testFiles.fileID })
+        .toArray(), 0);
+    }).timeout(U.shortTimeout);
+
+    // eslint-disable-next-line max-statements
+    it('offers projects by shortname, without backups, with the fields listed only', async function () {
+      await native().collection('projects')
+        .updateOne({ shortname: otherProject.shortname, backup: { $exists: false } }, { $set: { 'files.list': [img1] }, $unset: { name: '', owner: '' } });
+      await U.insertProject({ ...project('a1adminold', [img1]), backup: true });
+      const res = await get('/admin/json/orphans/projects', { fileID: aliceEmpty.fileID, user: 'alice' });
+      assert.equal(res.status, 200);
+      assert.deepEqual(res.body.list, [
+        { shortname: live.shortname, name: live.name, owner: live.owner, existing: 1, existingByUser: 1 },
+        { shortname: otherProject.shortname, name: '', owner: '', existing: 0, existingByUser: 0 }
+      ]);
+      const byOther = await get('/admin/json/orphans/projects', { fileID: aliceEmpty.fileID, user: 'bob' });
+      assert.equal(byOther.body.list[0].existing, 1);
+      assert.equal(byOther.body.list[0].existingByUser, 0);
+      const none = await get('/admin/json/orphans/projects', { fileID: fileID(img3, 0) });
+      assert.deepEqual(none.body.list, []);
+    }).timeout(U.shortTimeout);
+
+    // eslint-disable-next-line max-statements
+    it('lists whole rows, the newest first, and treats the source as text', async function () {
+      await U.insertAnnotations([region({ fileID: fileID(lookalike, 0), user: 'alice', project: '' })]);
+      await native().collection('annotations')
+        .insertOne({ fileID: fileID(img3, 2), Hash: 'h', annotation: {} });
+      const newest = (await annotationDocs()).find((d) => d.fileID === fileID(img3, 2));
+      const { list } = await orphans(img3);
+      assert.lengthOf(list, 1);
+      assert.deepEqual(list[0], {
+        fileID: fileID(img3, 2),
+        source: img3,
+        slice: '2',
+        user: null,
+        project: null,
+        reason: 'none',
+        regions: 1,
+        modified: new Date(parseInt(newest._id.slice(0, 8), 16) * 1000).toJSON()
+      });
+      assert.equal((await orphans(lookalike)).total, 1);
+      assert.equal((await orphans(img1)).total, 3, 'the . of the source is not a wildcard');
+      const all = await orphans('', { limit: 500 });
+      assert.isAtLeast(all.total, 7);
+      const stamps = all.list.map((g) => g.modified);
+      assert.deepEqual(stamps, [...stamps].sort().reverse());
+    }).timeout(U.shortTimeout);
+
+    // eslint-disable-next-line max-statements
+    it('goes through no monk read or write', async function () {
+      const calls = [
+        ['annotations', 'find'], ['annotations', 'aggregate'], ['annotations', 'count'], ['annotations', 'update'],
+        ['projects', 'find'], ['projects', 'findOne'], ['projects', 'distinct'], ['projects', 'update'],
+        ['log', 'findOne'], ['log', 'insert']
+      ];
+      await U.withoutMonkReads(calls, async () => {
+        assert.equal((await orphans(img1)).total, 3);
+        const offered = await get('/admin/json/orphans/projects', { fileID: aliceEmpty.fileID, user: 'alice' });
+        assert.lengthOf(offered.body.list, 1);
+        const removal = await post('/admin/json/orphans/remove', aliceEmpty);
+        assert.equal(removal.status, 200);
+        const undo = await post('/admin/json/orphans/restore', { log: removal.body.log });
+        assert.equal(undo.body.restored, 2);
+        const assign = await post('/admin/json/orphans/assign', { ...carolGone, target: otherProject.shortname, addImage: true });
+        assert.equal(assign.body.assigned, 2);
+        assert.isTrue(assign.body.addedImage);
+      });
+    }).timeout(U.shortTimeout);
+
+    it('splits a fileID at the last &slice=', function () {
+      assert.deepEqual(adminAnnotations.splitFileID('a.dzi&slice=3'), { source: 'a.dzi', slice: '3' });
+      assert.deepEqual(adminAnnotations.splitFileID('a&slice=1&slice=2'), { source: 'a&slice=1', slice: '2' });
+      assert.deepEqual(adminAnnotations.splitFileID('a.dzi'), { source: 'a.dzi', slice: '' });
+      assert.deepEqual(adminAnnotations.splitFileID(null), { source: '', slice: '' });
+    });
+
+    it('checks a group: fileID, user and project', function () {
+      assert.isNull(adminAnnotations.groupError({ fileID: 'a', user: null, project: null }));
+      assert.isNull(adminAnnotations.groupError({ fileID: 'a', user: 'b', project: '' }));
+      assert.match(adminAnnotations.groupError(), /fileID/);
+      assert.match(adminAnnotations.groupError({ fileID: '', user: 'b', project: '' }), /fileID/);
+      assert.match(adminAnnotations.groupError({ fileID: 'a', project: '' }), /user/);
+      assert.match(adminAnnotations.groupError({ fileID: 'a', user: 'b' }), /project/);
+    });
   });
 });
