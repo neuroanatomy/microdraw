@@ -168,8 +168,17 @@ const start = async function () {
     annotationsCollection: "annotations"
   });
 
+  // nwl.init swallows a connection error and leaves no Db. Stop here, before the
+  // session store fails on the closed client: pm2 restarts the app. NeuroWebLab
+  // has logged the cause; the connection string stays out of this message.
+  if (!app.db.nativeMongoDB()) {
+    log.fatal('cannot connect to MongoDB at startup: stopping');
+    // eslint-disable-next-line no-process-exit
+    process.exit(1);
+  }
+
   // indexes the queries need (idempotent; an error is logged, never fatal)
-  await ensureIndexes(app.db.mongoDB());
+  await ensureIndexes(app.db.nativeMongoDB());
 
   /* setup GUI routes */
   routes(app);

@@ -13,12 +13,12 @@ const ANNOTATIONS_PROJECT_INDEX = 'project_1__id_-1';
 
 /**
  * Create the app's indexes if they are missing
- * @param {object} db Monk database
+ * @param {object} db Native MongoDB Db (app.db.nativeMongoDB())
  * @returns {Promise<void>} Resolves once done; never rejects
  */
 const ensureIndexes = async (db) => {
   try {
-    await db.get('annotations').createIndex({ project: 1, _id: -1 }, { name: ANNOTATIONS_PROJECT_INDEX });
+    await db.collection('annotations').createIndex({ project: 1, _id: -1 }, { name: ANNOTATIONS_PROJECT_INDEX });
   } catch (err) {
     log.warn({ err, index: ANNOTATIONS_PROJECT_INDEX }, 'cannot create the annotations index');
   }
