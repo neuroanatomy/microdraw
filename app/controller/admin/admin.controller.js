@@ -80,7 +80,6 @@ const sendResult = async (res, action) => {
   }
 };
 
-const db = (req) => req.app.db.mongoDB();
 const nativeDb = (req) => req.app.db.nativeMongoDB();
 
 const intParam = (value, fallback, max) => {
@@ -264,7 +263,7 @@ const searchProjects = (req, res) => {
   if (typeof q !== 'string' || q.trim() === '') {
     return res.status(400).json({ success: false, error: 'Provide the text to search for in q' });
   }
-  sendResult(res, projectActions.searchProjects(db(req), q.trim()));
+  sendResult(res, projectActions.searchProjects(nativeDb(req), q.trim()));
 };
 
 /**

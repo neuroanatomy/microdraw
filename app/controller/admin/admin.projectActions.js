@@ -24,7 +24,7 @@ const maxFound = 20;
 /**
  * Find projects by shortname or name (A3): the text matches literally
  * (escaped), ignoring case. Read-only.
- * @param {object} db Monk database
+ * @param {object} db Native database (nativeMongoDB())
  * @param {string} q The text to search for
  * @returns {Promise<object>} { list: [{ shortname, name, owner, ownerExists,
  *   version, counts: { files, collaborators, layers, annotations } }], more:
@@ -32,14 +32,16 @@ const maxFound = 20;
  */
 const searchProjects = async (db, q) => {
   const text = { $regex: escapeRegex(q), $options: 'i' };
-  const found = await db.get('projects').find({ ...current, $or: [{ shortname: text }, { name: text }] }, { sort: { shortname: 1 }, limit: maxFound + 1 });
+  const found = await db.collection('projects').find({ ...current, $or: [{ shortname: text }, { name: text }] }, { sort: { shortname: 1 }, limit: maxFound + 1 })
+    .toArray();
   const projects = found.slice(0, maxFound);
   const owners = _.uniq(projects.map((p) => p.owner).filter((o) => typeof o === 'string'));
-  const users = new Set(await db.get('users').distinct('username', { username: { $in: owners } }));
-  const counted = await db.get('annotations').aggregate([
+  const users = new Set(await db.collection('users').distinct('username', { username: { $in: owners } }));
+  const counted = await db.collection('annotations').aggregate([
     { $match: { ...current, project: { $in: projects.map((p) => p.shortname) } } },
     { $group: { _id: '$project', n: { $sum: 1 } } }
-  ]);
+  ])
+    .toArray();
   const annotations = new Map(counted.map((c) => [c._id, c.n]));
   const list = projects.map((p) => ({
     shortname: p.shortname,
@@ -66,7 +68,7 @@ const searchProjects = async (db, q) => {
  * @returns {Promise<object>} { log, annotations } or { status, error }
  */
 const deleteProject = (appDb, { shortname, version, username }) => withProjectLock(shortname, async () => {
-  const stored = await appDb.mongoDB().get('projects')
+  const stored = await appDb.nativeMongoDB().collection('projects')
     .findOne({ shortname, ...current });
   if (!stored) {
     return { status: 404, error: `Project ${shortname} not found` };
@@ -86,7 +88,7 @@ const deleteProject = (appDb, { shortname, version, username }) => withProjectLo
  * @returns {Promise<object>} { shortname, annotations, version } or { status, error }
  */
 const restoreDeleted = async (appDb, { logId, username }) => {
-  const db = appDb.mongoDB();
+  const db = appDb.nativeMongoDB();
   const entry = await findDeleteEntry(db, logId);
   if (!entry) {
     return { status: 404, error: 'No project delete with that log id' };
@@ -114,7 +116,7 @@ const restoreDeleted = async (appDb, { logId, username }) => {
  * @returns {Promise<object>} { owner, previousOwner, version, log } or { status, error }
  */
 const transferProject = async (appDb, { shortname, version, owner, username }) => {
-  const exists = await appDb.mongoDB().get('users')
+  const exists = await appDb.nativeMongoDB().collection('users')
     .findOne({ username: owner });
   if (!exists) {
     return { status: 400, error: `User ${owner} does not exist` };
@@ -132,8 +134,8 @@ const transferProject = async (appDb, { shortname, version, owner, username }) =
 
       return { data: { ...project, owner }, details: { from: project.owner, to: owner } };
     },
-    save: (db, stored) => Promise.resolve({ write: () => db.mongoDB().get('projects')
-      .update({ _id: stored._id }, { $set: { owner } }) })
+    save: (db, stored) => Promise.resolve({ write: () => db.nativeMongoDB().collection('projects')
+      .updateOne({ _id: stored._id }, { $set: { owner } }) })
   }).then(({ from, to, ...result }) => (result.error ? result : { ...result, owner: to, previousOwner: from }));
 };
 

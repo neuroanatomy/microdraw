@@ -10,6 +10,8 @@ const { ObjectId } = require('neuroweblab');
 const U = require('../mocha.test.util');
 const admins = require('../../app/controller/admin/admins');
 const lock = require('../../app/controller/projectLock');
+const projectActions = require('../../app/controller/admin/admin.projectActions');
+const { findDeleteEntry } = require('../../app/controller/project/project.delete');
 
 // A3: admin actions on any project (decisions D31): search, delete (as the
 // owner's delete, M3b/D28: annotations marked backup, project logged), restore
@@ -488,6 +490,294 @@ describe('Admin: delete a project, transfer ownership (A3)', function () {
       release();
       await held;
       assert.equal((await action).status, 200);
+    }).timeout(U.shortTimeout);
+  });
+
+  // What the deletes and restores leave in the database, read through the
+  // native driver: the `log` entries, the annotations' marks, the project's
+  // _id (the same ObjectId after a restore).
+  describe('What ends in the database', function () {
+    const native = () => U.getNativeDB();
+    const doc = (shortname) => native().collection('projects')
+      .findOne({ shortname, backup: { $exists: false } });
+    const logEntry = (id) => native().collection('log')
+      .findOne({ _id: new ObjectId(id) });
+    const allAnnotations = (shortname) => native().collection('annotations')
+      .find({ project: shortname })
+      .sort({ _id: 1 })
+      .toArray();
+    const isoDate = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/;
+    // what restoreDeleted and transferProject need of NWL's database
+    const appDb = { mongoDB: () => U.getDB(), nativeMongoDB: () => U.getNativeDB() };
+    const reset = async () => {
+      await cleanup();
+      await U.insertProject(fixtures());
+      await U.insertAnnotations([region('a3owned', 5), region('a3owned', 6, { backup: true }), region('a3owned', 7)]);
+    };
+    // The delete as 3cd20a4 wrote it, through monk: production's existing
+    // delete logs were written this way
+    const monkDelete = async (shortname, username) => {
+      const m = U.getDB();
+      const project = await m.get('projects').findOne({ shortname, backup: { $exists: false } });
+      const annotations = { project: shortname, backup: { $exists: false } };
+      const entry = await m.get('log').insert({
+        key: 'deleteProject',
+        value: {
+          username,
+          shortname,
+          projectId: project._id,
+          project: _.omit(project, ['_id']),
+          annotations: await m.get('annotations').count(annotations)
+        },
+        date: (new Date()).toJSON()
+      });
+      const log = String(entry._id);
+      await m.get('annotations').update(annotations, { $set: { backup: true, deletedWithProject: log } }, { multi: true });
+      await m.get('projects').remove({ shortname });
+
+      return log;
+    };
+
+    it('a delete logs { key, value, date } with the project, its ObjectId and the count, and marks only the current annotations', async function () {
+      const before = await doc('a3histopath');
+      const { version } = await found('a3histopath');
+      const res = await post('/admin/json/projects/delete', { project: 'a3histopath', version });
+      assert.equal(res.status, 200, res.text);
+      assert.deepEqual(Object.keys(res.body), ['success', 'log', 'annotations']);
+
+      const logged = await logEntry(res.body.log);
+      assert.instanceOf(logged._id, ObjectId);
+      assert.deepEqual(Object.keys(logged), ['_id', 'key', 'value', 'date']);
+      assert.equal(logged.key, 'adminDeleteProject');
+      assert.match(logged.date, isoDate);
+      assert.deepEqual(Object.keys(logged.value), ['username', 'shortname', 'projectId', 'project', 'annotations']);
+      assert.instanceOf(logged.value.projectId, ObjectId);
+      assert.equal(String(logged.value.projectId), String(before._id));
+      assert.deepEqual(_.omit(logged.value, ['projectId', 'project']), {
+        username: admin.username,
+        shortname: 'a3histopath',
+        annotations: 3
+      });
+      assert.deepEqual(logged.value.project, _.omit(before, ['_id']));
+
+      assert.isNull(await doc('a3histopath'));
+      const anns = await allAnnotations('a3histopath');
+      assert.lengthOf(anns, 4);
+      anns.slice(0, 3).forEach((a) => assert.deepInclude(a, { backup: true, deletedWithProject: res.body.log }));
+      assert.isTrue(anns[3].backup);
+      assert.notProperty(anns[3], 'deletedWithProject', 'the older backup is not marked');
+    }).timeout(U.shortTimeout);
+
+    it('the owner\'s delete and the admin\'s delete leave the same database', async function () {
+      const effect = async (deleteIt, username, key) => {
+        await reset();
+        const before = await doc('a3owned');
+        const res = await deleteIt();
+        assert.equal(res.status, 200, res.text);
+        const logged = await logEntry(res.body.log);
+        assert.equal(logged.key, key);
+        assert.equal(logged.value.username, username);
+        assert.instanceOf(logged.value.projectId, ObjectId);
+        assert.equal(String(logged.value.projectId), String(before._id));
+        const anns = await allAnnotations('a3owned');
+
+        return {
+          log: { ..._.omit(logged, ['_id', 'key', 'date']), value: _.omit(logged.value, ['username', 'projectId']) },
+          annotations: anns.map((a) => ({ ..._.omit(a, ['_id']), ...(a.deletedWithProject ? { deletedWithProject: a.deletedWithProject === res.body.log } : {}) })),
+          project: await native().collection('projects')
+            .countDocuments({ shortname: 'a3owned' })
+        };
+      };
+      const byOwner = await effect(() => agents[owner.username].delete('/project/json/a3owned'), owner.username, 'deleteProject');
+      const byAdmin = await effect(async () => post('/admin/json/projects/delete', { project: 'a3owned', version: (await found('a3owned')).version }), admin.username, 'adminDeleteProject');
+      assert.deepEqual(byAdmin, byOwner);
+      assert.equal(byOwner.project, 0);
+      assert.equal(byOwner.log.value.annotations, 2);
+      assert.deepEqual(byOwner.annotations.map((a) => [a.backup, 'deletedWithProject' in a]), [[true, true], [true, false], [true, true]]);
+    }).timeout(U.mediumTimeout);
+
+    it('a restore puts the project back under its ObjectId, logs it, and unmarks only what the delete marked', async function () {
+      const before = await doc('a3histopath');
+      const annotations = await allAnnotations('a3histopath');
+      const { version } = await found('a3histopath');
+      const deleted = await post('/admin/json/projects/delete', { project: 'a3histopath', version });
+      const deleteEntry = await logEntry(deleted.body.log);
+
+      const res = await post('/admin/json/projects/restore-deleted', { log: deleted.body.log });
+      assert.equal(res.status, 200, res.text);
+      assert.deepEqual(res.body, { success: true, shortname: 'a3histopath', annotations: 3, version });
+      const after = await doc('a3histopath');
+      assert.instanceOf(after._id, ObjectId);
+      assert.equal(String(after._id), String(before._id));
+      assert.deepEqual(after, before);
+      assert.deepEqual(await allAnnotations('a3histopath'), annotations, 'marks removed, the older backup stays a backup');
+
+      const [restoreLog] = await native().collection('log')
+        .find({ key: 'adminRestoreDeletedProject', 'value.shortname': 'a3histopath' })
+        .toArray();
+      assert.instanceOf(restoreLog._id, ObjectId);
+      assert.deepEqual(Object.keys(restoreLog), ['_id', 'key', 'value', 'date']);
+      assert.match(restoreLog.date, isoDate);
+      assert.deepEqual(restoreLog.value, { username: admin.username, shortname: 'a3histopath', restored: deleted.body.log, annotations: 3 });
+      const deleteAfter = await logEntry(deleted.body.log);
+      assert.deepEqual(Object.keys(deleteAfter.value), ['username', 'shortname', 'projectId', 'project', 'annotations', 'restored']);
+      assert.deepEqual(deleteAfter, { ...deleteEntry, value: { ...deleteEntry.value, restored: String(restoreLog._id) } });
+    }).timeout(U.shortTimeout);
+
+    it('restores a delete logged through monk (as 3cd20a4 did) under the same ObjectId', async function () {
+      const before = await doc('a3histopath');
+      const annotations = await allAnnotations('a3histopath');
+      const { version } = await found('a3histopath');
+      const log = await monkDelete('a3histopath', 'a3-voyageour');
+      const logged = await logEntry(log);
+      assert.instanceOf(logged.value.projectId, ObjectId);
+      assert.equal(logged.value.annotations, 3);
+      assert.isNull(await doc('a3histopath'));
+
+      const res = await post('/admin/json/projects/restore-deleted', { log });
+      assert.equal(res.status, 200, res.text);
+      assert.deepEqual(res.body, { success: true, shortname: 'a3histopath', annotations: 3, version });
+      const after = await doc('a3histopath');
+      assert.instanceOf(after._id, ObjectId);
+      assert.equal(String(after._id), String(before._id));
+      assert.deepEqual(after, before);
+      assert.deepEqual(await allAnnotations('a3histopath'), annotations);
+      assert.isString((await logEntry(log)).value.restored);
+    }).timeout(U.shortTimeout);
+
+    it('a second restore (409) changes nothing', async function () {
+      const { version } = await found('a3histopath');
+      const deleted = await post('/admin/json/projects/delete', { project: 'a3histopath', version });
+      assert.equal((await post('/admin/json/projects/restore-deleted', { log: deleted.body.log })).status, 200);
+      const entries = await native().collection('log')
+        .find({ 'value.shortname': 'a3histopath' })
+        .toArray();
+      const annotations = await allAnnotations('a3histopath');
+      const project = await doc('a3histopath');
+      const again = await post('/admin/json/projects/restore-deleted', { log: deleted.body.log });
+      assert.equal(again.status, 409);
+      assert.deepEqual(await native().collection('log')
+        .find({ 'value.shortname': 'a3histopath' })
+        .toArray(), entries);
+      assert.deepEqual(await allAnnotations('a3histopath'), annotations);
+      assert.deepEqual(await doc('a3histopath'), project);
+    }).timeout(U.shortTimeout);
+
+    it('a refused restore (409, the shortname exists again) writes nothing', async function () {
+      const { version } = await found('a3histopath');
+      const deleted = await post('/admin/json/projects/delete', { project: 'a3histopath', version });
+      await U.insertProject({ ...histoPath(), name: 'a new one' });
+      const deleteEntry = await logEntry(deleted.body.log);
+      const annotations = await allAnnotations('a3histopath');
+      const res = await post('/admin/json/projects/restore-deleted', { log: deleted.body.log });
+      assert.equal(res.status, 409);
+      assert.deepEqual(await logEntry(deleted.body.log), deleteEntry);
+      assert.deepEqual(await allAnnotations('a3histopath'), annotations);
+      assert.equal(await native().collection('log')
+        .countDocuments({ key: 'adminRestoreDeletedProject', 'value.shortname': 'a3histopath' }), 0);
+    }).timeout(U.shortTimeout);
+
+    it('a refused delete (409, changed version) writes nothing', async function () {
+      const { version } = await found('a3histopath');
+      await native().collection('projects')
+        .updateOne({ shortname: 'a3histopath' }, { $set: { description: 'changed meanwhile' } });
+      const annotations = await allAnnotations('a3histopath');
+      const res = await post('/admin/json/projects/delete', { project: 'a3histopath', version });
+      assert.equal(res.status, 409);
+      assert.deepEqual(await allAnnotations('a3histopath'), annotations);
+      assert.equal(await native().collection('log')
+        .countDocuments({ 'value.shortname': 'a3histopath' }), 0);
+    }).timeout(U.shortTimeout);
+
+    it('answers 404 for a log id in capitals, of another length, or not a string', async function () {
+      const { version } = await found('a3histopath');
+      const deleted = await post('/admin/json/projects/delete', { project: 'a3histopath', version });
+      let res = await post('/admin/json/projects/restore-deleted', { log: deleted.body.log.toUpperCase() });
+      assert.equal(res.status, 404, 'capitals');
+      res = await post('/admin/json/projects/restore-deleted', { log: `${deleted.body.log}0` });
+      assert.equal(res.status, 404, 'too long');
+      res = await post('/admin/json/projects/restore-deleted', { log: 'zzzzzzzzzzzzzzzzzzzzzzzz' });
+      assert.equal(res.status, 404, '24 non-hex');
+      for (const logId of [12345, null, [deleted.body.log], { $ne: null }, deleted.body.log.toUpperCase(), 'not-an-id']) {
+        // eslint-disable-next-line no-await-in-loop
+        const result = await projectActions.restoreDeleted(appDb, { logId, username: admin.username });
+        assert.equal(result.status, 404, JSON.stringify(logId));
+      }
+      // no database access for an id that cannot be one
+      const noDb = new Proxy({}, { get: () => { throw new Error('database used'); } });
+      for (const logId of [12345, deleted.body.log.toUpperCase(), 'zzzzzzzzzzzzzzzzzzzzzzzz', '']) {
+        // eslint-disable-next-line no-await-in-loop
+        assert.isNull(await findDeleteEntry(noDb, logId));
+      }
+      assert.isNull(await doc('a3histopath'), 'still deleted');
+      res = await post('/admin/json/projects/restore-deleted', { log: deleted.body.log });
+      assert.equal(res.status, 200, 'the id in lowercase');
+    }).timeout(U.shortTimeout);
+
+    it('a search lists maxFound (20) projects in shortname order, and says there were more', async function () {
+      const many = _.range(22).map((n) => ({ ...owned(), name: `A3 many ${n}`, shortname: `a3many${String(n).padStart(2, '0')}` }));
+      const names = many.map((p) => p.shortname);
+      try {
+        await U.insertProject(_.shuffle(many));
+        let res = await get('/admin/json/projects/search', { q: 'a3many' });
+        assert.equal(res.status, 200, res.text);
+        assert.deepEqual(res.body.list.map((p) => p.shortname), names.slice(0, 20));
+        assert.isTrue(res.body.more);
+        await native().collection('projects')
+          .deleteMany({ shortname: { $in: names.slice(20) } });
+        res = await get('/admin/json/projects/search', { q: 'a3many' });
+        assert.lengthOf(res.body.list, 20);
+        assert.isFalse(res.body.more);
+        res = await get('/admin/json/projects/search', { q: 'A3 MANY 1' });
+        assert.deepEqual(res.body.list.map((p) => p.shortname), ['a3many01', ...names.slice(10, 20)].sort());
+        assert.isFalse(res.body.more);
+      } finally {
+        await native().collection('projects')
+          .deleteMany({ shortname: { $in: names } });
+      }
+    }).timeout(U.shortTimeout);
+
+    it('the search counts only current annotations, and reads the users for ownerExists', async function () {
+      const res = await get('/admin/json/projects/search', { q: 'a3' });
+      const byName = _.keyBy(res.body.list.filter((p) => shortnames.includes(p.shortname)), 'shortname');
+      assert.deepEqual(_.mapValues(byName, (p) => [p.ownerExists, p.counts.annotations]), {
+        a3histopath: [false, 3],
+        a3noanyone: [false, 0],
+        a3owned: [true, 1]
+      });
+    }).timeout(U.shortTimeout);
+
+    // The flows read and write through the native driver only
+    it('search, delete, restore and transfer make no monk call', async function () {
+      const calls = ['projects', 'log', 'annotations', 'users'].flatMap((name) => ['find', 'findOne', 'aggregate', 'distinct', 'count', 'insert', 'update', 'remove'].map((method) => [name, method]));
+      await U.withoutMonkReads(calls, async () => {
+        const { version } = await found('a3histopath');
+        const deleted = await post('/admin/json/projects/delete', { project: 'a3histopath', version });
+        assert.equal(deleted.status, 200, deleted.text);
+        const restored = await post('/admin/json/projects/restore-deleted', { log: deleted.body.log });
+        assert.equal(restored.status, 200, restored.text);
+        const transferred = await post('/admin/json/projects/transfer', { project: 'a3histopath', version, owner: owner.username });
+        assert.equal(transferred.status, 200, transferred.text);
+        const byOwner = await agents[owner.username].delete('/project/json/a3owned');
+        assert.equal(byOwner.status, 200, byOwner.text);
+        const back = await projectActions.restoreDeleted(appDb, { logId: byOwner.body.log, username: admin.username });
+        assert.equal(back.annotations, 1);
+      });
+    }).timeout(U.shortTimeout);
+
+    // monk refused keys with '.' or starting with '$' in the log insert
+    it('deletes and restores a project holding a key with a dot or a dollar', async function () {
+      await U.removeProject('a3histopath');
+      await native().collection('projects')
+        .insertOne({ ...histoPath(), extra: { 'a.b': 1, '$c': 2 } });
+      const before = await doc('a3histopath');
+      assert.deepEqual(before.extra, { 'a.b': 1, '$c': 2 });
+      const { version } = await found('a3histopath');
+      const deleted = await post('/admin/json/projects/delete', { project: 'a3histopath', version });
+      assert.equal(deleted.status, 200, deleted.text);
+      const res = await post('/admin/json/projects/restore-deleted', { log: deleted.body.log });
+      assert.equal(res.status, 200, res.text);
+      assert.deepEqual(await doc('a3histopath'), before);
     }).timeout(U.shortTimeout);
   });
 });

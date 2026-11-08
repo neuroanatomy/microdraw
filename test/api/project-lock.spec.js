@@ -5,6 +5,7 @@ const chai = require('chai');
 const chaiHttp = require('chai-http');
 chai.use(chaiHttp);
 const { assert } = chai;
+const { ObjectId } = require('neuroweblab');
 const U = require('../mocha.test.util');
 const lock = require('../../app/controller/projectLock');
 const adminAnnotations = require('../../app/controller/admin/admin.annotations');
@@ -153,6 +154,8 @@ describe('Project lock and project deletion (M3)', function () {
         region(fileID, 'm3bkeep', 4)
       ]);
 
+      const before = await U.getNativeDB().collection('projects')
+        .findOne({ shortname: 'm3bdelete' });
       const res = await agent.delete('/project/json/m3bdelete');
       assert.equal(res.status, 200, res.text);
       assert.isTrue(res.body.success);
@@ -171,6 +174,12 @@ describe('Project lock and project deletion (M3)', function () {
       assert.equal(entry.value.username, owner.username);
       assert.equal(entry.value.annotations, 2);
       assert.equal(entry.value.project.name, 'M3b m3bdelete');
+      // read through the native driver: the project's own ObjectId is logged
+      const logged = await U.getNativeDB().collection('log')
+        .findOne({ _id: new ObjectId(res.body.log) });
+      assert.instanceOf(logged.value.projectId, ObjectId);
+      assert.equal(String(logged.value.projectId), String(before._id));
+      assert.notProperty(logged.value.project, '_id');
 
       // the viewer no longer gets them, and they are not orphans for the admin page
       const viewer = await agent.get('/api').query({ source: img, slice: 0, project: 'm3bdelete' });
