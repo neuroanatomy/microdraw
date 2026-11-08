@@ -4,7 +4,7 @@ const chai = require('chai');
 const chaiHttp = require('chai-http');
 chai.use(chaiHttp);
 const { assert } = chai;
-const monk = require('monk');
+const { ObjectId } = require('neuroweblab');
 const U = require('../mocha.test.util');
 const { newestAnnotations } = require('../../app/controller/user/lastModified');
 
@@ -16,7 +16,7 @@ const editor = { username: 'api-modified-editor', password: 'api-modified-editor
 const PREFIX = 'apimodified';
 
 // An ObjectId made at `iso` (seconds), as the one of an annotation saved then
-const idAt = (iso) => monk.id(Math.floor(Date.parse(iso) / 1000).toString(16)
+const idAt = (iso) => new ObjectId(Math.floor(Date.parse(iso) / 1000).toString(16)
   .padStart(8, '0') + '0000000000000000');
 
 const annotationAt = (project, iso, extra = {}) => ({
@@ -69,10 +69,10 @@ const byName = (res, shortname) => res.body.list.find((p) => p.shortname === sho
 
 const removeAll = async () => {
   const ours = { $regex: `^${PREFIX}` };
-  await U.getDB().get('projects')
-    .remove({ shortname: ours });
-  await U.getDB().get('annotations')
-    .remove({ project: ours });
+  await U.getDB().collection('projects')
+    .deleteMany({ shortname: ours });
+  await U.getDB().collection('annotations')
+    .deleteMany({ project: ours });
 };
 
 describe('Last modified of a project (save date, newest annotation)', function () {

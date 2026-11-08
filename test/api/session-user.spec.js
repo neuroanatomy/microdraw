@@ -97,8 +97,8 @@ describe('Login session with NeuroWebLab 0.2.0 (P1)', function () {
   // eslint-disable-next-line max-statements -- one scenario, step by step
   it('a session stored in the old shape (whole user document) is read reduced', async function () {
     const agent = await U.logIn(credentials);
-    const sessions = U.getDB().get('sessions');
-    const stored = (await sessions.find({})).find((s) => {
+    const sessions = U.getDB().collection('sessions');
+    const stored = (await sessions.find({}).toArray()).find((s) => {
       const data = typeof s.session === 'string' ? JSON.parse(s.session) : s.session;
 
       return data.passport && data.passport.user && data.passport.user.username === credentials.username;
@@ -112,10 +112,11 @@ describe('Login session with NeuroWebLab 0.2.0 (P1)', function () {
       _json: { login: credentials.username },
       photos: [{ value: 'x' }]
     };
-    await sessions.update({ _id: stored._id }, {
+    // session ids are strings, not ObjectIds
+    await sessions.updateOne({ _id: stored._id }, {
       $set: { session: typeof stored.session === 'string' ? JSON.stringify(data) : data }
-    }, { castIds: false }); // session ids are strings, not ObjectIds
-    const rewritten = await sessions.findOne({ _id: stored._id }, { castIds: false });
+    });
+    const rewritten = await sessions.findOne({ _id: stored._id });
     assert.include(JSON.stringify(rewritten.session), 'passhash', 'the stored session has the old shape');
 
     const res = await agent.get(`/user/${credentials.username}`);

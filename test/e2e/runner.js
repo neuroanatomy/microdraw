@@ -10,8 +10,8 @@ before(async function () {
   // Annotations left on the test images by an earlier run whose after hooks
   // did not run (e.g. the browser died): the next run would load them, as
   // extra regions, in every spec that opens the same image.
-  await U.getDB().get('annotations')
-    .remove({ fileID: /^\/test_data\// });
+  await U.getDB().collection('annotations')
+    .deleteMany({ fileID: /^\/test_data\// });
   await H.startBrowser();
 });
 

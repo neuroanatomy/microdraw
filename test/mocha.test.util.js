@@ -5,7 +5,7 @@ const microdrawApp = require('../app/app');
 
 chai.use(chaiHttp);
 
-let appServer, db, nativeDb, nwlDb, wsServer;
+let appServer, db, nwlDb, wsServer;
 let serverPort = 3000;
 
 // permissions.spec.js cookies against 127.0.0.1, the browser specs localhost.
@@ -22,8 +22,12 @@ const initResources = async () => {
   ({ server: appServer, app, wsServer, port } = await microdrawApp.start());
   serverPort = port;
   nwlDb = app.db;
-  db = nwlDb.mongoDB();
-  nativeDb = nwlDb.nativeMongoDB();
+  db = nwlDb.nativeMongoDB();
+  // microdraw reads and writes through the native driver only: any app code
+  // that asks NWL for its legacy driver instance fails every test reaching it.
+  nwlDb.mongoDB = () => {
+    throw new Error('app.db.mongoDB() called: microdraw uses app.db.nativeMongoDB() only');
+  };
 };
 
 const closeServer = (server) =>
@@ -51,25 +55,23 @@ const closeResources = async () => {
 
 const getServer = () => appServer;
 
-// The Monk database of the running app (the test DB), for fixtures, and its native Db.
+// The native Db of the running app (the test DB), for fixtures. getNativeDB
+// is the same Db, under the name the earlier specs used.
 const getDB = () => db;
-const getNativeDB = () => nativeDb;
+const getNativeDB = () => db;
 
-// Runs fn with monk reads made to fail, as [[collection, method]]: the proof
-// that a flow reads through the native driver, since a monk object also has
-// `collection` (an alias of `get`) and its distinct takes the same arguments.
-const withoutMonkReads = async (reads, fn) => {
-  const originals = reads.map(([name, method]) => [db.get(name), method, db.get(name)[method]]);
-  for (const [collection, method] of originals) {
-    collection[method] = () => Promise.reject(new Error(`monk read: ${collection.name}.${method}`));
-  }
-  try {
-    return await fn();
-  } finally {
-    for (const [collection, method, original] of originals) {
-      collection[method] = original;
+// Inserts one document or an array of them and returns what was passed, with
+// its _id set by the driver (an empty array inserts nothing).
+const insertDocs = async (name, docs) => {
+  if (Array.isArray(docs)) {
+    if (docs.length > 0) {
+      await db.collection(name).insertMany(docs);
     }
+  } else {
+    await db.collection(name).insertOne(docs);
   }
+
+  return docs;
 };
 
 const width = 800;
@@ -92,50 +94,51 @@ const testingCredentials = {
 };
 
 const insertUser = function (user) {
-  return db.get('users').insert(user);
+  return insertDocs('users', user);
 };
 
 const insertProject = function (project) {
-  return db.get('projects').insert(project);
+  return insertDocs('projects', project);
 };
 
 const queryProject = function (shortname) {
-  return db.get('projects').findOne({ shortname, backup: { $exists: 0 } });
+  return db.collection('projects').findOne({ shortname, backup: { $exists: 0 } });
 };
 
 const removeLocalUser = function (username) {
-  return db.get('users').remove({ username });
+  return db.collection('users').deleteMany({ username });
 };
 
 const removeUser = function (nickname) {
-  return db.get('users').remove({ nickname });
+  return db.collection('users').deleteMany({ nickname });
 };
 
 const removeProject = function (shortname) {
-  return db.get('projects').remove({ shortname });
+  return db.collection('projects').deleteMany({ shortname });
 };
 
 // Annotation documents written straight to the database, e.g. ones saved
 // outside a project before H3.
 const insertAnnotations = function (docs) {
-  return db.get('annotations').insert(docs);
+  return insertDocs('annotations', docs);
 };
 
 // Current (non-backup) annotation documents matching `query`.
 const findAnnotations = function (query) {
-  return db.get('annotations').find(Object.assign({ backup: { $exists: false } }, query));
+  return db.collection('annotations').find(Object.assign({ backup: { $exists: false } }, query))
+    .toArray();
 };
 
 // Annotations saved in a project, all sources and versions (test data only).
 const removeProjectAnnotations = function (shortname) {
-  return db.get('annotations').remove({ project: shortname });
+  return db.collection('annotations').deleteMany({ project: shortname });
 };
 
 // Annotations saved for a source, all slices and versions (test data only).
 const removeAnnotations = function (source) {
   const escaped = source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-  return db.get('annotations').remove({ fileID: new RegExp(`^${escaped}&slice=`) });
+  return db.collection('annotations').deleteMany({ fileID: new RegExp(`^${escaped}&slice=`) });
 };
 
 // Sign up a local user. Since NeuroWebLab 0.2.0, /localSignup answers 200
@@ -306,7 +309,6 @@ module.exports = {
   getServer,
   getDB,
   getNativeDB,
-  withoutMonkReads,
   parseCookies,
   url,
   testingCredentials,

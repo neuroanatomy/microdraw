@@ -134,10 +134,11 @@ describe('Admin: projects that don\'t validate (A2)', function () {
     .query({ token: tokens[user.username] })
     .send(body);
   const db = () => U.getDB();
-  const stored = (shortname) => db().get('projects')
+  const stored = (shortname) => db().collection('projects')
     .findOne({ shortname }, { projection: { _id: 0 } });
-  const logs = (shortname) => db().get('log')
-    .find({ key: /^admin/, 'value.shortname': shortname });
+  const logs = (shortname) => db().collection('log')
+    .find({ key: /^admin/, 'value.shortname': shortname })
+    .toArray();
 
   const script = path.join(__dirname, '../../scripts/check-projects.js');
   const runScript = (args) => new Promise((resolve) => {
@@ -155,8 +156,8 @@ describe('Admin: projects that don\'t validate (A2)', function () {
 
   const cleanup = async () => {
     await Promise.all(shortnames.map((s) => U.removeProject(s)));
-    await db().get('log')
-      .remove({ key: /^admin/, 'value.shortname': { $in: shortnames } });
+    await db().collection('log')
+      .deleteMany({ key: /^admin/, 'value.shortname': { $in: shortnames } });
   };
 
   before(async function () {
@@ -276,8 +277,8 @@ describe('Admin: projects that don\'t validate (A2)', function () {
         return { total: body.total, refused: body.refused, listed: body.list.filter((p) => p.shortname === 'a2noanyone').length };
       };
       const before = await counts();
-      assert.equal(before.total, await db().get('projects')
-        .count({ backup: { $exists: false } }));
+      assert.equal(before.total, await db().collection('projects')
+        .countDocuments({ backup: { $exists: false } }));
       assert.isAtLeast(before.refused, 1);
       assert.equal(before.listed, 1);
 
@@ -315,20 +316,19 @@ describe('Admin: projects that don\'t validate (A2)', function () {
     }).timeout(U.mediumTimeout);
 
     it('reads through the native driver', async function () {
-      const res = await U.withoutMonkReads([['users', 'distinct'], ['projects', 'find']], () => get('/admin/json/projects/invalid'));
+      const res = await get('/admin/json/projects/invalid');
       assert.equal(res.status, 200, res.text);
       assert.isAtLeast(res.body.total, 1);
     }).timeout(U.shortTimeout);
 
-    // The list reads natively, the fixes through monk until they move.
     it('a version listed is the one a fix computes, whatever the stored types', async function () {
-      await db().get('projects')
-        .update(
+      await db().collection('projects')
+        .updateOne(
           { shortname: 'a2blank' },
-          { $set: { date: new Date(0), id: db().id('0123456789abcdef01234567'), numbers: [1, 1.5, null, 2 ** 40] } }
+          { $set: { date: new Date(0), id: new ObjectId('0123456789abcdef01234567'), numbers: [1, 1.5, null, 2 ** 40] } }
         );
       const { version } = await entry('a2blank');
-      assert.equal(version, projectVersion(await db().get('projects')
+      assert.equal(version, projectVersion(await db().collection('projects')
         .findOne({ shortname: 'a2blank' })));
     }).timeout(U.shortTimeout);
   });
@@ -364,8 +364,8 @@ describe('Admin: projects that don\'t validate (A2)', function () {
 
     it('refuses with 409 if the project changed since it was listed, and changes nothing', async function () {
       const { version } = await entry('a2blank');
-      await db().get('projects')
-        .update({ shortname: 'a2blank' }, { $set: { description: 'changed by its owner' } });
+      await db().collection('projects')
+        .updateOne({ shortname: 'a2blank' }, { $set: { description: 'changed by its owner' } });
       const res = await post('/admin/json/projects/remove-blank-rows', { project: 'a2blank', version });
       assert.equal(res.status, 409);
       assert.lengthOf((await stored('a2blank')).files.list, 5);
@@ -411,7 +411,7 @@ describe('Admin: projects that don\'t validate (A2)', function () {
   describe('the validation of a fix', function () {
     it('checks the users through the native driver', async function () {
       const { version } = await entry('a2blank');
-      const res = await U.withoutMonkReads([['users', 'distinct']], () => post('/admin/json/projects/remove-blank-rows', { project: 'a2blank', version }));
+      const res = await post('/admin/json/projects/remove-blank-rows', { project: 'a2blank', version });
       assert.equal(res.status, 200, res.text);
     }).timeout(U.shortTimeout);
   });
@@ -448,8 +448,8 @@ describe('Admin: projects that don\'t validate (A2)', function () {
         assert.equal(res.status, 400, JSON.stringify(names));
       }
       assert.deepEqual((await stored('a2unnamed')).annotations, fixtures()[0].annotations);
-      await db().get('projects')
-        .update({ shortname: 'a2unnamed' }, { $set: { name: 'renamed meanwhile' } });
+      await db().collection('projects')
+        .updateOne({ shortname: 'a2unnamed' }, { $set: { name: 'renamed meanwhile' } });
       const res = await post('/admin/json/projects/name-layers', { project: 'a2unnamed', version, names: { 0: 'Cortex' } });
       assert.equal(res.status, 409);
       assert.lengthOf(await logs('a2unnamed'), 0);
@@ -457,8 +457,8 @@ describe('Admin: projects that don\'t validate (A2)', function () {
     // F1: the save check and this fix use one function: a stored duplicate
     // does not block naming another layer, a new name may not repeat one
     it('agrees with project saves on duplicate names: stored duplicates are accepted, new ones refused', async function () {
-      await db().get('projects')
-        .update({ shortname: 'a2unnamed' }, { $push: { 'annotations.list': { type: 'vectorial', name: 'layer 1 ', values: '', display: true } } });
+      await db().collection('projects')
+        .updateOne({ shortname: 'a2unnamed' }, { $push: { 'annotations.list': { type: 'vectorial', name: 'layer 1 ', values: '', display: true } } });
       const { version } = await entry('a2unnamed');
       let res = await post('/admin/json/projects/name-layers', { project: 'a2unnamed', version, names: { 0: 'LAYER 1' } });
       assert.equal(res.status, 400);
@@ -490,8 +490,8 @@ describe('Admin: projects that don\'t validate (A2)', function () {
       const { version } = await entry('a2unnamed');
       const named = await post('/admin/json/projects/name-layers', { project: 'a2unnamed', version, names: { 0: 'Cortex', 2: 'Notes' } });
       assert.equal(named.status, 200);
-      await db().get('projects')
-        .update({ shortname: 'a2unnamed' }, { $set: { description: 'edited after the fix' } });
+      await db().collection('projects')
+        .updateOne({ shortname: 'a2unnamed' }, { $set: { description: 'edited after the fix' } });
       const res = await post('/admin/json/projects/restore', { log: named.body.log });
       assert.equal(res.status, 409);
       assert.equal((await stored('a2unnamed')).annotations.list[0].name, 'Cortex');
@@ -521,7 +521,7 @@ describe('Admin: projects that don\'t validate (A2)', function () {
       .toArray();
     const isoDate = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/;
     // what changeProject and restoreProject need of NWL's database
-    const appDb = { mongoDB: () => U.getDB(), nativeMongoDB: () => U.getNativeDB() };
+    const appDb = { nativeMongoDB: () => U.getNativeDB() };
     const assertSameDocument = (actual, expected) => {
       assert.instanceOf(actual._id, ObjectId);
       assert.equal(String(actual._id), String(expected._id));
@@ -688,7 +688,7 @@ describe('Admin: projects that don\'t validate (A2)', function () {
       const afterFix = await doc('a2blank');
       const { insertedId } = await native().collection('log')
         .insertOne({ key: 'adminRemoveOrphans', value: { shortname: 'a2blank' }, date: (new Date()).toJSON() });
-      // one letter in capitals: monk.id and toId would find the entry
+      // one letter in capitals: ObjectId and toId would find the entry
       const capitalised = fixed.body.log.replace(/[a-f](?=[^a-f]*$)/, (c) => c.toUpperCase());
       assert.notEqual(capitalised, fixed.body.log);
       const bad = [
@@ -712,8 +712,9 @@ describe('Admin: projects that don\'t validate (A2)', function () {
       assert.equal(res.status, 200, res.text);
     }).timeout(U.mediumTimeout);
 
-    // Read through monk and saved through NWL's native upsertProject, a
-    // project holding an ObjectId gave 500 (BSONVersionError)
+    // Before 3cd20a4 (read through the legacy driver, saved through NWL's
+    // native upsertProject), a project holding an ObjectId gave 500
+    // (BSONVersionError)
     it('fixes a project that holds an ObjectId, and keeps it one', async function () {
       const held = new ObjectId('0123456789abcdef01234567');
       await native().collection('projects')
@@ -731,18 +732,15 @@ describe('Admin: projects that don\'t validate (A2)', function () {
       assert.instanceOf((await doc('a2unnamed')).ref, ObjectId);
     }).timeout(U.shortTimeout);
 
-    it('goes through no monk read or write', async function () {
-      const calls = [['projects', 'findOne'], ['projects', 'update'], ['log', 'insert'], ['log', 'update'], ['log', 'findOne']];
-      await U.withoutMonkReads(calls, async () => {
-        const blank = await entry('a2blank');
-        const removed = await post('/admin/json/projects/remove-blank-rows', { project: 'a2blank', version: blank.version });
-        assert.equal(removed.status, 200, removed.text);
-        const unnamed = await entry('a2unnamed');
-        const named = await post('/admin/json/projects/name-layers', { project: 'a2unnamed', version: unnamed.version, names: { 0: 'Cortex', 2: 'Notes' } });
-        assert.equal(named.status, 200, named.text);
-        const restored = await post('/admin/json/projects/restore', { log: removed.body.log });
-        assert.equal(restored.status, 200, restored.text);
-      });
+    it('fixes and restores, one after the other', async function () {
+      const blank = await entry('a2blank');
+      const removed = await post('/admin/json/projects/remove-blank-rows', { project: 'a2blank', version: blank.version });
+      assert.equal(removed.status, 200, removed.text);
+      const unnamed = await entry('a2unnamed');
+      const named = await post('/admin/json/projects/name-layers', { project: 'a2unnamed', version: unnamed.version, names: { 0: 'Cortex', 2: 'Notes' } });
+      assert.equal(named.status, 200, named.text);
+      const restored = await post('/admin/json/projects/restore', { log: removed.body.log });
+      assert.equal(restored.status, 200, restored.text);
     }).timeout(U.shortTimeout);
   });
 });

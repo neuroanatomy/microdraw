@@ -34,8 +34,8 @@ const project = ([shortname, name]) => {
   return p;
 };
 
-const removeAll = () => U.getDB().get('projects')
-  .remove({ shortname: { $regex: `^${PREFIX}` } });
+const removeAll = () => U.getDB().collection('projects')
+  .deleteMany({ shortname: { $regex: `^${PREFIX}` } });
 
 describe('User page: the Name column', () => {
   let context;

@@ -60,8 +60,8 @@ const dateCellOf = (projectName) => {
   return { text: tr.cells[4].textContent.trim(), title: tr.cells[4].getAttribute('title') };
 };
 
-const removeAll = () => U.getDB().get('projects')
-  .remove({ shortname: { $regex: `^${PREFIX}` } });
+const removeAll = () => U.getDB().collection('projects')
+  .deleteMany({ shortname: { $regex: `^${PREFIX}` } });
 
 // eslint-disable-next-line max-statements -- one page, one `it` per column
 describe('User page: all projects, sortable columns', () => {

@@ -60,10 +60,10 @@ describe('Project lock and project deletion (M3)', function () {
     await Promise.all([
       ...shortnames.map((s) => U.removeProject(s)),
       ...shortnames.map((s) => U.removeProjectAnnotations(s)),
-      U.getDB().get('annotations')
-        .remove({ fileID: /^m3b-/ }),
-      U.getDB().get('log')
-        .remove({ 'value.shortname': { $in: shortnames } }),
+      U.getDB().collection('annotations')
+        .deleteMany({ fileID: /^m3b-/ }),
+      U.getDB().collection('log')
+        .deleteMany({ 'value.shortname': { $in: shortnames } }),
       U.removeLocalUser(owner.username),
       U.removeLocalUser(stranger.username)
     ]);
@@ -115,8 +115,9 @@ describe('Project lock and project deletion (M3)', function () {
       }
       const results = await Promise.all(posts);
       results.forEach((res) => assert.equal(res.status, 200, res.text));
-      const docs = await U.getDB().get('projects')
-        .find({ shortname });
+      const docs = await U.getDB().collection('projects')
+        .find({ shortname })
+        .toArray();
       assert.lengthOf(docs, 1);
     }).timeout(U.shortTimeout);
 
@@ -162,13 +163,14 @@ describe('Project lock and project deletion (M3)', function () {
       assert.isNull(await U.queryProject('m3bdelete'));
 
       assert.lengthOf(await U.findAnnotations({ project: 'm3bdelete' }), 0);
-      const marked = await U.getDB().get('annotations')
-        .find({ project: 'm3bdelete', deletedWithProject: res.body.log });
+      const marked = await U.getDB().collection('annotations')
+        .find({ project: 'm3bdelete', deletedWithProject: res.body.log })
+        .toArray();
       assert.lengthOf(marked, 2, 'the two current documents, not the older backup');
       marked.forEach((doc) => assert.isTrue(doc.backup));
       assert.lengthOf(await U.findAnnotations({ project: 'm3bkeep' }), 1);
 
-      const entry = await U.getDB().get('log')
+      const entry = await U.getDB().collection('log')
         .findOne({ key: 'deleteProject', 'value.shortname': 'm3bdelete' });
       assert.equal(String(entry._id), res.body.log);
       assert.equal(entry.value.username, owner.username);
@@ -223,8 +225,8 @@ describe('Project lock and project deletion (M3)', function () {
       await held;
       const result = await assign;
       assert.equal(result.assigned, 1);
-      await U.getDB().get('log')
-        .remove({ key: 'adminAssignOrphans', 'value.to': 'm3bassign' });
+      await U.getDB().collection('log')
+        .deleteMany({ key: 'adminAssignOrphans', 'value.to': 'm3bassign' });
     }).timeout(U.shortTimeout);
   });
 });

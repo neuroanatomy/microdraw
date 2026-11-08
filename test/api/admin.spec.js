@@ -102,8 +102,8 @@ describe('Admin: orphan annotations (A1)', function () {
   const cleanup = async () => {
     await Promise.all([img1, img2, img3, lookalike].map((s) => U.removeAnnotations(s)));
     await Promise.all([live, otherProject, goneBackup, { shortname: 'a1adminold' }].map((p) => U.removeProject(p.shortname)));
-    await db().get('log')
-      .remove({ key: /^admin/, 'value.fileID': new RegExp('^http://a1-admin-test\\.localhost/') });
+    await db().collection('log')
+      .deleteMany({ key: /^admin/, 'value.fileID': new RegExp('^http://a1-admin-test\\.localhost/') });
   };
 
   before(async function () {
@@ -212,11 +212,12 @@ describe('Admin: orphan annotations (A1)', function () {
       assert.isString(res.body.log);
       assert.notInclude((await orphans(img1)).list.map(groupKey), '0|alice|""');
       // nothing deleted: 3 documents, all backups now
-      const docs = await db().get('annotations')
-        .find({ fileID: aliceEmpty.fileID, user: 'alice', project: '' });
+      const docs = await db().collection('annotations')
+        .find({ fileID: aliceEmpty.fileID, user: 'alice', project: '' })
+        .toArray();
       assert.equal(docs.length, 3);
       assert.isTrue(docs.every((d) => d.backup === true));
-      const logEntry = await db().get('log')
+      const logEntry = await db().collection('log')
         .findOne({ key: 'adminRemoveOrphans', 'value.fileID': aliceEmpty.fileID });
       assert.equal(logEntry.value.username, admin.username);
       assert.lengthOf(logEntry.value.ids, 2);
@@ -226,7 +227,7 @@ describe('Admin: orphan annotations (A1)', function () {
       assert.equal(undo.body.restored, 2);
       const again = (await orphans(img1)).list.find((g) => groupKey(g) === '0|alice|""');
       assert.equal(again.regions, 2, 'the older backup stays a backup');
-      assert.isOk(await db().get('log')
+      assert.isOk(await db().collection('log')
         .findOne({ key: 'adminRestoreOrphans', 'value.username': admin.username, 'value.fileID': aliceEmpty.fileID }));
 
       const twice = await post('/admin/json/orphans/restore', { log: res.body.log });
@@ -275,9 +276,10 @@ describe('Admin: orphan annotations (A1)', function () {
       assert.equal((await U.findAnnotations({ fileID: aliceEmpty.fileID, project: live.shortname })).length, 3);
       assert.notInclude((await orphans(img1)).list.map(groupKey), '0|alice|""');
       // the backup keeps its old project
-      assert.equal((await db().get('annotations')
-        .find({ fileID: aliceEmpty.fileID, project: '' })).length, 1);
-      const logEntry = await db().get('log')
+      assert.equal((await db().collection('annotations')
+        .find({ fileID: aliceEmpty.fileID, project: '' })
+        .toArray()).length, 1);
+      const logEntry = await db().collection('log')
         .findOne({ key: 'adminAssignOrphans', 'value.fileID': aliceEmpty.fileID });
       assert.include(logEntry.value, { username: admin.username, from: '', to: live.shortname });
     }).timeout(U.shortTimeout);
@@ -611,24 +613,17 @@ describe('Admin: orphan annotations (A1)', function () {
     }).timeout(U.shortTimeout);
 
     // eslint-disable-next-line max-statements
-    it('goes through no monk read or write', async function () {
-      const calls = [
-        ['annotations', 'find'], ['annotations', 'aggregate'], ['annotations', 'count'], ['annotations', 'update'],
-        ['projects', 'find'], ['projects', 'findOne'], ['projects', 'distinct'], ['projects', 'update'],
-        ['log', 'findOne'], ['log', 'insert']
-      ];
-      await U.withoutMonkReads(calls, async () => {
-        assert.equal((await orphans(img1)).total, 3);
-        const offered = await get('/admin/json/orphans/projects', { fileID: aliceEmpty.fileID, user: 'alice' });
-        assert.lengthOf(offered.body.list, 1);
-        const removal = await post('/admin/json/orphans/remove', aliceEmpty);
-        assert.equal(removal.status, 200);
-        const undo = await post('/admin/json/orphans/restore', { log: removal.body.log });
-        assert.equal(undo.body.restored, 2);
-        const assign = await post('/admin/json/orphans/assign', { ...carolGone, target: otherProject.shortname, addImage: true });
-        assert.equal(assign.body.assigned, 2);
-        assert.isTrue(assign.body.addedImage);
-      });
+    it('lists, removes, restores and assigns, one after the other', async function () {
+      assert.equal((await orphans(img1)).total, 3);
+      const offered = await get('/admin/json/orphans/projects', { fileID: aliceEmpty.fileID, user: 'alice' });
+      assert.lengthOf(offered.body.list, 1);
+      const removal = await post('/admin/json/orphans/remove', aliceEmpty);
+      assert.equal(removal.status, 200);
+      const undo = await post('/admin/json/orphans/restore', { log: removal.body.log });
+      assert.equal(undo.body.restored, 2);
+      const assign = await post('/admin/json/orphans/assign', { ...carolGone, target: otherProject.shortname, addImage: true });
+      assert.equal(assign.body.assigned, 2);
+      assert.isTrue(assign.body.addedImage);
     }).timeout(U.shortTimeout);
 
     it('splits a fileID at the last &slice=', function () {

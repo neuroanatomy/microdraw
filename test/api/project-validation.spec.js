@@ -295,10 +295,9 @@ describe('Validation of POST /project/json/:projectName (M3)', function () {
 
     it('checks the users through the native driver, for a new and for a stored project', async function () {
       created.push('m3anative');
-      const reads = [['users', 'distinct']];
-      const added = await U.withoutMonkReads(reads, () => post('m3anative', newProject('m3anative')));
+      const added = await post('m3anative', newProject('m3anative'));
       assert.equal(added.status, 200, added.text);
-      const updated = await U.withoutMonkReads(reads, () => postAs(agent, { ...stored(), name: 'read natively' }));
+      const updated = await postAs(agent, { ...stored(), name: 'read natively' });
       assert.equal(updated.status, 200, updated.text);
     }).timeout(U.shortTimeout);
 

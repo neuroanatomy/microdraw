@@ -24,7 +24,7 @@ describe('Local login and tokens', function () {
       const res = await chai.request(U.serverURL).post('/localSignup')
         .send(user);
       assert.equal(res.status, 200);
-      assert.exists(await U.getDB().get('users')
+      assert.exists(await U.getDB().collection('users')
         .findOne({ username: user.username }), 'stored when the answer came');
       const again = await chai.request(U.serverURL).post('/localSignup')
         .send(user);

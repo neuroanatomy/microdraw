@@ -43,12 +43,12 @@ describe('Admin page: projects that don\'t validate (A2)', () => {
 
   const sel = (shortname) => `#invalid-projects div.project[data-shortname="${shortname}"]`;
   const waitFor = (fn, ...args) => page.waitForFunction(fn, { polling: 50, timeout: U.shortTimeout }, ...args);
-  const stored = (shortname) => U.getDB().get('projects')
+  const stored = (shortname) => U.getDB().collection('projects')
     .findOne({ shortname });
   const cleanup = async () => {
     await Promise.all(shortnames.map((s) => U.removeProject(s)));
-    await U.getDB().get('log')
-      .remove({ key: /^admin/, 'value.shortname': { $in: shortnames } });
+    await U.getDB().collection('log')
+      .deleteMany({ key: /^admin/, 'value.shortname': { $in: shortnames } });
   };
 
   before(async () => {

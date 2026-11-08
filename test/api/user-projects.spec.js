@@ -27,8 +27,8 @@ const project = (i) => {
 };
 
 const get = (pathname) => chai.request(U.serverURL).get(pathname);
-const removeAll = () => U.getDB().get('projects')
-  .remove({ shortname: { $regex: `^${PREFIX}` } });
+const removeAll = () => U.getDB().collection('projects')
+  .deleteMany({ shortname: { $regex: `^${PREFIX}` } });
 
 describe('User projects route, paged (/user/json/:userName/projects)', function () {
   before(async function () {

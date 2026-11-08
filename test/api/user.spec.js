@@ -136,8 +136,8 @@ describe('Public user data (/user/json/:userName, /user/:userName)', function ()
       const username = (i) => `api-user-list-${String(i).padStart(2, '0')}`;
       const count = 25;
       const expected = Array.from({ length: count }, (_, i) => username(i));
-      const removeAll = () => U.getDB().get('users')
-        .remove({ name: marker });
+      const removeAll = () => U.getDB().collection('users')
+        .deleteMany({ name: marker });
 
       before(async function () {
         await removeAll();

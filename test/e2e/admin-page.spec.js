@@ -55,8 +55,8 @@ describe('Admin page (A1)', () => {
       await H.closeContext(context);
     } finally {
       await U.removeAnnotations(SOURCE);
-      await U.getDB().get('log')
-        .remove({ key: /^admin/, 'value.fileID': `${SOURCE}&slice=0` });
+      await U.getDB().collection('log')
+        .deleteMany({ key: /^admin/, 'value.fileID': `${SOURCE}&slice=0` });
     }
   });
 

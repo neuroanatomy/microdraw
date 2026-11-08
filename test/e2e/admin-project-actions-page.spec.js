@@ -46,14 +46,14 @@ describe('Admin page: delete a project, transfer ownership (A3)', () => {
   const found = `#project-tools div.project[data-shortname="${histo.shortname}"]`;
   const invalid = `#invalid-projects div.project[data-shortname="${histo.shortname}"]`;
   const waitFor = (fn, ...args) => page.waitForFunction(fn, { polling: 50, timeout: U.shortTimeout }, ...args);
-  const stored = () => U.getDB().get('projects')
+  const stored = () => U.getDB().collection('projects')
     .findOne({ shortname: histo.shortname });
   const current = () => U.findAnnotations({ project: histo.shortname });
   const cleanup = async () => {
     await U.removeProject(histo.shortname);
     await U.removeProjectAnnotations(histo.shortname);
-    await U.getDB().get('log')
-      .remove({ 'value.shortname': histo.shortname });
+    await U.getDB().collection('log')
+      .deleteMany({ 'value.shortname': histo.shortname });
   };
   const search = async () => {
     await page.click('#project-tools input.project-search', { count: 3 });
