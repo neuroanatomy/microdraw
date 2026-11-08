@@ -25,7 +25,6 @@
     "express": "^4.22.3",
     "jsdom": "^16.4.0",
     "lodash": "^4.18.1",
-    "monk": "^7.1.1",
     "multer": "^2.4.0",
     "mustache-express": "^1.3.2",
     "neuroweblab": "github:neuroanatomy/neuroweblab#v0.3.0",
