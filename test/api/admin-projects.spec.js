@@ -3,12 +3,15 @@
 
 const path = require('path');
 const { execFile } = require('child_process');
+const _ = require('lodash');
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 chai.use(chaiHttp);
 const { assert } = chai;
+const { ObjectId } = require('neuroweblab');
 const U = require('../mocha.test.util');
 const admins = require('../../app/controller/admin/admins');
+const adminProjects = require('../../app/controller/admin/admin.projects');
 const lock = require('../../app/controller/projectLock');
 const { projectVersion } = require('../../app/controller/project/project.check');
 
@@ -501,6 +504,245 @@ describe('Admin: projects that don\'t validate (A2)', function () {
       assert.equal(res.status, 404);
       res = await post('/admin/json/projects/restore', { log: 'not-an-id' });
       assert.equal(res.status, 404);
+    }).timeout(U.shortTimeout);
+  });
+
+  // What the fixes and restore leave in the database, read through the
+  // native driver: the project document (same ObjectId), and the `log`
+  // entries, { key, value, date }, with value.before and value.after.
+  describe('What ends in the database', function () {
+    const native = () => U.getNativeDB();
+    const doc = (shortname) => native().collection('projects')
+      .findOne({ shortname, backup: { $exists: false } });
+    const logEntry = (id) => native().collection('log')
+      .findOne({ _id: new ObjectId(id) });
+    const keyLogs = (key, shortname) => native().collection('log')
+      .find({ key, 'value.shortname': shortname })
+      .toArray();
+    const isoDate = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/;
+    // what changeProject and restoreProject need of NWL's database
+    const appDb = { mongoDB: () => U.getDB(), nativeMongoDB: () => U.getNativeDB() };
+    const assertSameDocument = (actual, expected) => {
+      assert.instanceOf(actual._id, ObjectId);
+      assert.equal(String(actual._id), String(expected._id));
+      assert.deepEqual(_.omit(actual, ['_id']), _.omit(expected, ['_id']));
+    };
+
+    it('a fix logs { key, value, date }: the previous document, both versions, under an ObjectId', async function () {
+      const before = await doc('a2blank');
+      const { version } = await entry('a2blank');
+      const res = await post('/admin/json/projects/remove-blank-rows', { project: 'a2blank', version });
+      assert.equal(res.status, 200, res.text);
+
+      const logged = await logEntry(res.body.log);
+      assert.instanceOf(logged._id, ObjectId);
+      assert.deepEqual(Object.keys(logged), ['_id', 'key', 'value', 'date']);
+      assert.equal(logged.key, 'adminRemoveBlankRows');
+      assert.match(logged.date, isoDate);
+      assert.deepEqual(Object.keys(logged.value), ['username', 'shortname', 'before', 'removed', 'project', 'after']);
+      assert.deepEqual(_.omit(logged.value, ['project']), {
+        username: admin.username,
+        shortname: 'a2blank',
+        before: version,
+        removed: { files: 4, collaborators: 1, annotations: 1 },
+        after: res.body.version
+      });
+      assert.deepEqual(logged.value.project, _.omit(before, ['_id']));
+
+      const after = await doc('a2blank');
+      assert.instanceOf(after._id, ObjectId);
+      assert.equal(String(after._id), String(before._id));
+      assert.equal(res.body.version, projectVersion(after));
+    }).timeout(U.shortTimeout);
+
+    it('naming layers logs the names, and value.after is the version of the saved project', async function () {
+      const before = await doc('a2unnamed');
+      const { version } = await entry('a2unnamed');
+      const res = await post('/admin/json/projects/name-layers', { project: 'a2unnamed', version, names: { 0: 'Cortex', 2: 'Notes' } });
+      assert.equal(res.status, 200, res.text);
+      const logged = await logEntry(res.body.log);
+      assert.deepEqual(Object.keys(logged.value), ['username', 'shortname', 'before', 'named', 'names', 'project', 'after']);
+      assert.deepEqual(_.omit(logged.value, ['project']), {
+        username: admin.username,
+        shortname: 'a2unnamed',
+        before: version,
+        named: 2,
+        names: { 0: 'Cortex', 2: 'Notes' },
+        after: projectVersion(await doc('a2unnamed'))
+      });
+      assert.deepEqual(logged.value.project, _.omit(before, ['_id']));
+      assert.equal(String((await doc('a2unnamed'))._id), String(before._id));
+    }).timeout(U.shortTimeout);
+
+    it('restore puts back the logged document under the same ObjectId, and logs the one it replaced', async function () {
+      const before = await doc('a2unnamed');
+      const { version } = await entry('a2unnamed');
+      const named = await post('/admin/json/projects/name-layers', { project: 'a2unnamed', version, names: { 0: 'Cortex', 2: 'Notes' } });
+      assert.equal(named.status, 200, named.text);
+      const fixed = await doc('a2unnamed');
+      const fixLog = await logEntry(named.body.log);
+
+      const res = await post('/admin/json/projects/restore', { log: named.body.log });
+      assert.equal(res.status, 200, res.text);
+      assert.equal(res.body.version, version);
+      assertSameDocument(await doc('a2unnamed'), before);
+
+      const [logged] = await keyLogs('adminRestoreProject', 'a2unnamed');
+      assert.instanceOf(logged._id, ObjectId);
+      assert.deepEqual(Object.keys(logged), ['_id', 'key', 'value', 'date']);
+      assert.match(logged.date, isoDate);
+      assert.deepEqual(Object.keys(logged.value), ['username', 'shortname', 'restored', 'project']);
+      assert.deepEqual(logged.value, {
+        username: admin.username,
+        shortname: 'a2unnamed',
+        restored: named.body.log,
+        project: _.omit(fixed, ['_id'])
+      });
+      assert.deepEqual(await logEntry(named.body.log), fixLog, 'the fix\'s entry is left as it was');
+    }).timeout(U.shortTimeout);
+
+    it('changeProject with its own save; restore removes a field the change added', async function () {
+      const before = await doc('a2clean');
+      const result = await adminProjects.changeProject(appDb, {
+        shortname: 'a2clean',
+        version: projectVersion(before),
+        username: admin.username,
+        key: 'adminNameLayers',
+        change: (project) => ({ data: project, details: { named: 0 } }),
+        save: () => Promise.resolve({ write: () => native().collection('projects')
+          .updateOne({ shortname: 'a2clean', backup: { $exists: false } }, { $set: { extra: 'added by the change' } }) })
+      });
+      assert.deepEqual(Object.keys(result), ['named', 'version', 'log']);
+      const changed = await doc('a2clean');
+      assert.equal(changed.extra, 'added by the change');
+      assert.equal(result.version, projectVersion(changed));
+      assert.equal((await logEntry(result.log)).value.after, result.version);
+
+      const restored = await adminProjects.restoreProject(appDb, { logId: result.log, username: admin.username });
+      assert.deepEqual(restored, { version: projectVersion(before) });
+      assertSameDocument(await doc('a2clean'), before);
+    }).timeout(U.shortTimeout);
+
+    it('changeProject writes nothing when the project is missing or changed, or the change or the save refuses', async function () {
+      const before = await doc('a2clean');
+      const params = {
+        shortname: 'a2clean',
+        version: projectVersion(before),
+        username: admin.username,
+        key: 'adminNameLayers',
+        change: (project) => ({ data: project, details: {} })
+      };
+      const refusedSave = () => Promise.resolve({ status: 400, error: 'refused by the save' });
+      const answers = [
+        await adminProjects.changeProject(appDb, { ...params, shortname: 'a2nosuchproject' }),
+        await adminProjects.changeProject(appDb, { ...params, version: 'not the version' }),
+        await adminProjects.changeProject(appDb, { ...params, change: () => ({ status: 400, error: 'refused by the change' }) }),
+        await adminProjects.changeProject(appDb, { ...params, save: refusedSave })
+      ];
+      assert.deepEqual(answers.map((a) => a.status), [404, 409, 400, 400]);
+      assert.deepEqual(answers[3], { status: 400, error: 'refused by the save' });
+      assertSameDocument(await doc('a2clean'), before);
+      assert.lengthOf(await keyLogs('adminNameLayers', 'a2clean'), 0);
+    }).timeout(U.shortTimeout);
+
+    it('a fix refused for a changed version (409) leaves the project and the log as they were', async function () {
+      const { version } = await entry('a2unnamed');
+      await native().collection('projects')
+        .updateOne({ shortname: 'a2unnamed' }, { $set: { description: 'changed by its owner' } });
+      const edited = await doc('a2unnamed');
+      let res = await post('/admin/json/projects/name-layers', { project: 'a2unnamed', version, names: { 0: 'Cortex' } });
+      assert.equal(res.status, 409);
+      res = await post('/admin/json/projects/remove-blank-rows', { project: 'a2unnamed', version });
+      assert.equal(res.status, 409);
+      assertSameDocument(await doc('a2unnamed'), edited);
+      assert.lengthOf(await logs('a2unnamed'), 0);
+    }).timeout(U.shortTimeout);
+
+    it('restore after an edit (409), or a second time (409), leaves the project as it is and logs nothing', async function () {
+      const { version } = await entry('a2blank');
+      const fixed = await post('/admin/json/projects/remove-blank-rows', { project: 'a2blank', version });
+      assert.equal(fixed.status, 200, fixed.text);
+      await native().collection('projects')
+        .updateOne({ shortname: 'a2blank' }, { $set: { description: 'edited after the fix' } });
+      const edited = await doc('a2blank');
+      let res = await post('/admin/json/projects/restore', { log: fixed.body.log });
+      assert.equal(res.status, 409);
+      assertSameDocument(await doc('a2blank'), edited);
+      assert.lengthOf(await keyLogs('adminRestoreProject', 'a2blank'), 0);
+
+      await native().collection('projects')
+        .updateOne({ shortname: 'a2blank' }, { $unset: { description: '' } });
+      res = await post('/admin/json/projects/restore', { log: fixed.body.log });
+      assert.equal(res.status, 200, res.text);
+      const restored = await doc('a2blank');
+      res = await post('/admin/json/projects/restore', { log: fixed.body.log });
+      assert.equal(res.status, 409);
+      assertSameDocument(await doc('a2blank'), restored);
+      assert.lengthOf(await keyLogs('adminRestoreProject', 'a2blank'), 1);
+    }).timeout(U.shortTimeout);
+
+    it('restore answers 404 for an unknown, a capitalised, another action\'s or a malformed log id, and changes nothing', async function () {
+      const { version } = await entry('a2blank');
+      const fixed = await post('/admin/json/projects/remove-blank-rows', { project: 'a2blank', version });
+      assert.equal(fixed.status, 200, fixed.text);
+      const afterFix = await doc('a2blank');
+      const { insertedId } = await native().collection('log')
+        .insertOne({ key: 'adminRemoveOrphans', value: { shortname: 'a2blank' }, date: (new Date()).toJSON() });
+      // one letter in capitals: monk.id and toId would find the entry
+      const capitalised = fixed.body.log.replace(/[a-f](?=[^a-f]*$)/, (c) => c.toUpperCase());
+      assert.notEqual(capitalised, fixed.body.log);
+      const bad = [
+        '0123456789abcdef01234567',
+        fixed.body.log.toUpperCase(),
+        capitalised,
+        String(insertedId),
+        'not-an-id',
+        'zzzzzzzzzzzzzzzzzzzzzzzz',
+        `${fixed.body.log}0`,
+        fixed.body.log.slice(1)
+      ];
+      for (const log of bad) {
+        // eslint-disable-next-line no-await-in-loop
+        const res = await post('/admin/json/projects/restore', { log });
+        assert.equal(res.status, 404, log);
+      }
+      assertSameDocument(await doc('a2blank'), afterFix);
+      assert.lengthOf(await keyLogs('adminRestoreProject', 'a2blank'), 0);
+      const res = await post('/admin/json/projects/restore', { log: fixed.body.log });
+      assert.equal(res.status, 200, res.text);
+    }).timeout(U.mediumTimeout);
+
+    // Read through monk and saved through NWL's native upsertProject, a
+    // project holding an ObjectId gave 500 (BSONVersionError)
+    it('fixes a project that holds an ObjectId, and keeps it one', async function () {
+      const held = new ObjectId('0123456789abcdef01234567');
+      await native().collection('projects')
+        .updateOne({ shortname: 'a2unnamed' }, { $set: { ref: held } });
+      const { version } = await entry('a2unnamed');
+      const res = await post('/admin/json/projects/name-layers', { project: 'a2unnamed', version, names: { 0: 'Cortex', 2: 'Notes' } });
+      assert.equal(res.status, 200, res.text);
+      const after = await doc('a2unnamed');
+      assert.instanceOf(after.ref, ObjectId);
+      assert.equal(String(after.ref), String(held));
+      assert.instanceOf((await logEntry(res.body.log)).value.project.ref, ObjectId);
+      const undo = await post('/admin/json/projects/restore', { log: res.body.log });
+      assert.equal(undo.status, 200, undo.text);
+      assert.equal(undo.body.version, version);
+      assert.instanceOf((await doc('a2unnamed')).ref, ObjectId);
+    }).timeout(U.shortTimeout);
+
+    it('goes through no monk read or write', async function () {
+      const calls = [['projects', 'findOne'], ['projects', 'update'], ['log', 'insert'], ['log', 'update'], ['log', 'findOne']];
+      await U.withoutMonkReads(calls, async () => {
+        const blank = await entry('a2blank');
+        const removed = await post('/admin/json/projects/remove-blank-rows', { project: 'a2blank', version: blank.version });
+        assert.equal(removed.status, 200, removed.text);
+        const unnamed = await entry('a2unnamed');
+        const named = await post('/admin/json/projects/name-layers', { project: 'a2unnamed', version: unnamed.version, names: { 0: 'Cortex', 2: 'Notes' } });
+        assert.equal(named.status, 200, named.text);
+        const restored = await post('/admin/json/projects/restore', { log: removed.body.log });
+        assert.equal(restored.status, 200, restored.text);
+      });
     }).timeout(U.shortTimeout);
   });
 });

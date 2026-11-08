@@ -1,10 +1,12 @@
 /* eslint-disable max-lines, max-statements -- one test per behaviour, with its checks */
 'use strict';
 
+const _ = require('lodash');
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 chai.use(chaiHttp);
 const { assert } = chai;
+const { ObjectId } = require('neuroweblab');
 const U = require('../mocha.test.util');
 const admins = require('../../app/controller/admin/admins');
 const lock = require('../../app/controller/projectLock');
@@ -407,6 +409,70 @@ describe('Admin: delete a project, transfer ownership (A3)', function () {
       assert.deepEqual(await stored('a3histopath'), before);
       res = await post('/admin/json/projects/restore', { log: transferred.body.log });
       assert.equal(res.status, 409);
+    }).timeout(U.shortTimeout);
+
+    // Read through the native driver: what the transfer (its write through
+    // monk) and its restore leave stored
+    it('keeps the project\'s ObjectId and a string owner through the transfer and its restore, and logs both versions', async function () {
+      const nativeDoc = () => U.getNativeDB().collection('projects')
+        .findOne({ shortname: 'a3histopath', backup: { $exists: false } });
+      const assertStored = (doc, ownerName, expected) => {
+        assert.instanceOf(doc._id, ObjectId);
+        assert.equal(String(doc._id), String(expected._id));
+        assert.isString(doc.owner);
+        assert.equal(doc.owner, ownerName);
+        assert.deepEqual(_.omit(doc, ['_id', 'owner']), _.omit(expected, ['_id', 'owner']));
+      };
+      const before = await nativeDoc();
+      const { version } = await found('a3histopath');
+      const transferred = await post('/admin/json/projects/transfer', { project: 'a3histopath', version, owner: owner.username });
+      assert.equal(transferred.status, 200, transferred.text);
+      assertStored(await nativeDoc(), owner.username, before);
+
+      const logged = await U.getNativeDB().collection('log')
+        .findOne({ _id: new ObjectId(transferred.body.log) });
+      assert.instanceOf(logged._id, ObjectId);
+      assert.deepEqual(Object.keys(logged), ['_id', 'key', 'value', 'date']);
+      assert.deepEqual(Object.keys(logged.value), ['username', 'shortname', 'before', 'from', 'to', 'project', 'after']);
+      assert.deepEqual(_.omit(logged.value, ['project']), {
+        username: admin.username,
+        shortname: 'a3histopath',
+        before: version,
+        from: 'a3-voyageour',
+        to: owner.username,
+        after: transferred.body.version
+      });
+      assert.deepEqual(logged.value.project, _.omit(before, ['_id']));
+
+      const restored = await post('/admin/json/projects/restore', { log: transferred.body.log });
+      assert.equal(restored.status, 200, restored.text);
+      assert.equal(restored.body.version, version);
+      assertStored(await nativeDoc(), 'a3-voyageour', before);
+    }).timeout(U.shortTimeout);
+
+    // The search reads through monk, the transfer checks the version on its
+    // own read: the same token whatever the stored types
+    it('accepts the version searched, whatever the stored types, and keeps them', async function () {
+      const held = db().id('0123456789abcdef01234567');
+      await db().get('projects')
+        .update(
+          { shortname: 'a3histopath' },
+          { $set: { date: new Date(0), ref: held, numbers: [1, 1.5, null, 2 ** 40] } }
+        );
+      const { version } = await found('a3histopath');
+      const res = await post('/admin/json/projects/transfer', { project: 'a3histopath', version, owner: owner.username });
+      assert.equal(res.status, 200, res.text);
+      const after = await U.getNativeDB().collection('projects')
+        .findOne({ shortname: 'a3histopath' });
+      assert.instanceOf(after.ref, ObjectId);
+      assert.equal(String(after.ref), String(held));
+      assert.instanceOf(after.date, Date);
+      assert.deepEqual(after.numbers, [1, 1.5, null, 2 ** 40]);
+      const undo = await post('/admin/json/projects/restore', { log: res.body.log });
+      assert.equal(undo.status, 200, undo.text);
+      assert.equal(undo.body.version, version);
+      assert.instanceOf((await U.getNativeDB().collection('projects')
+        .findOne({ shortname: 'a3histopath' })).ref, ObjectId);
     }).timeout(U.shortTimeout);
 
     it('waits for the project lock', async function () {

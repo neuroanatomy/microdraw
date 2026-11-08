@@ -21,9 +21,9 @@
  * transfer of a project's ownership, and restoreProject to undo it.
  */
 const _ = require('lodash');
-const monk = require('monk');
 const logger = require('../../log');
 const { withProjectLock } = require('../projectLock');
+const { toId } = require('../toId');
 const { checkProject, duplicateLayerNames, plainText } = require('../project/project.validation');
 const {
   blankRows, checkStoredProjects, isUnnamedLayer, projectVersion
@@ -32,10 +32,12 @@ const {
 const current = { backup: { $exists: false } };
 const fixKeys = ['adminRemoveBlankRows', 'adminNameLayers', 'adminTransferOwner'];
 
-const log = (db, key, value) => {
+const log = async (db, key, value) => {
   logger.info({ event: key, ..._.omit(value, ['project']) }, `admin: ${key}`);
+  const entry = { key, value, date: (new Date()).toJSON() };
+  await db.collection('log').insertOne(entry); // sets entry._id
 
-  return db.get('log').insert({ key, value, date: (new Date()).toJSON() });
+  return entry;
 };
 
 /**
@@ -62,7 +64,7 @@ const validatedSave = async (appDb, stored, data) => {
  * `change` returns the new data (or { status, error }); `save` checks it and
  * returns how to write it (default: validated and stored as a settings save
  * is); the previous document is logged first.
- * @param {object} appDb NWL database (mongoDB(), upsertProject)
+ * @param {object} appDb NWL database (nativeMongoDB(), upsertProject)
  * @param {object} params { shortname, version, username, key: log key,
  *   change: (stored copy) => { data, details } | { status, error },
  *   save: (appDb, stored, data) => Promise<{ write } | { status, error }> }
@@ -70,8 +72,8 @@ const validatedSave = async (appDb, stored, data) => {
  */
 // eslint-disable-next-line max-statements
 const changeProject = (appDb, { shortname, version, username, key, change, save = validatedSave }) => withProjectLock(shortname, async () => {
-  const db = appDb.mongoDB();
-  const stored = await db.get('projects').findOne({ shortname, ...current });
+  const db = appDb.nativeMongoDB();
+  const stored = await db.collection('projects').findOne({ shortname, ...current });
   if (!stored) {
     return { status: 404, error: `Project ${shortname} not found` };
   }
@@ -88,8 +90,8 @@ const changeProject = (appDb, { shortname, version, username, key, change, save 
   }
   const entry = await log(db, key, { username, shortname, before: version, ...changed.details, project: _.omit(stored, ['_id']) });
   await saving.write();
-  const after = projectVersion(await db.get('projects').findOne({ _id: stored._id }));
-  await db.get('log').update({ _id: entry._id }, { $set: { 'value.after': after } });
+  const after = projectVersion(await db.collection('projects').findOne({ _id: stored._id }));
+  await db.collection('log').updateOne({ _id: entry._id }, { $set: { 'value.after': after } });
 
   return { ...changed.details, version: after, log: String(entry._id) };
 });
@@ -184,14 +186,6 @@ const nameLayers = (appDb, { shortname, version, names, username }) => changePro
   }
 });
 
-const toId = (id) => {
-  try {
-    return monk.id(id);
-  } catch (err) {
-    return null;
-  }
-};
-
 /**
  * Put back the project document logged by a fix, if the project has not
  * changed since the fix. Written as it was logged, without the validation
@@ -201,25 +195,26 @@ const toId = (id) => {
  * @returns {Promise<object>} { version } or { status, error }
  */
 const restoreProject = async (appDb, { logId, username }) => {
-  const db = appDb.mongoDB();
+  const db = appDb.nativeMongoDB();
+  // lowercase only: a log id in capitals is not found (404)
   const id = typeof logId === 'string' && (/^[0-9a-f]{24}$/).test(logId) ? toId(logId) : null;
-  const entry = id && await db.get('log').findOne({ _id: id, key: { $in: fixKeys } });
+  const entry = id && await db.collection('log').findOne({ _id: id, key: { $in: fixKeys } });
   if (!entry) {
     return { status: 404, error: 'No project fix with that log id' };
   }
   const { shortname, after, project: previous } = entry.value;
 
   return withProjectLock(shortname, async () => {
-    const stored = await db.get('projects').findOne({ shortname, ...current });
+    const stored = await db.collection('projects').findOne({ shortname, ...current });
     if (!stored || typeof after !== 'string' || projectVersion(stored) !== after) {
       return { status: 409, error: `Project ${shortname} has changed since this fix (restored already, or edited): not restored` };
     }
     const extra = Object.keys(stored).filter((k) => k !== '_id' && !(k in previous));
     const update = { $set: previous, ...(extra.length > 0 ? { $unset: _.fromPairs(extra.map((k) => [k, ''])) } : {}) };
     await log(db, 'adminRestoreProject', { username, shortname, restored: String(entry._id), project: _.omit(stored, ['_id']) });
-    await db.get('projects').update({ _id: stored._id }, update);
+    await db.collection('projects').updateOne({ _id: stored._id }, update);
 
-    return { version: projectVersion(await db.get('projects').findOne({ _id: stored._id })) };
+    return { version: projectVersion(await db.collection('projects').findOne({ _id: stored._id })) };
   });
 };
 
