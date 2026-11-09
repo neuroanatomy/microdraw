@@ -181,10 +181,12 @@ describe('Project page (M2b, M8a)', function () {
     await openPage(page, projectURL(fullProject, ZARR));
     assert.deepEqual(pageErrors, []);
     assert.equal(await page.$eval('#fontLogo a', (a) => a.textContent.trim()), fullProject.name);
-    // named text annotations get a column in the files table (its cells stay
-    // empty); unnamed ones get none, but stay in the layers table
+    // named text annotations get a column in the files table; unnamed ones get
+    // none, but stay in the layers table. Since text layers step 3 every row
+    // has a cell per text column (empty here: this project has no values;
+    // project-page-text-layers.spec.js tests the values)
     assert.deepEqual(await headerText(page), ['Name', 'File', 'comment']);
-    assert.deepEqual(await tableText(page, '#projectFiles'), [['cat', CAT], ['cat-zarr', ZARR], ['', MISSING]]);
+    assert.deepEqual(await tableText(page, '#projectFiles'), [['cat', CAT, ''], ['cat-zarr', ZARR, ''], ['', MISSING, '']]);
     assert.deepEqual(await tableText(page, '#vecAnnotations'),
       [['regions', 'Set I'], ['comment', ''], ['more regions', 'Set II'], ['', ''], ['', '']]);
     assert.isFalse(await visible(page, '#noFiles'));
@@ -334,7 +336,8 @@ describe('Project page writes user-set names as text (H2b)', function () {
     assert.equal(state.images, 0, 'a name was parsed as HTML');
     assert.equal(state.title, IMG_NAME);
     assert.deepEqual(await headerText(page), ['Name', 'File', IMG_NAME, SCRIPT_NAME]);
-    assert.deepEqual(await tableText(page, '#projectFiles'), [[IMG_NAME, CAT], [TEMPLATE_NAMES[0], MISSING]]);
+    // one empty cell per text column since text layers step 3 (no values here)
+    assert.deepEqual(await tableText(page, '#projectFiles'), [[IMG_NAME, CAT, '', ''], [TEMPLATE_NAMES[0], MISSING, '', '']]);
     assert.deepEqual(await tableText(page, '#vecAnnotations'), [[IMG_NAME, ''], [SCRIPT_NAME, ''], [TEMPLATE_NAMES[1], SCRIPT_NAME]]);
   }).timeout(U.shortTimeout);
 });

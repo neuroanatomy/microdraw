@@ -12,6 +12,11 @@
     ({{ }} interpolation, textContent): there is no v-html.
   - The cells are read only. The old page had editable inputs that were never
     saved; the project's files and layers are edited in its settings page.
+  - Text layers (step 3, 2026-11-09): each named text layer has a column in the
+    files table. Its cells are there, empty, from the first render; after mount
+    the page fetches GET /project/json/<shortname>/text-annotations and fills
+    them with each file's current value, as text. A failed fetch leaves them
+    empty, with a console warning. No fetch without a named text layer or a file.
   - Long cells are clipped on one line with an ellipsis (project-style.css), as
     the old inputs clipped them, and show their full text in a title, so the
     left pane can be made narrower than its longest text (2026-10-28).
@@ -41,6 +46,30 @@ if (redirecting) {
 }
 const fileIndex = Math.max(0, files.findIndex((f) => f.source === source));
 
+// Keys of the values come from user data (sources, layer names): read own
+// properties only, so a source named `constructor` finds nothing (null).
+const own = (obj, key) => ((obj !== null && typeof obj === 'object' && Object.prototype.hasOwnProperty.call(obj, key)) ? obj[key] : null);
+
+// { <source>: { <layer>: {value, user, modified} } }, or null when the fetch fails
+const fetchTextValues = async () => {
+  try {
+    const res = await fetch(`/project/json/${encodeURIComponent(shortname)}/text-annotations`);
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const json = await res.json();
+    if (json === null || typeof json !== 'object') {
+      throw new Error('not an object');
+    }
+
+    return json;
+  } catch (err) {
+    console.warn('Could not load the values of the text layers:', err.message);
+
+    return null;
+  }
+};
+
 const ProjectTables = {
   template: `
     <div id="projectFiles" class="block" style="flex:1 1 auto">
@@ -56,6 +85,7 @@ const ProjectTables = {
           <tr v-for="(f, i) in files" :key="i" :class="{selected: i === selectedFile}" @click="openFile(i)">
             <td :class="{empty: isEmpty(f.name)}" :title="f.name">{{ f.name }}</td>
             <td :class="{empty: isEmpty(f.source)}" :title="f.source">{{ f.source }}</td>
+            <td v-for="(a, j) in textAnnotations" :key="'t' + j" :class="{empty: isEmpty(textValue(f, a))}" :title="textValue(f, a)">{{ textValue(f, a) }}</td>
           </tr>
         </tbody>
       </table>
@@ -86,6 +116,8 @@ const ProjectTables = {
       // an unnamed text layer gets no column (2026-11-09): 18 projects on
       // production have one, probably left by the new-project form
       textAnnotations: layers.filter((a) => textTypes.includes(a.type) && String(a.name || '').trim() !== ''),
+      // the text layers' values, filled after mount
+      textValues: {},
       selectedFile: (files.length > 0 && !redirecting) ? fileIndex : -1,
       selectedLayer: 0,
       settingsURL: `/project/${shortname}/settings`
@@ -93,6 +125,18 @@ const ProjectTables = {
   },
   methods: {
     isEmpty: (value) => value === null || typeof value === 'undefined' || value === '',
+    // a file's current value for a text layer, as a string, or null
+    textValue(file, layer) {
+      const value = own(own(own(this.textValues, file.source), layer.name), 'value');
+
+      return (typeof value === 'string') ? value : null;
+    },
+    async loadTextValues() {
+      const values = await fetchTextValues();
+      if (values !== null) {
+        this.textValues = values;
+      }
+    },
     openFile(index) {
       if (index !== this.selectedFile) {
         goToFile(index);
@@ -100,6 +144,9 @@ const ProjectTables = {
     }
   },
   mounted() {
+    if (this.textAnnotations.length > 0 && this.files.length > 0 && !redirecting) {
+      this.loadTextValues();
+    }
     // the up and down arrows open the previous and next file, wrapping around
     window.addEventListener('keydown', (e) => {
       const { length } = this.files;
