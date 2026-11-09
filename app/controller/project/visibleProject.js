@@ -19,12 +19,19 @@ const visibleProjectParts = (project, loggedUser) => {
       project[type] = { ...(_.isPlainObject(project[type]) ? project[type] : {}), list: [] };
     }
   }
-  if (!AccessControlService.canViewCollaborators(project, loggedUser)) {
+  // Both decided on the unchanged project (2026-11-09): hiding the
+  // collaborators first removed the visitor's own entry, so a collaborator who
+  // may view the annotations but not the collaborators was judged as 'anyone'.
+  const show = {
+    collaborators: AccessControlService.canViewCollaborators(project, loggedUser),
+    annotations: AccessControlService.canViewAnnotations(project, loggedUser)
+  };
+  if (!show.collaborators) {
     project.collaborators.list = project.collaborators.list.filter((c) => _.isPlainObject(c) && isAnyone(c));
     // who saved last may be a collaborator
     delete project.modifiedBy;
   }
-  if (!AccessControlService.canViewAnnotations(project, loggedUser)) {
+  if (!show.annotations) {
     project.annotations.list = [];
   }
 

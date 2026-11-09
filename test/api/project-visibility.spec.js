@@ -44,6 +44,10 @@ const project = (shortname, anyoneAccess) => ({
 describe('What the project page shows, and projects without \'anyone\' (M3)', function () {
   const filesOnly = project('m3cfilesonly', access('view', 'none', 'none'));
   const noAnyone = project('m3cnoanyone');
+  // the member may view the annotations, not the collaborators; no 'anyone'
+  // entry, so the project stays out of the public lists tested below
+  const layersNotCollaborators = project('m3clayersnotcollab');
+  layersNotCollaborators.collaborators.list.find((c) => c.username === member.username).access = access('view', 'view', 'none');
   let agent;
 
   before(async function () {
@@ -51,6 +55,7 @@ describe('What the project page shows, and projects without \'anyone\' (M3)', fu
     this.timeout(U.mediumTimeout);
     await U.insertProject({ ...filesOnly });
     await U.insertProject({ ...noAnyone });
+    await U.insertProject({ ...layersNotCollaborators });
     agent = await login(member);
   });
 
@@ -58,6 +63,7 @@ describe('What the project page shows, and projects without \'anyone\' (M3)', fu
     await Promise.all([
       U.removeProject(filesOnly.shortname),
       U.removeProject(noAnyone.shortname),
+      U.removeProject(layersNotCollaborators.shortname),
       U.removeLocalUser(member.username)
     ]);
   });
@@ -80,6 +86,21 @@ describe('What the project page shows, and projects without \'anyone\' (M3)', fu
       const info = inlineValue(res.text, 'projectInfo');
       assert.lengthOf(info.collaborators.list, 3);
       assert.lengthOf(info.annotations.list, 1);
+    }).timeout(U.shortTimeout);
+
+    // 2026-11-09: the visitor's own collaborator entry was removed before the
+    // annotations check, so they were judged as 'anyone' and got no layers
+    it('a collaborator who may view the annotations but not the collaborators gets the layers, not the collaborators', async function () {
+      const res = await agent.get(`/project/${layersNotCollaborators.shortname}`);
+      assert.equal(res.status, 200);
+      const info = inlineValue(res.text, 'projectInfo');
+      assert.deepEqual(info.collaborators.list, []);
+      assert.isFalse(res.text.includes('m3c-secret-collaborator'), 'a hidden collaborator is in the page');
+      assert.deepEqual(info.annotations.list.map((a) => a.name), ['m3c secret layer']);
+      const json = await agent.get(`/project/json/${layersNotCollaborators.shortname}`);
+      assert.equal(json.status, 200);
+      assert.deepEqual(json.body.annotations.list.map((a) => a.name), ['m3c secret layer']);
+      assert.deepEqual(json.body.collaborators.list, []);
     }).timeout(U.shortTimeout);
   });
 
