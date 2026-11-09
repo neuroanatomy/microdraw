@@ -18,7 +18,7 @@ const { escapeRegex } = require('../search/search.controller');
 const { changeProject } = require('./admin.projects');
 
 const current = { backup: { $exists: false } };
-const { NEWEST_FIRST: newestFirst } = require('../project/currentProject');
+const { NEWEST_FIRST: newestFirst, saveProjectVersion } = require('../project/currentProject');
 
 const maxFound = 20;
 
@@ -107,7 +107,8 @@ const restoreDeleted = async (appDb, { logId, username }) => {
 };
 
 /**
- * Give a project to another user, who must exist. Only `owner` changes: the
+ * Give a project to another user, who must exist. Only `owner` changes (in a
+ * new version, T002 2.1b, which also sets `modified`, `modifiedBy`): the
  * document is not run through the save validation, so that a project that
  * would not validate can be handed to someone who can fix it. The new owner
  * has every right through NWL's IsOwner; the collaborators are unchanged.
@@ -135,8 +136,7 @@ const transferProject = async (appDb, { shortname, version, owner, username }) =
 
       return { data: { ...project, owner }, details: { from: project.owner, to: owner } };
     },
-    save: (db, stored) => Promise.resolve({ write: () => db.nativeMongoDB().collection('projects')
-      .updateOne({ _id: stored._id }, { $set: { owner } }) })
+    save: (db, stored) => Promise.resolve({ write: (by) => saveProjectVersion(db.nativeMongoDB(), { ...stored, owner }, { by }) })
   }).then(({ from, to, ...result }) => (result.error ? result : { ...result, owner: to, previousOwner: from }));
 };
 

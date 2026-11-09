@@ -134,8 +134,9 @@ describe('Admin: projects that don\'t validate (A2)', function () {
     .query({ token: tokens[user.username] })
     .send(body);
   const db = () => U.getDB();
+  // the current version, without what each version sets (T002 2.1b)
   const stored = (shortname) => db().collection('projects')
-    .findOne({ shortname }, { projection: { _id: 0 } });
+    .findOne({ shortname, backup: { $exists: false } }, { projection: { _id: 0, modified: 0, modifiedBy: 0 } });
   const logs = (shortname) => db().collection('log')
     .find({ key: /^admin/, 'value.shortname': shortname })
     .toArray();
@@ -365,7 +366,7 @@ describe('Admin: projects that don\'t validate (A2)', function () {
     it('refuses with 409 if the project changed since it was listed, and changes nothing', async function () {
       const { version } = await entry('a2blank');
       await db().collection('projects')
-        .updateOne({ shortname: 'a2blank' }, { $set: { description: 'changed by its owner' } });
+        .updateOne({ shortname: 'a2blank', backup: { $exists: false } }, { $set: { description: 'changed by its owner' } });
       const res = await post('/admin/json/projects/remove-blank-rows', { project: 'a2blank', version });
       assert.equal(res.status, 409);
       assert.lengthOf((await stored('a2blank')).files.list, 5);
@@ -449,7 +450,7 @@ describe('Admin: projects that don\'t validate (A2)', function () {
       }
       assert.deepEqual((await stored('a2unnamed')).annotations, fixtures()[0].annotations);
       await db().collection('projects')
-        .updateOne({ shortname: 'a2unnamed' }, { $set: { name: 'renamed meanwhile' } });
+        .updateOne({ shortname: 'a2unnamed', backup: { $exists: false } }, { $set: { name: 'renamed meanwhile' } });
       const res = await post('/admin/json/projects/name-layers', { project: 'a2unnamed', version, names: { 0: 'Cortex' } });
       assert.equal(res.status, 409);
       assert.lengthOf(await logs('a2unnamed'), 0);
@@ -458,7 +459,7 @@ describe('Admin: projects that don\'t validate (A2)', function () {
     // does not block naming another layer, a new name may not repeat one
     it('agrees with project saves on duplicate names: stored duplicates are accepted, new ones refused', async function () {
       await db().collection('projects')
-        .updateOne({ shortname: 'a2unnamed' }, { $push: { 'annotations.list': { type: 'vectorial', name: 'layer 1 ', values: '', display: true } } });
+        .updateOne({ shortname: 'a2unnamed', backup: { $exists: false } }, { $push: { 'annotations.list': { type: 'vectorial', name: 'layer 1 ', values: '', display: true } } });
       const { version } = await entry('a2unnamed');
       let res = await post('/admin/json/projects/name-layers', { project: 'a2unnamed', version, names: { 0: 'LAYER 1' } });
       assert.equal(res.status, 400);
@@ -478,7 +479,9 @@ describe('Admin: projects that don\'t validate (A2)', function () {
       let res = await post('/admin/json/projects/restore', { log: removed.body.log });
       assert.equal(res.status, 200, res.text);
       assert.deepEqual(await stored('a2blank'), original);
-      assert.equal(res.body.version, version);
+      // a new version: a new _id, so a new token (T002 2.1b)
+      assert.notEqual(res.body.version, version);
+      assert.equal(res.body.version, (await entry('a2blank')).version);
       const restoreLog = (await logs('a2blank')).find((l) => l.key === 'adminRestoreProject');
       assert.equal(restoreLog.value.restored, removed.body.log);
 
@@ -491,7 +494,7 @@ describe('Admin: projects that don\'t validate (A2)', function () {
       const named = await post('/admin/json/projects/name-layers', { project: 'a2unnamed', version, names: { 0: 'Cortex', 2: 'Notes' } });
       assert.equal(named.status, 200);
       await db().collection('projects')
-        .updateOne({ shortname: 'a2unnamed' }, { $set: { description: 'edited after the fix' } });
+        .updateOne({ shortname: 'a2unnamed', backup: { $exists: false } }, { $set: { description: 'edited after the fix' } });
       const res = await post('/admin/json/projects/restore', { log: named.body.log });
       assert.equal(res.status, 409);
       assert.equal((await stored('a2unnamed')).annotations.list[0].name, 'Cortex');
@@ -508,7 +511,8 @@ describe('Admin: projects that don\'t validate (A2)', function () {
   });
 
   // What the fixes and restore leave in the database, read through the
-  // native driver: the project document (same ObjectId), and the `log`
+  // native driver: the project document (a new version for each change,
+  // T002 2.1b), and the `log`
   // entries, { key, value, date }, with value.before and value.after.
   describe('What ends in the database', function () {
     const native = () => U.getNativeDB();
@@ -526,6 +530,14 @@ describe('Admin: projects that don\'t validate (A2)', function () {
       assert.instanceOf(actual._id, ObjectId);
       assert.equal(String(actual._id), String(expected._id));
       assert.deepEqual(_.omit(actual, ['_id']), _.omit(expected, ['_id']));
+    };
+    // T002 2.1b: a fix or a restore stores a new version (new _id, its own
+    // modified and modifiedBy) with the expected content
+    const assertNewVersionOf = (actual, expected) => {
+      assert.instanceOf(actual._id, ObjectId);
+      assert.notEqual(String(actual._id), String(expected._id));
+      assert.equal(actual.modifiedBy, admin.username);
+      assert.deepEqual(_.omit(actual, ['_id', 'modified', 'modifiedBy']), _.omit(expected, ['_id', 'modified', 'modifiedBy']));
     };
 
     it('a fix logs { key, value, date }: the previous document, both versions, under an ObjectId', async function () {
@@ -551,7 +563,7 @@ describe('Admin: projects that don\'t validate (A2)', function () {
 
       const after = await doc('a2blank');
       assert.instanceOf(after._id, ObjectId);
-      assert.equal(String(after._id), String(before._id));
+      assert.notEqual(String(after._id), String(before._id), 'a new version');
       assert.equal(res.body.version, projectVersion(after));
     }).timeout(U.shortTimeout);
 
@@ -571,10 +583,10 @@ describe('Admin: projects that don\'t validate (A2)', function () {
         after: projectVersion(await doc('a2unnamed'))
       });
       assert.deepEqual(logged.value.project, _.omit(before, ['_id']));
-      assert.equal(String((await doc('a2unnamed'))._id), String(before._id));
+      assert.notEqual(String((await doc('a2unnamed'))._id), String(before._id), 'a new version');
     }).timeout(U.shortTimeout);
 
-    it('restore puts back the logged document under the same ObjectId, and logs the one it replaced', async function () {
+    it('restore puts back the logged document as a new version, and logs the one it replaced', async function () {
       const before = await doc('a2unnamed');
       const { version } = await entry('a2unnamed');
       const named = await post('/admin/json/projects/name-layers', { project: 'a2unnamed', version, names: { 0: 'Cortex', 2: 'Notes' } });
@@ -584,8 +596,8 @@ describe('Admin: projects that don\'t validate (A2)', function () {
 
       const res = await post('/admin/json/projects/restore', { log: named.body.log });
       assert.equal(res.status, 200, res.text);
-      assert.equal(res.body.version, version);
-      assertSameDocument(await doc('a2unnamed'), before);
+      assert.equal(res.body.version, projectVersion(await doc('a2unnamed')));
+      assertNewVersionOf(await doc('a2unnamed'), before);
 
       const [logged] = await keyLogs('adminRestoreProject', 'a2unnamed');
       assert.instanceOf(logged._id, ObjectId);
@@ -619,8 +631,8 @@ describe('Admin: projects that don\'t validate (A2)', function () {
       assert.equal((await logEntry(result.log)).value.after, result.version);
 
       const restored = await adminProjects.restoreProject(appDb, { logId: result.log, username: admin.username });
-      assert.deepEqual(restored, { version: projectVersion(before) });
-      assertSameDocument(await doc('a2clean'), before);
+      assert.deepEqual(restored, { version: projectVersion(await doc('a2clean')) });
+      assertNewVersionOf(await doc('a2clean'), before);
     }).timeout(U.shortTimeout);
 
     it('changeProject writes nothing when the project is missing or changed, or the change or the save refuses', async function () {
@@ -648,7 +660,7 @@ describe('Admin: projects that don\'t validate (A2)', function () {
     it('a fix refused for a changed version (409) leaves the project and the log as they were', async function () {
       const { version } = await entry('a2unnamed');
       await native().collection('projects')
-        .updateOne({ shortname: 'a2unnamed' }, { $set: { description: 'changed by its owner' } });
+        .updateOne({ shortname: 'a2unnamed', backup: { $exists: false } }, { $set: { description: 'changed by its owner' } });
       const edited = await doc('a2unnamed');
       let res = await post('/admin/json/projects/name-layers', { project: 'a2unnamed', version, names: { 0: 'Cortex' } });
       assert.equal(res.status, 409);
@@ -663,7 +675,7 @@ describe('Admin: projects that don\'t validate (A2)', function () {
       const fixed = await post('/admin/json/projects/remove-blank-rows', { project: 'a2blank', version });
       assert.equal(fixed.status, 200, fixed.text);
       await native().collection('projects')
-        .updateOne({ shortname: 'a2blank' }, { $set: { description: 'edited after the fix' } });
+        .updateOne({ shortname: 'a2blank', backup: { $exists: false } }, { $set: { description: 'edited after the fix' } });
       const edited = await doc('a2blank');
       let res = await post('/admin/json/projects/restore', { log: fixed.body.log });
       assert.equal(res.status, 409);
@@ -671,7 +683,7 @@ describe('Admin: projects that don\'t validate (A2)', function () {
       assert.lengthOf(await keyLogs('adminRestoreProject', 'a2blank'), 0);
 
       await native().collection('projects')
-        .updateOne({ shortname: 'a2blank' }, { $unset: { description: '' } });
+        .updateOne({ shortname: 'a2blank', backup: { $exists: false } }, { $unset: { description: '' } });
       res = await post('/admin/json/projects/restore', { log: fixed.body.log });
       assert.equal(res.status, 200, res.text);
       const restored = await doc('a2blank');
@@ -718,7 +730,7 @@ describe('Admin: projects that don\'t validate (A2)', function () {
     it('fixes a project that holds an ObjectId, and keeps it one', async function () {
       const held = new ObjectId('0123456789abcdef01234567');
       await native().collection('projects')
-        .updateOne({ shortname: 'a2unnamed' }, { $set: { ref: held } });
+        .updateOne({ shortname: 'a2unnamed', backup: { $exists: false } }, { $set: { ref: held } });
       const { version } = await entry('a2unnamed');
       const res = await post('/admin/json/projects/name-layers', { project: 'a2unnamed', version, names: { 0: 'Cortex', 2: 'Notes' } });
       assert.equal(res.status, 200, res.text);
@@ -728,7 +740,7 @@ describe('Admin: projects that don\'t validate (A2)', function () {
       assert.instanceOf((await logEntry(res.body.log)).value.project.ref, ObjectId);
       const undo = await post('/admin/json/projects/restore', { log: res.body.log });
       assert.equal(undo.status, 200, undo.text);
-      assert.equal(undo.body.version, version);
+      assert.equal(undo.body.version, projectVersion(await doc('a2unnamed')));
       assert.instanceOf((await doc('a2unnamed')).ref, ObjectId);
     }).timeout(U.shortTimeout);
 

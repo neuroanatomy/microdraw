@@ -46,8 +46,10 @@ describe('Admin page: delete a project, transfer ownership (A3)', () => {
   const found = `#project-tools div.project[data-shortname="${histo.shortname}"]`;
   const invalid = `#invalid-projects div.project[data-shortname="${histo.shortname}"]`;
   const waitFor = (fn, ...args) => page.waitForFunction(fn, { polling: 50, timeout: U.shortTimeout }, ...args);
+  // the current version, without what each version sets (T002 2.1b: every
+  // change, and a restore, stores a new version)
   const stored = () => U.getDB().collection('projects')
-    .findOne({ shortname: histo.shortname });
+    .findOne({ shortname: histo.shortname, backup: { $exists: false } }, { sort: { _id: -1 }, projection: { _id: 0, modified: 0, modifiedBy: 0 } });
   const current = () => U.findAnnotations({ project: histo.shortname });
   const cleanup = async () => {
     await U.removeProject(histo.shortname);

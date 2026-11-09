@@ -10,8 +10,9 @@
  * Each one holds the project lock (M3b), refuses a project that changed since
  * it was listed (409: the client sends the version token of the list), logs
  * the previous document in `log`, and saves through the validation of normal
- * saves (checkProject, then NWL's upsertProject). Restore puts the logged
- * document back, if the project has not changed since the fix.
+ * saves (checkProject), as a new version of the project (saveProjectVersion,
+ * T002 2.1b). Restore stores the logged document as a new version, if the
+ * project has not changed since the fix.
  *
  * Shortnames that are not alphanumeric and users that don't exist are listed
  * only: renaming a project would break its URLs and the annotations that name
@@ -30,7 +31,7 @@ const {
 } = require('../project/project.check');
 
 const current = { backup: { $exists: false } };
-const { NEWEST_FIRST: newestFirst } = require('../project/currentProject');
+const { NEWEST_FIRST: newestFirst, findCurrentProject, saveProjectVersion } = require('../project/currentProject');
 const fixKeys = ['adminRemoveBlankRows', 'adminNameLayers', 'adminTransferOwner'];
 
 const log = async (db, key, value) => {
@@ -50,14 +51,15 @@ const log = async (db, key, value) => {
 const findInvalidProjects = (db) => checkStoredProjects(db);
 
 // The default way changeProject stores a change: the validation of a
-// settings save (rows stored unchanged are accepted), then NWL's upsertProject
+// settings save (rows stored unchanged are accepted), then a new version
+// (write(username) returns it)
 const validatedSave = async (appDb, stored, data) => {
   const { project, error } = await checkProject({ data, shortname: stored.shortname, oldProject: stored, owner: stored.owner, db: appDb.nativeMongoDB() });
   if (error) {
     return { status: 400, error: `The project would not validate after this change: ${error}` };
   }
 
-  return { write: () => appDb.upsertProject(project) };
+  return { write: (by) => saveProjectVersion(appDb.nativeMongoDB(), project, { by }) };
 };
 
 /**
@@ -65,10 +67,11 @@ const validatedSave = async (appDb, stored, data) => {
  * `change` returns the new data (or { status, error }); `save` checks it and
  * returns how to write it (default: validated and stored as a settings save
  * is); the previous document is logged first.
- * @param {object} appDb NWL database (nativeMongoDB(), upsertProject)
+ * @param {object} appDb NWL database (nativeMongoDB())
  * @param {object} params { shortname, version, username, key: log key,
  *   change: (stored copy) => { data, details } | { status, error },
- *   save: (appDb, stored, data) => Promise<{ write } | { status, error }> }
+ *   save: (appDb, stored, data) => Promise<{ write: (username) => new
+ *   version } | { status, error }> }
  * @returns {Promise<object>} { ...details, version, log } or { status, error }
  */
 // eslint-disable-next-line max-statements
@@ -90,8 +93,9 @@ const changeProject = (appDb, { shortname, version, username, key, change, save 
     return saving;
   }
   const entry = await log(db, key, { username, shortname, before: version, ...changed.details, project: _.omit(stored, ['_id']) });
-  await saving.write();
-  const after = projectVersion(await db.collection('projects').findOne({ _id: stored._id }));
+  await saving.write(username);
+  // the token of the version now current (the write inserted a new document)
+  const after = projectVersion(await findCurrentProject(db, shortname));
   await db.collection('log').updateOne({ _id: entry._id }, { $set: { 'value.after': after } });
 
   return { ...changed.details, version: after, log: String(entry._id) };
@@ -189,8 +193,10 @@ const nameLayers = (appDb, { shortname, version, names, username }) => changePro
 
 /**
  * Put back the project document logged by a fix, if the project has not
- * changed since the fix. Written as it was logged, without the validation
- * of saves: it was the stored version, and stored rows are accepted.
+ * changed since the fix: a new version with the logged content (T002 2.1b;
+ * `modified` and `modifiedBy` say when and by whom it was restored). Written
+ * without the validation of saves: it was the stored version, and stored
+ * rows are accepted.
  * @param {object} appDb NWL database
  * @param {object} params { logId, username }
  * @returns {Promise<object>} { version } or { status, error }
@@ -210,12 +216,10 @@ const restoreProject = async (appDb, { logId, username }) => {
     if (!stored || typeof after !== 'string' || projectVersion(stored) !== after) {
       return { status: 409, error: `Project ${shortname} has changed since this fix (restored already, or edited): not restored` };
     }
-    const extra = Object.keys(stored).filter((k) => k !== '_id' && !(k in previous));
-    const update = { $set: previous, ...(extra.length > 0 ? { $unset: _.fromPairs(extra.map((k) => [k, ''])) } : {}) };
     await log(db, 'adminRestoreProject', { username, shortname, restored: String(entry._id), project: _.omit(stored, ['_id']) });
-    await db.collection('projects').updateOne({ _id: stored._id }, update);
+    await saveProjectVersion(db, previous, { by: username });
 
-    return { version: projectVersion(await db.collection('projects').findOne({ _id: stored._id })) };
+    return { version: projectVersion(await findCurrentProject(db, shortname)) };
   });
 };
 

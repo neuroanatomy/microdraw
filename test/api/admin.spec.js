@@ -1,6 +1,7 @@
 /* eslint-disable max-lines */
 'use strict';
 
+const _ = require('lodash');
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 chai.use(chaiHttp);
@@ -495,9 +496,16 @@ describe('Admin: orphan annotations (A1)', function () {
       const res = await post('/admin/json/orphans/assign', { ...carolGone, target: otherProject.shortname, addImage: true });
       assert.equal(res.status, 200);
       assert.deepEqual(await annotationDocs(), before.map((d) => (ids.includes(d._id) ? { ...d, project: otherProject.shortname } : d)));
-      assert.deepEqual(await projectDocs(), projects.map((p) => (p.shortname === otherProject.shortname
-        ? { ...p, files: { list: [{ name: 'img2.dzi', source: img2 }] } }
-        : p)));
+      // a new version with the file (T002 2.1b), after the old one, now a backup
+      const docs = await projectDocs();
+      const added = docs[docs.length - 1];
+      const old = projects.find((p) => p.shortname === otherProject.shortname);
+      assert.deepEqual(docs, [...projects.map((p) => (p === old ? { ...p, backup: true } : p)), added]);
+      assert.notEqual(added._id, old._id);
+      assert.match(added.modified, /^\d{4}-\d\d-\d\dT/);
+      assert.equal(added.modifiedBy, admin.username);
+      const content = (doc) => _.omit(doc, ['_id', 'modified', 'modifiedBy']);
+      assert.deepEqual(content(added), { ...content(old), files: { list: [{ name: 'img2.dzi', source: img2 }] } });
       const [entry] = await logEntries('adminAssignOrphans');
       assertLogEntry(entry, 'adminAssignOrphans', {
         username: admin.username,

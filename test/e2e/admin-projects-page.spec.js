@@ -43,8 +43,9 @@ describe('Admin page: projects that don\'t validate (A2)', () => {
 
   const sel = (shortname) => `#invalid-projects div.project[data-shortname="${shortname}"]`;
   const waitFor = (fn, ...args) => page.waitForFunction(fn, { polling: 50, timeout: U.shortTimeout }, ...args);
+  // the current version (T002 2.1b: a fix and its restore store new versions)
   const stored = (shortname) => U.getDB().collection('projects')
-    .findOne({ shortname });
+    .findOne({ shortname, backup: { $exists: false } }, { sort: { _id: -1 } });
   const cleanup = async () => {
     await Promise.all(shortnames.map((s) => U.removeProject(s)));
     await U.getDB().collection('log')

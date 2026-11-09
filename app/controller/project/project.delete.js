@@ -4,24 +4,27 @@
  * delete (POST /admin/json/projects/delete, A3), so that the two have the
  * same effect.
  *
- * A delete never removes annotations: the project's current annotation
- * documents, and its current text-layer values (`textAnnotations`), get
- * `{backup: true, deletedWithProject: '<log id>'}`, after the
- * project document has been written to the `log` collection. Restore puts the
- * logged document back (with its original _id) and removes exactly that mark.
+ * A delete removes no document: the project's current version, its current
+ * annotation documents, and its current text-layer values (`textAnnotations`),
+ * get `{backup: true, deletedWithProject: '<log id>'}`, after the project
+ * document has been written to the `log` collection (T002 2.1b; the older
+ * versions are backups already). Restore stores the logged document as a new
+ * current version and removes exactly that mark; the project's old versions
+ * stay backups.
  */
 const _ = require('lodash');
 const logger = require('../../log');
 const { toId } = require('../toId');
+const { saveProjectVersion } = require('./currentProject');
 
 const deleteKeys = ['deleteProject', 'adminDeleteProject'];
 const current = { backup: { $exists: false } };
 
 /**
- * Delete a stored project: log it, mark its current annotations as backups,
- * remove the project. The caller holds the project lock and has checked the
+ * Delete a stored project: log it, mark its current version(s), annotations
+ * and text values as backups. The caller holds the project lock and has checked the
  * right to delete.
- * @param {object} appDb NWL database (nativeMongoDB(), deleteProject)
+ * @param {object} appDb NWL database (nativeMongoDB())
  * @param {object} params { project: the stored document, username: who
  *   deletes, key: the log key ('deleteProject' or 'adminDeleteProject') }
  * @returns {Promise<object>} { log: the log id, annotations: how many were marked }
@@ -43,10 +46,13 @@ const deleteStoredProject = async (appDb, { project, username, key = 'deleteProj
   };
   await db.collection('log').insertOne(entry); // sets entry._id
   const log = String(entry._id);
-  // the values of its text layers follow the same rule (textAnnotations.js)
-  await Promise.all(['annotations', 'textAnnotations'].map((name) => db.collection(name)
-    .updateMany(annotations, { $set: { backup: true, deletedWithProject: log } })));
-  await appDb.deleteProject({ shortname });
+  // the values of its text layers follow the same rule (textAnnotations.js),
+  // and so do the project's current version(s): none is removed
+  const mark = { $set: { backup: true, deletedWithProject: log } };
+  await Promise.all([
+    ...['annotations', 'textAnnotations'].map((name) => db.collection(name).updateMany(annotations, mark)),
+    db.collection('projects').updateMany({ shortname, ...current }, mark)
+  ]);
   logger.info({ event: key, shortname, by: username, log }, 'project deleted');
 
   return { log, annotations: entry.value.annotations };
@@ -66,9 +72,10 @@ const findDeleteEntry = (db, logId) => {
 };
 
 /**
- * Undo a delete: insert the logged project document again (its original
- * _id, when the log has it), and make current again the annotations that this
- * delete marked (older backups stay backups). Refused (409) if a project with
+ * Undo a delete: store the logged project document as a new current version
+ * (a new _id, T002 2.1b), and make current again the annotations and text
+ * values that this delete marked (older backups stay backups). The project
+ * versions it marked lose the mark but stay backups. Refused (409) if a project with
  * that shortname exists again, or if the delete was restored already. The
  * caller holds the project lock (withProjectLock on value.shortname).
  * @param {object} db Native database (nativeMongoDB())
@@ -78,7 +85,7 @@ const findDeleteEntry = (db, logId) => {
  */
 // eslint-disable-next-line max-statements
 const restoreDeletedProject = async (db, { entry, username }) => {
-  const { shortname, project, projectId } = entry.value;
+  const { shortname, project } = entry.value;
   const log = String(entry._id);
   if (entry.value.restored) {
     return { status: 409, error: `Project ${shortname} was restored already` };
@@ -93,11 +100,10 @@ const restoreDeletedProject = async (db, { entry, username }) => {
     date: (new Date()).toJSON()
   };
   await db.collection('log').insertOne(restore); // sets restore._id
-  // projectId was read natively from the log: the project keeps its ObjectId
-  const doc = projectId ? { _id: projectId, ...project } : { ...project };
-  await db.collection('projects').insertOne(doc); // sets doc._id when the log has no projectId
+  const doc = await saveProjectVersion(db, project, { by: username });
   await Promise.all(['annotations', 'textAnnotations'].map((name) => db.collection(name)
     .updateMany(marked, { $unset: { backup: '', deletedWithProject: '' } })));
+  await db.collection('projects').updateMany(marked, { $unset: { deletedWithProject: '' } });
   await db.collection('log').updateOne({ _id: entry._id }, { $set: { 'value.restored': String(restore._id) } });
   logger.info({ event: 'restoreDeletedProject', shortname, by: username, log }, 'project restored');
 

@@ -16,6 +16,7 @@
  * save does, and is logged with their ids in the `log` collection, so it can
  * be undone. Every action is logged, as in BrainBox.
  */
+const _ = require('lodash');
 const logger = require('../../log');
 const { withProjectLock } = require('../projectLock');
 const { toId } = require('../toId');
@@ -23,7 +24,8 @@ const { toId } = require('../toId');
 const isProjectName = (name) => typeof name === 'string' && name !== '';
 
 const current = { backup: { $exists: false } };
-const { NEWEST_FIRST: newestFirst } = require('../project/currentProject');
+const { NEWEST_FIRST: newestFirst, saveProjectVersion } = require('../project/currentProject');
+const { listOf } = require('../project/project.validation');
 
 /**
  * Shortnames of the projects that exist
@@ -283,7 +285,8 @@ const candidateProjects = async (db, { fileID, user }) => {
  * Runs holding the target project's lock (M3), as the settings save does, so
  * that a save cannot read the project before the image is added and write it
  * back after. A settings page loaded earlier still sends the file list it
- * had: saving it drops the image again (no versions yet, T002 step 2.1).
+ * had: saving it drops the image again, but the version with the image stays
+ * as a backup (T002 2.1b).
  * @param {object} db Native Db
  * @param {object} params { group, target, addImage, username }
  * @returns {Promise<object>} { assigned, addedImage, existing, existingByUser, log }
@@ -305,12 +308,15 @@ const assignOrphansUnlocked = async (db, { group, target, addImage, username }) 
     if (!addImage) {
       return { status: 409, error: `Project ${target} does not list this image: add it to the project's files, or ask to add it` };
     }
-    // Atomic on this document: only pushes if the image is still not listed.
-    const result = await db.collection('projects').updateOne(
-      { _id: project._id, 'files.list.source': { $ne: source }, 'files.list': { $ne: source } },
-      { $push: { 'files.list': { name: fileName(source), source } } }
-    );
-    addedImage = Boolean(result.modifiedCount);
+    // A new version of the project with the image added (T002 2.1b), unless
+    // the version read lists it by now (the guard of the $push by _id that
+    // this replaces: the image is never added twice).
+    const listedMeanwhile = await db.collection('projects').countDocuments({ _id: project._id, ...listsSourceQuery(source) });
+    if (listedMeanwhile === 0) {
+      const files = { ...(_.isPlainObject(project.files) ? project.files : {}), list: [...listOf(project, 'files'), { name: fileName(source), source }] };
+      await saveProjectVersion(db, { ...project, files }, { by: username });
+      addedImage = true;
+    }
   }
   const existing = await existingAnnotations(db, { fileID: group.fileID, project: target, user: group.user });
   const { ids } = found;

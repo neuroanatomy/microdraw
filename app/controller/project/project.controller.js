@@ -11,7 +11,7 @@ const { AccessControlService, AccessLevel, AccessType } = require('neuroweblab')
 const { checkProject, collaboratorName } = require('./project.validation');
 const { withProjectLock } = require('../projectLock');
 const { deleteStoredProject } = require('./project.delete');
-const { findCurrentProject } = require('./currentProject');
+const { findCurrentProject, saveProjectVersion } = require('./currentProject');
 const { visibleProjectParts } = require('./visibleProject');
 const { currentTextValues } = require('../textAnnotations');
 const { catchErrors } = require('../catchErrors');
@@ -230,6 +230,9 @@ const apiProjectUnsafe = async function (req, res) {
   }
 
   json = visibleProjectParts(json, loggedUser);
+  // As BrainBox: no _id. It changes on every save (T002 2.1b), and no client
+  // reads it (the settings page sends it back; saves ignore it).
+  delete json._id;
 
   if (req.query.var) {
     let i;
@@ -399,19 +402,22 @@ const saveProject = async function (req, res, loggedUser) {
     ignoredChanges = _.union(ignoredChanges, keepListsWithoutEditRights(newProject, oldProject, loggedUser));
   }
 
-  // Set by the server, as BrainBox does: a date sent by the client is ignored
-  newProject.modified = (new Date()).toJSON();
-  newProject.modifiedBy = loggedUser;
-
   let successMessage = _.isNil(oldProject) ? 'New project created.' : 'Project settings updated.';
   if(ignoredChanges.length > 0) {
     successMessage += ` Some changes (on ${ignoredChanges.join(', ')}) were ignored due to a lack of permissions.`;
   }
   successMessage += droppedMessage(dropped);
 
+  // A new version (T002 2.1b): `modified` and `modifiedBy` are set by the
+  // server, as BrainBox does (a date sent by the client is ignored), and so is
+  // `_id` (checkProject drops the client's). A new project is a first version;
+  // for an existing one, the version read above becomes `backup: true`. The
+  // new version starts from the stored one, as the $set of NWL's upsertProject
+  // did before 2.1b: a top-level field the client did not send is kept.
   try {
-    const o = await req.appConfig.db.upsertProject(newProject);
-    res.json({success: true, response: o, message: successMessage, dropped});
+    const version = _.isNil(oldProject) ? newProject : { ..._.omit(oldProject, ['deletedWithProject']), ...newProject };
+    const saved = await saveProjectVersion(req.appConfig.db.nativeMongoDB(), version, { by: loggedUser });
+    res.json({success: true, response: { insertedId: saved._id }, message: successMessage, dropped});
   } catch (err) {
     logger.error({ err, project: shortname, user: loggedUser }, 'cannot save project');
     sendError(res, 500, 'The project could not be saved');

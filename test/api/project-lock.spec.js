@@ -107,7 +107,8 @@ describe('Project lock and project deletion (M3)', function () {
   });
 
   describe('saving a project', function () {
-    it('concurrent creations of the same project store one document', async function () {
+    // T002 2.1b: one creation, then five saves, each a new version; one current
+    it('concurrent creations of the same project store one current document', async function () {
       const shortname = 'm3bconcurrent';
       const posts = [];
       for (let i = 0; i < 6; i += 1) {
@@ -116,9 +117,10 @@ describe('Project lock and project deletion (M3)', function () {
       const results = await Promise.all(posts);
       results.forEach((res) => assert.equal(res.status, 200, res.text));
       const docs = await U.getDB().collection('projects')
-        .find({ shortname })
+        .find({ shortname }, { sort: { _id: 1 } })
         .toArray();
-      assert.lengthOf(docs, 1);
+      assert.lengthOf(docs, 6);
+      assert.deepEqual(docs.map((d) => d.backup === true), [true, true, true, true, true, false]);
     }).timeout(U.shortTimeout);
 
     // eslint-disable-next-line max-statements
