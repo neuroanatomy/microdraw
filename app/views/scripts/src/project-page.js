@@ -83,7 +83,9 @@ const ProjectTables = {
     return {
       files,
       layers,
-      textAnnotations: layers.filter((a) => textTypes.includes(a.type)),
+      // an unnamed text layer gets no column (2026-11-09): 18 projects on
+      // production have one, probably left by the new-project form
+      textAnnotations: layers.filter((a) => textTypes.includes(a.type) && String(a.name || '').trim() !== ''),
       selectedFile: (files.length > 0 && !redirecting) ? fileIndex : -1,
       selectedLayer: 0,
       settingsURL: `/project/${shortname}/settings`

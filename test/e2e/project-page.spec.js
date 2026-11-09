@@ -52,7 +52,10 @@ fullProject.files.list = [
 fullProject.annotations.list = [
   { type: 'vectorial', name: 'regions', values: 'Set I', display: true },
   { type: 'text', name: 'comment', values: null, display: true },
-  { type: 'vectorial', name: 'more regions', values: 'Set II', display: true }
+  { type: 'vectorial', name: 'more regions', values: 'Set II', display: true },
+  // unnamed text layers, as 18 production projects have: no column (2026-11-09)
+  { type: 'text', name: '', values: null, display: true },
+  { type: 'text', name: '  ', values: null, display: true }
 ];
 
 // files visible to anyone, annotations to nobody but the collaborators (M3c)
@@ -178,10 +181,12 @@ describe('Project page (M2b, M8a)', function () {
     await openPage(page, projectURL(fullProject, ZARR));
     assert.deepEqual(pageErrors, []);
     assert.equal(await page.$eval('#fontLogo a', (a) => a.textContent.trim()), fullProject.name);
-    // text annotations get a column in the files table (its cells stay empty)
+    // named text annotations get a column in the files table (its cells stay
+    // empty); unnamed ones get none, but stay in the layers table
     assert.deepEqual(await headerText(page), ['Name', 'File', 'comment']);
     assert.deepEqual(await tableText(page, '#projectFiles'), [['cat', CAT], ['cat-zarr', ZARR], ['', MISSING]]);
-    assert.deepEqual(await tableText(page, '#vecAnnotations'), [['regions', 'Set I'], ['comment', ''], ['more regions', 'Set II']]);
+    assert.deepEqual(await tableText(page, '#vecAnnotations'),
+      [['regions', 'Set I'], ['comment', ''], ['more regions', 'Set II'], ['', ''], ['', '']]);
     assert.isFalse(await visible(page, '#noFiles'));
     assert.isFalse(await visible(page, '#noAnnotations'));
   }).timeout(U.shortTimeout);
