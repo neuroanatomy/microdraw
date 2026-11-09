@@ -15,6 +15,11 @@ const ANNOTATIONS_PROJECT_INDEX = 'project_1__id_-1';
 // (project, source, layer), readers take the newest current document by _id.
 const TEXT_ANNOTATIONS_INDEX = 'project_1_source_1_layer_1__id_-1';
 
+// Projects by shortname (project/currentProject.js): every project read. Not
+// unique: a project's old versions keep its shortname (T002 2.1), as in
+// BrainBox, whose `project` collection has the same index and name.
+const PROJECTS_SHORTNAME_INDEX = 'shortname_1';
+
 /**
  * Create the app's indexes if they are missing
  * @param {object} db Native MongoDB Db (app.db.nativeMongoDB())
@@ -31,6 +36,11 @@ const ensureIndexes = async (db) => {
   } catch (err) {
     log.warn({ err, index: TEXT_ANNOTATIONS_INDEX }, 'cannot create the textAnnotations index');
   }
+  try {
+    await db.collection('projects').createIndex({ shortname: 1 }, { name: PROJECTS_SHORTNAME_INDEX });
+  } catch (err) {
+    log.warn({ err, index: PROJECTS_SHORTNAME_INDEX }, 'cannot create the projects index');
+  }
 };
 
-module.exports = { ensureIndexes, ANNOTATIONS_PROJECT_INDEX, TEXT_ANNOTATIONS_INDEX };
+module.exports = { ensureIndexes, ANNOTATIONS_PROJECT_INDEX, TEXT_ANNOTATIONS_INDEX, PROJECTS_SHORTNAME_INDEX };

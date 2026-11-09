@@ -18,6 +18,7 @@ const { escapeRegex } = require('../search/search.controller');
 const { changeProject } = require('./admin.projects');
 
 const current = { backup: { $exists: false } };
+const { NEWEST_FIRST: newestFirst } = require('../project/currentProject');
 
 const maxFound = 20;
 
@@ -69,7 +70,7 @@ const searchProjects = async (db, q) => {
  */
 const deleteProject = (appDb, { shortname, version, username }) => withProjectLock(shortname, async () => {
   const stored = await appDb.nativeMongoDB().collection('projects')
-    .findOne({ shortname, ...current });
+    .findOne({ shortname, ...current }, newestFirst);
   if (!stored) {
     return { status: 404, error: `Project ${shortname} not found` };
   }

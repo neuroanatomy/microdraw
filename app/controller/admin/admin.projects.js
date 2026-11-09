@@ -30,6 +30,7 @@ const {
 } = require('../project/project.check');
 
 const current = { backup: { $exists: false } };
+const { NEWEST_FIRST: newestFirst } = require('../project/currentProject');
 const fixKeys = ['adminRemoveBlankRows', 'adminNameLayers', 'adminTransferOwner'];
 
 const log = async (db, key, value) => {
@@ -73,7 +74,7 @@ const validatedSave = async (appDb, stored, data) => {
 // eslint-disable-next-line max-statements
 const changeProject = (appDb, { shortname, version, username, key, change, save = validatedSave }) => withProjectLock(shortname, async () => {
   const db = appDb.nativeMongoDB();
-  const stored = await db.collection('projects').findOne({ shortname, ...current });
+  const stored = await db.collection('projects').findOne({ shortname, ...current }, newestFirst);
   if (!stored) {
     return { status: 404, error: `Project ${shortname} not found` };
   }
@@ -205,7 +206,7 @@ const restoreProject = async (appDb, { logId, username }) => {
   const { shortname, after, project: previous } = entry.value;
 
   return withProjectLock(shortname, async () => {
-    const stored = await db.collection('projects').findOne({ shortname, ...current });
+    const stored = await db.collection('projects').findOne({ shortname, ...current }, newestFirst);
     if (!stored || typeof after !== 'string' || projectVersion(stored) !== after) {
       return { status: 409, error: `Project ${shortname} has changed since this fix (restored already, or edited): not restored` };
     }

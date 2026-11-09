@@ -125,7 +125,8 @@ describe('controller/api/index.js', () => {
       updateAnnotations,
       insertAnnotations,
       findAnnotations,
-      queryProject
+      // projects are read through the native driver (project/currentProject.js)
+      nativeMongoDB: () => ({ collection: () => ({ findOne: queryProject }) })
     };
     _server = app.listen(port, () => console.log(`mocha test listening at ${port}`));
   });
@@ -232,7 +233,7 @@ describe('controller/api/index.js', () => {
               /**
                              * if project not provided, as if project is an empty string
                              */
-              assert(queryProject.calledWith({ shortname: project }));
+              assert(queryProject.calledWith({ shortname: project, backup: { $exists: false } }, { sort: { _id: -1 } }));
             } else {
 
               /**

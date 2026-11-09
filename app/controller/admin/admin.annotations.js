@@ -23,6 +23,7 @@ const { toId } = require('../toId');
 const isProjectName = (name) => typeof name === 'string' && name !== '';
 
 const current = { backup: { $exists: false } };
+const { NEWEST_FIRST: newestFirst } = require('../project/currentProject');
 
 /**
  * Shortnames of the projects that exist
@@ -290,7 +291,7 @@ const candidateProjects = async (db, { fileID, user }) => {
  */
 // eslint-disable-next-line max-statements
 const assignOrphansUnlocked = async (db, { group, target, addImage, username }) => {
-  const project = await db.collection('projects').findOne({ shortname: target, ...current });
+  const project = await db.collection('projects').findOne({ shortname: target, ...current }, newestFirst);
   if (!project) {
     return { status: 404, error: `Project ${target} not found` };
   }

@@ -6,6 +6,7 @@ const { AccessControlService } = require('neuroweblab');
 const { catchErrors } = require('../catchErrors');
 const { saveEditorChanges } = require('./editorSave');
 const { textWriteError, storeTextValue } = require('../textAnnotations');
+const { findCurrentProject } = require('../project/currentProject');
 
 const fs = require('fs');
 const log = require('../../log');
@@ -32,7 +33,7 @@ const getAnnotationsUnsafe = async function (req, res) {
   const project = (req.query.project) || '';
 
   if(project) {
-    const result = await req.app.db.queryProject({shortname: project});
+    const result = await findCurrentProject(req.app.db.nativeMongoDB(), project);
     if (!result) {
       res.status(404).json({error: 'Project not found'});
 
@@ -81,7 +82,7 @@ const getAnnotationPermissionsUnsafe = async function (req, res) {
 
     return;
   }
-  const result = await req.app.db.queryProject({shortname: project});
+  const result = await findCurrentProject(req.app.db.nativeMongoDB(), project);
   if (!result) {
     res.status(404).json({error: 'Project not found'});
 
@@ -149,7 +150,7 @@ const annotationEditRefusal = async (req, project, username) => {
   if (!project) {
     return {status: 400, error: NO_PROJECT_ERROR};
   }
-  const result = await req.app.db.queryProject({shortname: project});
+  const result = await findCurrentProject(req.app.db.nativeMongoDB(), project);
   if (!result) {
     return {status: 404, error: 'Project not found'};
   }
@@ -371,7 +372,7 @@ const saveTextAnnotationUnsafe = async function (req, res) {
 
     return;
   }
-  const stored = await req.app.db.queryProject({shortname: project, backup: {$exists: false}});
+  const stored = await findCurrentProject(req.app.db.nativeMongoDB(), project);
   if (!stored) {
     // deleted since the check above
     res.status(404).json({error: 'Project not found'});

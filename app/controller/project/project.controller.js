@@ -11,6 +11,7 @@ const { AccessControlService, AccessLevel, AccessType } = require('neuroweblab')
 const { checkProject, collaboratorName } = require('./project.validation');
 const { withProjectLock } = require('../projectLock');
 const { deleteStoredProject } = require('./project.delete');
+const { findCurrentProject } = require('./currentProject');
 const { visibleProjectParts } = require('./visibleProject');
 const { currentTextValues } = require('../textAnnotations');
 const { catchErrors } = require('../catchErrors');
@@ -47,7 +48,7 @@ const project = async function (req, res) {
   // Store return path in case of login
   req.session.returnTo = req.originalUrl;
   try {
-    const json = await req.appConfig.db.queryProject({shortname: requestedProject});
+    const json = await findCurrentProject(req.appConfig.db.nativeMongoDB(), requestedProject);
     if (json) {
       if (!AccessControlService.canViewFiles(json, loggedUser)) {
         res.status(403).send('Not authorized to view project');
@@ -91,8 +92,8 @@ var settingsUnsafe = async function(req, res) {
 
   req.session.returnTo = req.originalUrl;
 
-  let json = await req.appConfig.db.queryProject({shortname: requestedProject});
-  if(typeof json === 'undefined') {
+  let json = await findCurrentProject(req.appConfig.db.nativeMongoDB(), requestedProject);
+  if (_.isNil(json)) {
     json = {
       name: "",
       shortname: requestedProject,
@@ -208,7 +209,7 @@ const projectNew = function (req, res) {
 
 // eslint-disable-next-line max-statements -- existing handler, not refactored in a lint-only change; 2026-10-11
 const apiProjectUnsafe = async function (req, res) {
-  let json = await req.appConfig.db.queryProject({shortname: req.params.projectName, backup: {$exists: false}});
+  let json = await findCurrentProject(req.appConfig.db.nativeMongoDB(), req.params.projectName);
   if (_.isNil(json)) {
     res.status(404).json({error: 'Project not found'});
 
@@ -253,7 +254,7 @@ const apiProject = catchErrors(apiProjectUnsafe);
 // the visitor may not see (403), and only for the files and layers the project
 // page shows the visitor (visibleProjectParts): {} if the layers are hidden (M3c).
 const apiTextAnnotationsUnsafe = async function (req, res) {
-  const json = await req.appConfig.db.queryProject({shortname: req.params.projectName, backup: {$exists: false}});
+  const json = await findCurrentProject(req.appConfig.db.nativeMongoDB(), req.params.projectName);
   if (_.isNil(json)) {
     res.status(404).json({error: 'Project not found'});
 
@@ -372,7 +373,7 @@ const sendError = (res, status, message) => res.status(status).json({ success: f
 // eslint-disable-next-line max-statements
 const saveProject = async function (req, res, loggedUser) {
   const shortname = req.params.projectName;
-  const oldProject = await req.appConfig.db.queryProject({shortname, backup: {$exists: false}});
+  const oldProject = await findCurrentProject(req.appConfig.db.nativeMongoDB(), shortname);
   if (!_.isNil(oldProject) && !AccessControlService.hasFilesAccess(AccessLevel.EDIT, oldProject, loggedUser)) {
     sendError(res, 403, 'User does not have edit rights');
 
@@ -445,7 +446,7 @@ const postProject = catchErrors(postProjectUnsafe);
 // eslint-disable-next-line max-statements
 const removeProject = async function (req, res, loggedUser) {
   const shortname = req.params.projectName;
-  const projectToDelete = await req.appConfig.db.queryProject({shortname, backup: {$exists: false}});
+  const projectToDelete = await findCurrentProject(req.appConfig.db.nativeMongoDB(), shortname);
   if (_.isNil(projectToDelete)) {
     res.status(404).json({ success: false, message: 'Project not found' });
 
