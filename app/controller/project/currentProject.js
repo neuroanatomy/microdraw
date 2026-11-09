@@ -58,4 +58,23 @@ const saveProjectVersion = async (db, doc, { by }) => {
   return version;
 };
 
-module.exports = { CURRENT, NEWEST_FIRST, findCurrentProject, saveProjectVersion };
+/**
+ * The current versions of the projects a user owns or is a collaborator of,
+ * the collaborator row naming the user by `username` or `userID` (T002 2.2;
+ * NWL's queryUserProjects, used before, matched `username` only)
+ * @param {object} db Native MongoDB Db (app.db.nativeMongoDB())
+ * @param {string} username The user
+ * @returns {Promise<Array<object>>} The projects, in natural order as NWL's
+ */
+const findUserProjects = (db, username) => db.collection('projects')
+  .find({
+    $or: [
+      { owner: username },
+      { 'collaborators.list.username': username },
+      { 'collaborators.list.userID': username }
+    ],
+    ...CURRENT
+  })
+  .toArray();
+
+module.exports = { CURRENT, NEWEST_FIRST, findCurrentProject, findUserProjects, saveProjectVersion };

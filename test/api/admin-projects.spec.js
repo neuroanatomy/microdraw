@@ -14,6 +14,7 @@ const admins = require('../../app/controller/admin/admins');
 const adminProjects = require('../../app/controller/admin/admin.projects');
 const lock = require('../../app/controller/projectLock');
 const { projectVersion } = require('../../app/controller/project/project.check');
+const { withBothKeys } = require('../../app/controller/project/project.validation');
 
 // A2: the admin section for the stored projects that don't validate
 // (decisions D29). The list is computed by the same module as
@@ -346,7 +347,8 @@ describe('Admin: projects that don\'t validate (A2)', function () {
       const after = await stored('a2blank');
       const [, before] = fixtures();
       assert.deepEqual(after.files.list, [before.files.list[0]]);
-      assert.deepEqual(after.collaborators.list, [before.collaborators.list[0], before.collaborators.list[2]]);
+      // saved as a settings save: userID added next to username (T002 2.2)
+      assert.deepEqual(after.collaborators.list, [before.collaborators.list[0], before.collaborators.list[2]].map(withBothKeys));
       assert.deepEqual(after.annotations.list, [before.annotations.list[0]]);
       assert.equal(after.owner, before.owner);
 

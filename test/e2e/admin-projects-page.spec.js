@@ -11,6 +11,7 @@ const chai = require('chai');
 const { assert } = chai;
 const U = require('../mocha.test.util');
 const admins = require('../../app/controller/admin/admins');
+const { withBothKeys } = require('../../app/controller/project/project.validation');
 
 const H = require('./helpers');
 
@@ -103,7 +104,8 @@ describe('Admin page: projects that don\'t validate (A2)', () => {
     await waitFor((s) => document.querySelector('#invalid-projects button.restore') && !document.querySelector(s), sel(blankProject.shortname));
     let doc = await stored(blankProject.shortname);
     assert.deepEqual(doc.files.list, [blankProject.files.list[0]]);
-    assert.deepEqual(doc.collaborators.list, [blankProject.collaborators.list[0]]);
+    // saved as a settings save: userID added next to username (T002 2.2)
+    assert.deepEqual(doc.collaborators.list, [blankProject.collaborators.list[0]].map(withBothKeys));
     assert.include(await page.$eval('#invalid-projects p.result', (p) => p.textContent), 'Removed 2 files, 1 collaborators');
 
     await page.click('#invalid-projects button.restore');

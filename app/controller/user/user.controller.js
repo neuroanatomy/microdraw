@@ -6,6 +6,7 @@ const log = require('../../log');
 const { AccessControlService } = require('neuroweblab');
 const { scriptJSON } = require('../escape');
 const { visibleProjectParts } = require('../project/visibleProject');
+const { findUserProjects } = require('../project/currentProject');
 const { lastModified, newestAnnotations } = require('./lastModified');
 //const checkAccess = require('../checkAccess/checkAccess.js');
 //const dataSlices = require('../dataSlices/dataSlices.js');
@@ -225,7 +226,7 @@ const userProjectsPage = async (req) => {
   const start = queryInt(req.query.start, 0);
   const length = queryInt(req.query.length, Infinity);
   const loggedUser = req.user ? req.user.username : 'anyone';
-  const result = await req.appConfig.db.queryUserProjects(req.params.userName);
+  const result = await findUserProjects(req.appConfig.db.nativeMongoDB(), req.params.userName);
   const page = result
     .filter((project) => AccessControlService.canViewFiles(project, loggedUser))
     .slice(start, start + length);

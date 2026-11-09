@@ -8,7 +8,7 @@
 const _ = require('lodash');
 const logger = require('../../log');
 const { AccessControlService, AccessLevel, AccessType } = require('neuroweblab');
-const { checkProject, collaboratorName } = require('./project.validation');
+const { checkProject, collaboratorName, withBothKeys } = require('./project.validation');
 const { withProjectLock } = require('../projectLock');
 const { deleteStoredProject } = require('./project.delete');
 const { findCurrentProject, saveProjectVersion } = require('./currentProject');
@@ -104,6 +104,7 @@ var settingsUnsafe = async function(req, res) {
         list: [
           {
             username: 'anyone',
+            userID: 'anyone',
             access: {
               collaborators: 'view',
               annotations: 'edit',
@@ -136,27 +137,27 @@ var settingsUnsafe = async function(req, res) {
   const canViewCollaborators = AccessControlService.canViewCollaborators(json, loggedUser);
   json = visibleProjectParts(json, loggedUser);
 
-  // find username and name for each of the collaborators in the project
+  // every row shown with username and userID, equal, whichever of the two is
+  // stored (T002 2.2: before, a row without `username` answered an error text)
+  json.collaborators.list = json.collaborators.list.map(withBothKeys);
+
+  // the display name of each collaborator, from the users collection; a row
+  // whose user is not found keeps its stored name (or '')
   if (canViewCollaborators) {
-    const arr1 = [];
-    for(let j=0; j<json.collaborators.list.length; j++) {
-      if (Object.keys(json.collaborators.list[j]).includes("username") === false) {
-
-        return res.send("Error with user in project. Contact the adminstrators at https://mattermost.brainhack.org/brainhack/channels/microdraw").status(500);
-      }
-
-      arr1.push(req.appConfig.db.queryUser({username: json.collaborators.list[j].username}));
-    }
-
     try {
-      const collaboratorsList = await Promise.all(arr1);
-      for(let j=0; j<collaboratorsList.length; j++) {
-        if(collaboratorsList[j]) { // name found
-          json.collaborators.list[j].name=collaboratorsList[j].name;
-        } else { // name not found: set to empty
-          json.collaborators.list[j].name = "";
+      const names = _.uniq(json.collaborators.list.map(collaboratorName).filter((name) => typeof name === 'string'));
+      const users = await req.appConfig.db.nativeMongoDB().collection('users')
+        .find({ username: { $in: names } }, { projection: { _id: 0, username: 1, name: 1 } })
+        .toArray();
+      const nameOf = new Map(users.map((u) => [u.username, u.name]));
+      json.collaborators.list = json.collaborators.list.map((c) => {
+        if (!_.isPlainObject(c)) {
+          return c;
         }
-      }
+        const found = nameOf.get(collaboratorName(c));
+
+        return { ...c, name: typeof found === 'string' ? found : (c.name || '') };
+      });
     } catch(e) {
       logger.error({ err: e, project: requestedProject }, 'cannot resolve collaborator names');
     }
@@ -401,6 +402,10 @@ const saveProject = async function (req, res, loggedUser) {
     ignoredChanges = AccessControlService.preventUnauthorizedUpdates(newProject, oldProject, loggedUser);
     ignoredChanges = _.union(ignoredChanges, keepListsWithoutEditRights(newProject, oldProject, loggedUser));
   }
+
+  // a list put back as stored (no rights to change it) is written with both
+  // keys too (T002 2.2)
+  newProject.collaborators.list = newProject.collaborators.list.map(withBothKeys);
 
   let successMessage = _.isNil(oldProject) ? 'New project created.' : 'Project settings updated.';
   if(ignoredChanges.length > 0) {

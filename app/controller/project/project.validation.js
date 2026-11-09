@@ -8,7 +8,8 @@
  * - no `volume` annotation is required; annotation types are text|vectorial;
  * - files are {name, source} objects;
  * - a collaborator is named by `username` and/or `userID` (the 1.3.19 settings
- *   page writes both); an `anyone` entry is required;
+ *   page writes both), equal; a save stores both on every row (T002 2.2); an
+ *   `anyone` entry is required;
  * - access values are none|view|edit|add|remove;
  * - the users must exist: the owner of a new project, and the collaborators
  *   other than `anyone` that the stored project does not have yet;
@@ -93,10 +94,51 @@ const parseProjectData = (data) => {
 
 const isNonEmptyString = (str) => typeof str === 'string' && str.trim() !== '';
 
-// The name of a collaborator: username and/or userID (equal if both are set)
-const collaboratorName = (c) => (isNonEmptyString(c.username) ? c.username : c.userID);
+/*
+ * A collaborator row names its user by `username` (microdraw's key), `userID`
+ * (BrainBox's key, written next to `username` by nwl-components when a user
+ * is picked) or both, equal (T002 2.2). Every reader of a row's user goes
+ * through collaboratorName; every save writes both keys (withBothKeys).
+ */
+
+// The name of a collaborator: username and/or userID (equal if both are set);
+// undefined for a row that names nobody (or is not an object)
+const collaboratorName = (c) => {
+  if (!_.isPlainObject(c)) {
+    return;
+  }
+  if (isNonEmptyString(c.username)) {
+    return c.username;
+  }
+  if (isNonEmptyString(c.userID)) {
+    return c.userID;
+  }
+};
+
+// Whether a row has a username and a userID that differ
+const hasDifferentKeys = (c) => _.isPlainObject(c) && isNonEmptyString(c.username) &&
+  isNonEmptyString(c.userID) && c.username !== c.userID;
+
+/**
+ * A collaborator row with `username` and `userID` both set to its name (T002
+ * 2.2, as BrainBox's rows carry `userID` and `nickname`). A row that names
+ * nobody, or whose two keys differ, is returned as it is.
+ * @param {object} c A collaborator row
+ * @returns {object} The row with both keys
+ */
+const withBothKeys = (c) => {
+  const name = collaboratorName(c);
+  if (typeof name === 'undefined' || hasDifferentKeys(c)) {
+    return c;
+  }
+
+  return { ...c, username: name, userID: name };
+};
 
 const isAnyone = (c) => c.username === 'anyone' || c.userID === 'anyone';
+
+// What is wrong with a row whose username and userID differ
+const differentKeysError = (c, i) => `Collaborator ${i + 1} has a different username (${c.username}) and userID (${c.userID}): they must be equal`;
 
 /**
  * Whether a file source is acceptable: a path, or an http(s) URL. Other
@@ -139,7 +181,7 @@ const collaboratorError = (c, i) => {
     return `Collaborator ${i + 1} needs a username`;
   }
   if (hasUsername && hasUserID && c.username !== c.userID) {
-    return `Collaborator ${i + 1} has a different username and userID`;
+    return differentKeysError(c, i);
   }
   if (!_.isPlainObject(c.access) || !listTypes.every((type) => AccessLevel.values.includes(c.access[type]))) {
     return `Collaborator ${collaboratorName(c)} has invalid access values (allowed: ${AccessLevel.values.join(', ')})`;
@@ -234,7 +276,12 @@ const rowKey = {
 
     return _.isPlainObject(o) ? { source: text(o.source), name: text(o.name) } : o;
   },
-  collaborators: (c) => (_.isPlainObject(c) ? { username: text(c.username), userID: text(c.userID), access: c.access } : c),
+  collaborators: (c) => {
+    // a stored row with one key is the same row as it sent back with both
+    const row = withBothKeys(c);
+
+    return _.isPlainObject(row) ? { username: text(row.username), userID: text(row.userID), access: row.access } : row;
+  },
   annotations: (a) => (_.isPlainObject(a) ? { type: a.type, name: text(a.name), values: text(a.values) } : a)
 };
 
@@ -332,6 +379,12 @@ const structureError = (project, { shortname, isNew, stored = {} }) => {
   if (!project.collaborators.list.some(isAnyone)) {
     return 'The collaborators list needs an \'anyone\' entry';
   }
+  // stored rows too: a save writes both keys on every row (T002 2.2), and
+  // cannot choose between two names
+  const different = project.collaborators.list.findIndex(hasDifferentKeys);
+  if (different >= 0) {
+    return differentKeysError(project.collaborators.list[different], different);
+  }
 
   return null;
 };
@@ -393,6 +446,8 @@ const checkProject = async ({ data, shortname, oldProject, owner, db }) => {
   }
   // The owner is not set by the client: the stored one, or the creator.
   project.owner = owner;
+  // every row names its user by username and userID, equal (T002 2.2)
+  project.collaborators.list = project.collaborators.list.map(withBothKeys);
 
   const missing = await missingUsers(db, usersToCheck(project, oldProject, owner, stored.collaborators));
   if (missing.length > 0) {
@@ -442,5 +497,6 @@ module.exports = {
   rowProblemList,
   sanitize,
   storedRows,
-  structureError
+  structureError,
+  withBothKeys
 };

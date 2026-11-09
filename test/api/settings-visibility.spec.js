@@ -6,6 +6,7 @@ const chaiHttp = require('chai-http');
 chai.use(chaiHttp);
 const { assert } = chai;
 const U = require('../mocha.test.util');
+const { withBothKeys } = require('../../app/controller/project/project.validation');
 
 // S2: the settings page (GET /project/:name/settings) embeds only what the
 // visitor may see, by the same rule as the project page (M3c,
@@ -110,6 +111,7 @@ describe('What the settings page shows (S2)', function () {
     const stored = await U.queryProject(filesOnly.shortname);
     assert.equal(stored.files.list[0].name, 'renamed cat', res.body.message);
     assert.deepEqual(stored.annotations.list, filesOnly.annotations.list);
-    assert.deepEqual(stored.collaborators.list, filesOnly.collaborators.list);
+    // kept, with userID added next to username on every row (T002 2.2)
+    assert.deepEqual(stored.collaborators.list, filesOnly.collaborators.list.map(withBothKeys));
   }).timeout(U.shortTimeout);
 });
