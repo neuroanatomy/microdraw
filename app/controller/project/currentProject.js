@@ -40,14 +40,22 @@ const findCurrentProject = (db, shortname) => {
  * Insert first: a failure between the two writes leaves two current versions
  * (reads take the newest, findCurrentProject; the next save leaves one),
  * never none. The caller holds the project's lock (projectLock.js).
+ *
+ * A change that is not a user's edit (the stored-project migration, T002
+ * 2.4, scripts/migrate-projects.js) passes `keepModified`: the version keeps
+ * the `modified` and `modifiedBy` of `doc` (or keeps them absent), so that the
+ * user page's "Last modified" does not change.
  * @param {object} db Native MongoDB Db (app.db.nativeMongoDB())
  * @param {object} doc The project; an `_id` or `backup` in it is ignored
- * @param {object} options { by: the username stored as `modifiedBy` }
+ * @param {object} options { by: the username stored as `modifiedBy`;
+ *   keepModified: true to keep `doc`'s `modified` and `modifiedBy` instead }
  * @returns {Promise<object>} The document as stored, with its new `_id`
  */
-const saveProjectVersion = async (db, doc, { by }) => {
+const saveProjectVersion = async (db, doc, { by, keepModified = false }) => {
   // an ISO string, as before 2.1b and as BrainBox
-  const version = { ..._.omit(doc, ['_id', 'backup']), modified: (new Date()).toJSON(), modifiedBy: by };
+  const version = keepModified ?
+    _.omit(doc, ['_id', 'backup']) :
+    { ..._.omit(doc, ['_id', 'backup']), modified: (new Date()).toJSON(), modifiedBy: by };
   const projects = db.collection('projects');
   await projects.insertOne(version); // sets version._id
   await projects.updateMany(

@@ -57,6 +57,8 @@ const main = async (dbURL) => {
   }
 };
 
+module.exports = { quietInit };
+
 if (require.main === module) {
   const dbArg = process.argv.indexOf('--db');
   if (dbArg < 0 || !process.argv[dbArg + 1]) {
