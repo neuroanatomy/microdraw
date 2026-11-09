@@ -223,10 +223,10 @@ describe('Concurrent saves on the same slice', function () {
     }).timeout(U.shortTimeout);
   });
 
-  // Records the API upload's behaviour, unchanged by the editor-save rule: a
-  // save replaces the whole slice (every user's current regions become
-  // backups) with the uploaded regions, under the uploader's name.
-  it('an upload with action=save after another user\'s save replaces the slice, as before', async function () {
+  // The API upload's save replaces only the uploader's own regions (maintainer,
+  // 2026-11-09): another user's regions on the slice stay current. Until then
+  // it replaced the whole slice (A's a1 and r1 became backups).
+  it('an upload with action=save after another user\'s save keeps that user\'s regions', async function () {
     await save(agentA, [r1, a1]);
     const res = await agentB.post('/api/upload')
       .query({ action: 'save', source, slice, project: project.shortname, Hash: 'csaveupload' })
@@ -234,9 +234,11 @@ describe('Concurrent saves on the same slice', function () {
     assert.equal(res.status, 200, JSON.stringify(res.body));
 
     const after = await currentByName();
-    assert.deepEqual(Object.keys(after), ['u1'], 'current slice');
+    assert.deepEqual(Object.keys(after).sort(), ['a1', 'r1', 'u1'], 'current slice');
     assert.equal(after.u1.user, userB.username);
+    assert.equal(after.a1.user, userA.username);
+    assert.equal(after.r1.user, userA.username);
     const backups = (await load(agentA, true)).filter((d) => d.backup);
-    assert.deepEqual(names(backups), ['a1', 'r1'], "A's regions are backups");
+    assert.deepEqual(names(backups), [], 'no backups');
   }).timeout(U.shortTimeout);
 });

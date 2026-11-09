@@ -12,7 +12,7 @@
  *   it is: another user saved it after this client loaded the slice.
  * Nothing is deleted: replaced and removed regions become backups.
  *
- * The API upload (POST /api/upload) still uses updateAnnotation in index.js.
+ * The API upload (POST /api/upload) uses storeUpload in index.js.
  */
 const { ObjectId } = require('neuroweblab');
 

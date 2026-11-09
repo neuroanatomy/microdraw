@@ -103,71 +103,34 @@ const getAnnotationPermissionsUnsafe = async function (req, res) {
 
 router.get('/permissions', catchErrors(getAnnotationPermissionsUnsafe));
 
-// The API upload's save (POST /api/upload): merges with the saver's own
-// regions, marks every current document of the slice as backup, then inserts
-// all regions under the saver's name. The editor save uses editorSave.js.
-// eslint-disable-next-line max-statements
-const updateAnnotation = async (req, {
+// The API upload (POST /api/upload, maintainer 2026-11-09) stores the uploaded
+// regions under the uploader's name. `save` first marks the uploader's own
+// current regions on the slice as backup (it replaces them); `append` marks
+// nothing (it adds to them). Neither touches other users' regions on the slice.
+// Backup before insert, as before: the inserted regions must not be backed up.
+// The editor save (POST /api) uses editorSave.js.
+const storeUpload = async (req, {
+  action,
   fileID,
   user,
   project,
   Hash,
-  annotationString
+  regions
 }) => {
-  // get new annotations and ID
-  const annotation = JSON.parse(annotationString);
-  const {Regions: newAnnotations, RegionsToRemove: uidsToRemove} = annotation;
-
-  // get previous annotations
-  const prevAnnotations = await req.app.db.findAnnotations({fileID, user, project});
-
-  // update previous annotations with new annotations,
-  // overwrite what already exists, remove those marked for removal
-  for(const prevAnnot of prevAnnotations) {
-    const {uid} = prevAnnot.annotation;
-    let foundInPrevious = false;
-    for(const newAnnot of newAnnotations) {
-      if(newAnnot.uid === uid) {
-        foundInPrevious = true;
-        break;
-      }
-    }
-
-    let markedForRemoval = false;
-    if(uidsToRemove) {
-      for(const uidToRemove of uidsToRemove) {
-        if(uid === uidToRemove) {
-          markedForRemoval = true;
-          break;
-        }
-      }
-    }
-
-    if(!foundInPrevious && !markedForRemoval) {
-      newAnnotations.push(prevAnnot.annotation);
-    }
+  if (action === 'save') {
+    await req.app.db.updateAnnotations({
+      query: { fileID, user, project, backup: { $exists: false } },
+      update: { $set: { backup: true } },
+      options: { multi: true }
+    });
   }
-  annotation.Regions = newAnnotations;
-
-  // mark previous version as backup
-  const query = Object.assign(
-    {},
-    { fileID, /*user,*/ project }, // update annotations authored by anyone
-    { backup: { $exists: false } }
-  );
-  const update = { $set: { backup: true } };
-  const options = { multi: true };
-
-  // add new version
-  const arrayTobeSaved = annotation.Regions.map((region) => ({
+  await req.app.db.insertAnnotations(regions.map((region) => ({
     fileID,
     user, // "user" property in annotation corresponds to "username" everywhere else
     project,
     Hash,
     annotation: region
-  }));
-  await req.app.db.updateAnnotations({ query, update, options });
-  await req.app.db.insertAnnotations(arrayTobeSaved);
+  })));
 };
 
 // H3b: annotations are only saved inside a project. A save, append or upload
@@ -227,7 +190,7 @@ const saveFromGUI = async function (req, res) {
   }
 
   // only this save's changes, region by region (editorSave.js); the API
-  // upload below still replaces the slice through updateAnnotation
+  // upload below uses storeUpload
   const fileID = buildFileID(req.body);
   saveEditorChanges(req, {
     fileID,
@@ -338,31 +301,13 @@ const saveFromAPIUnsafe = async function (req, res) {
   } else if ((refusal = await annotationEditRefusal(req, project, username))) {
     res.status(refusal.status).json({msg: refusal.error});
   } else {
-    const { action } = req.query;
-
-    let annotations = { Regions: [] };
-    if (action === 'append') {
-      const oldAnnotations = await req.app.db.findAnnotations({ fileID, user: username, project });
-      annotations = {
-        Regions: oldAnnotations
-      };
-    }
-
-    /**
-    * use object destruction to avoid mutation of annotations object
-    */
-
-    const { Regions, ...rest } = annotations;
-
-    updateAnnotation(req, {
+    storeUpload(req, {
+      action: req.query.action,
       fileID,
       user: username,
       project,
       Hash,
-      annotationString: JSON.stringify({
-        ...rest,
-        Regions: Regions.concat(json.map((v) => v.annotation))
-      })
+      regions: json.map((v) => v.annotation)
     })
       .then(() => res.status(200).send({msg: "Annotation successfully saved"}))
       .catch((e) => res.status(500).send({ err: e.message}));
