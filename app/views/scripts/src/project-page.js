@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 /* global projectInfo, Microdraw */
 /*
   The project page (/project/:name), M8a: the files and annotation tables, the
@@ -10,13 +11,23 @@
   - `projectInfo` holds only what the visitor may see (M3c, visibleProjectParts),
     serialised with scriptJSON (H2b). Every user-set name is written as text
     ({{ }} interpolation, textContent): there is no v-html.
-  - The cells are read only. The old page had editable inputs that were never
-    saved; the project's files and layers are edited in its settings page.
+  - The name, file and layer cells are read only. The old page had editable
+    inputs that were never saved; the project's files and layers are edited in
+    its settings page. Only the text layers' values are edited here (step 4).
   - Text layers (step 3, 2026-11-09): each named text layer has a column in the
     files table. Its cells are there, empty, from the first render; after mount
     the page fetches GET /project/json/<shortname>/text-annotations and fills
     them with each file's current value, as text. A failed fetch leaves them
     empty, with a console warning. No fetch without a named text layer or a file.
+  - Editing them (step 4, 2026-11-09): for a logged-in visitor (the login
+    widget shows a Log Out link) whom GET /api/permissions?project=<shortname>
+    allows to edit the annotations, each text cell is focusable; a click, or
+    Enter/F2 on the focused cell, puts an <input> in it. Enter or leaving the
+    input saves with POST /api/text-annotation, Escape cancels, an unchanged
+    value sends nothing. A click on an editable cell does not open its row's
+    file. While saving the cell has the `saving` class; a refused save keeps
+    the typed text with the `error` class and the server's message as title.
+    Everyone else keeps read-only cells. Only one cell is edited at a time.
   - Long cells are clipped on one line with an ellipsis (project-style.css), as
     the old inputs clipped them, and show their full text in a title, so the
     left pane can be made narrower than its longest text (2026-10-28).
@@ -37,6 +48,21 @@ const textTypes = ['text', 'hidden text', 'multiple choices'];
 const fileQuery = (index) => `source=${encodeURIComponent(files[index].source)}&project=${encodeURIComponent(shortname)}`;
 const fileURL = (index) => `/project/${shortname}?${fileQuery(index)}`;
 const goToFile = (index) => { location.href = fileURL(index); };
+
+// The login widget (project.mustache) shows a Log Out link to a logged-in user,
+// as unsaved-stash.js reads it. The write route refuses logged-out visitors,
+// even where 'anyone' may edit.
+const loggedIn = () => Boolean(document.querySelector('#MyLogin a[href="/logout"]'));
+
+// Values are one line, at most MAX_TEXT_LENGTH characters (the server checks too)
+const MAX_TEXT_LENGTH = 10000;
+const oneLine = (text) => String(text).replace(/\r\n|\r|\n/g, ' ');
+
+// Key of a (source, layer) cell in the Maps below
+const cellKey = (src, layer) => JSON.stringify([src, layer]);
+
+// Typing in an input must not move to another file (step 4)
+const isTextEntry = (el) => Boolean(el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)));
 
 // The file in the URL; without one, the first file is opened.
 const source = new URLSearchParams(location.search).get('source');
@@ -70,6 +96,60 @@ const fetchTextValues = async () => {
   }
 };
 
+// Whether the visitor may edit the project's annotations: false when the
+// answer is not a clear yes
+const fetchCanEdit = async () => {
+  try {
+    const res = await fetch(`/api/permissions?project=${encodeURIComponent(shortname)}`, { credentials: 'same-origin' });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const json = await res.json();
+
+    return Boolean(json && json.annotations && json.annotations.edit === true);
+  } catch (err) {
+    console.warn('Could not load the permissions, text layers are read only:', err.message);
+
+    return false;
+  }
+};
+
+const parseJSON = (text) => {
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    return null;
+  }
+};
+
+// Save a value: {value, user, modified}, or throws an Error with the server's message
+const postTextValue = async (body) => {
+  const res = await fetch('/api/text-annotation', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify(body)
+  });
+  const text = await res.text();
+  const json = parseJSON(text);
+  if (!res.ok) {
+    throw new Error((json && typeof json.error === 'string') ? json.error : (text || `HTTP ${res.status}`));
+  }
+  if (json === null || typeof json.value !== 'string') {
+    throw new Error('Unexpected answer from the server');
+  }
+
+  return json;
+};
+
+// Numbers the saves, so that only the latest save of a cell sets its state
+let saveCount = 0;
+const nextAttempt = () => {
+  saveCount += 1;
+
+  return saveCount;
+};
+
 const ProjectTables = {
   template: `
     <div id="projectFiles" class="block" style="flex:1 1 auto">
@@ -85,7 +165,14 @@ const ProjectTables = {
           <tr v-for="(f, i) in files" :key="i" :class="{selected: i === selectedFile}" @click="openFile(i)">
             <td :class="{empty: isEmpty(f.name)}" :title="f.name">{{ f.name }}</td>
             <td :class="{empty: isEmpty(f.source)}" :title="f.source">{{ f.source }}</td>
-            <td v-for="(a, j) in textAnnotations" :key="'t' + j" :class="{empty: isEmpty(textValue(f, a))}" :title="textValue(f, a)">{{ textValue(f, a) }}</td>
+            <td v-for="(a, j) in textAnnotations" :key="'t' + j"
+              :class="textCellClass(f, a)" :title="textTitle(f, a)"
+              :tabindex="canEdit ? 0 : null" :aria-label="canEdit ? editLabel(f, a) : null"
+              @click="textCellClick($event, f, a)" @keydown="textCellKeydown($event, f, a)"><input v-if="isEditing(f, a)"
+                type="text" :maxlength="maxLength" :value="draft" :aria-label="editLabel(f, a)"
+                @input="draft = $event.target.value" @paste="pasteOneLine"
+                @keydown="inputKeydown" @blur="commitEdit"
+              /><template v-else>{{ textShown(f, a) }}</template></td>
           </tr>
         </tbody>
       </table>
@@ -118,6 +205,16 @@ const ProjectTables = {
       textAnnotations: layers.filter((a) => textTypes.includes(a.type) && String(a.name || '').trim() !== ''),
       // the text layers' values, filled after mount
       textValues: {},
+      // step 4: whether the visitor may edit them, the cell being edited
+      // ({source, layer, cell}) and its input's text, the values saved from
+      // this page (cellKey => {value, user, modified}) and the cells being
+      // saved or refused (cellKey => {status: 'saving'|'error', text, error})
+      canEdit: false,
+      maxLength: MAX_TEXT_LENGTH,
+      editing: null,
+      draft: '',
+      saved: new Map(),
+      pending: new Map(),
       selectedFile: (files.length > 0 && !redirecting) ? fileIndex : -1,
       selectedLayer: 0,
       settingsURL: `/project/${shortname}/settings`
@@ -130,6 +227,157 @@ const ProjectTables = {
       const value = own(own(own(this.textValues, file.source), layer.name), 'value');
 
       return (typeof value === 'string') ? value : null;
+    },
+    // the stored value: the one saved from this page, else the fetched one
+    storedValue(file, layer) {
+      const saved = this.saved.get(cellKey(file.source, layer.name));
+
+      return saved ? saved.value : this.textValue(file, layer);
+    },
+    // what the cell shows: the text being saved or refused, else the stored value
+    textShown(file, layer) {
+      const pending = this.pending.get(cellKey(file.source, layer.name));
+
+      return pending ? pending.text : this.storedValue(file, layer);
+    },
+    textTitle(file, layer) {
+      const pending = this.pending.get(cellKey(file.source, layer.name));
+      if (pending && pending.status === 'error') {
+        return `Not saved: ${pending.error}`;
+      }
+      const shown = this.textShown(file, layer);
+
+      return this.isEmpty(shown) ? null : shown;
+    },
+    textCellClass(file, layer) {
+      const pending = this.pending.get(cellKey(file.source, layer.name));
+      const editing = this.isEditing(file, layer);
+
+      return {
+        empty: !editing && this.isEmpty(this.textShown(file, layer)),
+        editable: this.canEdit,
+        editing,
+        saving: Boolean(pending && pending.status === 'saving'),
+        error: Boolean(pending && pending.status === 'error')
+      };
+    },
+    editLabel: (file, layer) => `Edit ${layer.name} for ${file.name || file.source}`,
+    isEditing(file, layer) {
+      return this.editing !== null && this.editing.source === file.source && this.editing.layer === layer.name;
+    },
+    // A click on an editable cell edits it and does not open the row's file;
+    // a read-only cell lets the click reach the row
+    textCellClick(e, file, layer) {
+      if (!this.canEdit) {
+        return;
+      }
+      e.stopPropagation();
+      this.startEdit(e.currentTarget, file, layer);
+    },
+    textCellKeydown(e, file, layer) {
+      if (!this.canEdit || e.target !== e.currentTarget) {
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'F2') {
+        e.preventDefault();
+        this.startEdit(e.currentTarget, file, layer);
+      }
+    },
+    async startEdit(cell, file, layer) {
+      if (this.isEditing(file, layer)) {
+        return;
+      }
+      // one cell at a time: the open one is saved first
+      this.commitEdit();
+      this.editing = { source: file.source, layer: layer.name, cell };
+      this.draft = this.textShown(file, layer) || '';
+      await this.$nextTick();
+      const input = cell.querySelector('input');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    },
+    // A pasted newline becomes a space; maxlength still holds
+    pasteOneLine(e) {
+      const text = e.clipboardData && e.clipboardData.getData('text');
+      if (typeof text !== 'string') {
+        return;
+      }
+      e.preventDefault();
+      const input = e.target;
+      const { selectionStart: start, selectionEnd: end } = input;
+      const room = Math.max(0, this.maxLength - (input.value.length - (end - start)));
+      input.setRangeText(oneLine(text).slice(0, room), start, end, 'end');
+      this.draft = input.value;
+    },
+    inputKeydown(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.commitEdit({ refocus: true });
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        this.cancelEdit();
+      }
+    },
+    // Close the input; with refocus, give the focus back to its cell
+    closeEdit(refocus) {
+      const { cell } = this.editing;
+      this.editing = null;
+      if (refocus && cell.isConnected) {
+        cell.focus();
+      }
+    },
+    cancelEdit() {
+      if (this.editing !== null) {
+        this.closeEdit(true);
+      }
+    },
+    // Save the open cell, if its value changed. Called on Enter and on blur
+    // (and the blur that follows Enter or Escape finds nothing open).
+    commitEdit({ refocus = false } = {}) {
+      if (this.editing === null) {
+        return;
+      }
+      const { source: src, layer } = this.editing;
+      const value = oneLine(this.draft).slice(0, this.maxLength);
+      this.closeEdit(refocus);
+      if (value === (this.storedValue({ source: src }, { name: layer }) || '')) {
+        // unchanged: nothing sent, a refused text is dropped
+        this.pending.delete(cellKey(src, layer));
+
+        return;
+      }
+      this.saveValue(src, layer, value);
+    },
+    async saveValue(src, layer, value) {
+      const key = cellKey(src, layer);
+      // the Map hands back a reactive proxy: the attempt is known by its number
+      const attempt = nextAttempt();
+      this.pending.set(key, { status: 'saving', text: value, attempt });
+      let error = null;
+      try {
+        this.saved.set(key, await postTextValue({ project: shortname, source: src, layer, value }));
+      } catch (err) {
+        error = err.message;
+      }
+      this.settleSave(key, attempt, value, error);
+    },
+    // The cell's state after a save: plain when saved, the typed text with the
+    // error when refused. A later save of the same cell owns its state.
+    settleSave(key, attempt, value, error) {
+      if ((this.pending.get(key) || {}).attempt !== attempt) {
+        return;
+      }
+      if (error === null) {
+        this.pending.delete(key);
+      } else {
+        this.pending.set(key, { status: 'error', text: value, error });
+      }
+    },
+
+    async loadCanEdit() {
+      this.canEdit = await fetchCanEdit();
     },
     async loadTextValues() {
       const values = await fetchTextValues();
@@ -146,21 +394,22 @@ const ProjectTables = {
   mounted() {
     if (this.textAnnotations.length > 0 && this.files.length > 0 && !redirecting) {
       this.loadTextValues();
+      if (loggedIn()) {
+        this.loadCanEdit();
+      }
     }
     // the up and down arrows open the previous and next file, wrapping around
     window.addEventListener('keydown', (e) => {
+      // not while typing in an input (a text layer's value, step 4)
+      if (isTextEntry(e.target)) {
+        return;
+      }
       const { length } = this.files;
-      if (this.selectedFile < 0 || length === 0) {
+      const step = { 38: length - 1, 40: 1 }[e.keyCode]; // up, down
+      if (this.selectedFile < 0 || length === 0 || typeof step === 'undefined') {
         return;
       }
-      let index;
-      if (e.keyCode === 38) { // up
-        index = (this.selectedFile + length - 1) % length;
-      } else if (e.keyCode === 40) { // down
-        index = (this.selectedFile + 1) % length;
-      } else {
-        return;
-      }
+      const index = (this.selectedFile + step) % length;
       if (index !== this.selectedFile) {
         goToFile(index);
       }
