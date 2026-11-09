@@ -9,6 +9,7 @@ router.get('/new', controller.validator, controller.projectNew);
 // The JSON routes accept an API token (?token=), as in BrainBox.
 router.get('/json', authTokenMiddleware, controller.apiProjectAll);
 router.get('/json/:projectName', controller.validator, authTokenMiddleware, controller.apiProject);
+router.get('/json/:projectName/text-annotations', controller.validator, authTokenMiddleware, controller.apiTextAnnotations);
 
 router.get('/:projectName', controller.validator, controller.project);
 router.get('/:projectName/settings', controller.validator, controller.settings);

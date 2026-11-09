@@ -5,7 +5,8 @@
  * same effect.
  *
  * A delete never removes annotations: the project's current annotation
- * documents get `{backup: true, deletedWithProject: '<log id>'}`, after the
+ * documents, and its current text-layer values (`textAnnotations`), get
+ * `{backup: true, deletedWithProject: '<log id>'}`, after the
  * project document has been written to the `log` collection. Restore puts the
  * logged document back (with its original _id) and removes exactly that mark.
  */
@@ -42,7 +43,9 @@ const deleteStoredProject = async (appDb, { project, username, key = 'deleteProj
   };
   await db.collection('log').insertOne(entry); // sets entry._id
   const log = String(entry._id);
-  await db.collection('annotations').updateMany(annotations, { $set: { backup: true, deletedWithProject: log } });
+  // the values of its text layers follow the same rule (textAnnotations.js)
+  await Promise.all(['annotations', 'textAnnotations'].map((name) => db.collection(name)
+    .updateMany(annotations, { $set: { backup: true, deletedWithProject: log } })));
   await appDb.deleteProject({ shortname });
   logger.info({ event: key, shortname, by: username, log }, 'project deleted');
 
@@ -93,7 +96,8 @@ const restoreDeletedProject = async (db, { entry, username }) => {
   // projectId was read natively from the log: the project keeps its ObjectId
   const doc = projectId ? { _id: projectId, ...project } : { ...project };
   await db.collection('projects').insertOne(doc); // sets doc._id when the log has no projectId
-  await db.collection('annotations').updateMany(marked, { $unset: { backup: '', deletedWithProject: '' } });
+  await Promise.all(['annotations', 'textAnnotations'].map((name) => db.collection(name)
+    .updateMany(marked, { $unset: { backup: '', deletedWithProject: '' } })));
   await db.collection('log').updateOne({ _id: entry._id }, { $set: { 'value.restored': String(restore._id) } });
   logger.info({ event: 'restoreDeletedProject', shortname, by: username, log }, 'project restored');
 

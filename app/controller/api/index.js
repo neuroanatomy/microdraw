@@ -5,6 +5,7 @@ const multer = require('multer');
 const { AccessControlService } = require('neuroweblab');
 const { catchErrors } = require('../catchErrors');
 const { saveEditorChanges } = require('./editorSave');
+const { textWriteError, storeTextValue } = require('../textAnnotations');
 
 const fs = require('fs');
 const log = require('../../log');
@@ -345,6 +346,48 @@ router.post('/upload', filterAuthorizedUserOnly, multer({ storage }).array('data
     return res.status(500).send({err: `actions other than save and append are no longer supported`});
   }
 });
+
+// The value of a named text layer for one file of a project (text layers step
+// 2, textAnnotations.js). Logged in (session or token) as the saves; the edit
+// rule is the region saves' (annotationEditRefusal, H2a).
+// eslint-disable-next-line max-statements
+const saveTextAnnotationUnsafe = async function (req, res) {
+  if (!req.user || !req.user.username) {
+    res.status(401).json({error: 'Log in to save annotations'});
+
+    return;
+  }
+  const { username } = req.user;
+  const { project, source, layer, value } = req.body || {};
+  // a string, so that it cannot be a query operator
+  if (typeof project !== 'string' || project === '') {
+    res.status(400).json({error: NO_PROJECT_ERROR});
+
+    return;
+  }
+  const refusal = await annotationEditRefusal(req, project, username);
+  if (refusal) {
+    res.status(refusal.status).json({error: refusal.error});
+
+    return;
+  }
+  const stored = await req.app.db.queryProject({shortname: project, backup: {$exists: false}});
+  if (!stored) {
+    // deleted since the check above
+    res.status(404).json({error: 'Project not found'});
+
+    return;
+  }
+  const error = textWriteError(stored, { source, layer, value });
+  if (error) {
+    res.status(400).json({error});
+
+    return;
+  }
+  res.status(200).json(await storeTextValue(req.app.db.nativeMongoDB(), { project, source, layer, value, user: username }));
+};
+
+router.post('/text-annotation', catchErrors(saveTextAnnotationUnsafe));
 
 router.use('', (req, res) => res.redirect('/'));
 

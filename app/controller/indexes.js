@@ -11,6 +11,10 @@ const log = require('../log');
 // of _id. Without it, every user-page load scans the whole collection.
 const ANNOTATIONS_PROJECT_INDEX = 'project_1__id_-1';
 
+// Values of text layers (textAnnotations.js): reads and writes go by
+// (project, source, layer), readers take the newest current document by _id.
+const TEXT_ANNOTATIONS_INDEX = 'project_1_source_1_layer_1__id_-1';
+
 /**
  * Create the app's indexes if they are missing
  * @param {object} db Native MongoDB Db (app.db.nativeMongoDB())
@@ -22,6 +26,11 @@ const ensureIndexes = async (db) => {
   } catch (err) {
     log.warn({ err, index: ANNOTATIONS_PROJECT_INDEX }, 'cannot create the annotations index');
   }
+  try {
+    await db.collection('textAnnotations').createIndex({ project: 1, source: 1, layer: 1, _id: -1 }, { name: TEXT_ANNOTATIONS_INDEX });
+  } catch (err) {
+    log.warn({ err, index: TEXT_ANNOTATIONS_INDEX }, 'cannot create the textAnnotations index');
+  }
 };
 
-module.exports = { ensureIndexes, ANNOTATIONS_PROJECT_INDEX };
+module.exports = { ensureIndexes, ANNOTATIONS_PROJECT_INDEX, TEXT_ANNOTATIONS_INDEX };

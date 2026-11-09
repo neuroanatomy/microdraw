@@ -12,6 +12,7 @@ const { checkProject, collaboratorName } = require('./project.validation');
 const { withProjectLock } = require('../projectLock');
 const { deleteStoredProject } = require('./project.delete');
 const { visibleProjectParts } = require('./visibleProject');
+const { currentTextValues } = require('../textAnnotations');
 const { catchErrors } = require('../catchErrors');
 const { scriptJSON, escapeHTML } = require('../escape');
 const validator = function (req, res, next) {
@@ -246,6 +247,29 @@ const apiProjectUnsafe = async function (req, res) {
 // exist) answers 500.
 const apiProject = catchErrors(apiProjectUnsafe);
 
+// GET /project/json/:projectName/text-annotations: the current values of the
+// project's named text layers, { <source>: { <layer>: {value, user, modified} } }.
+// Answers as GET /project/json/:projectName for an unknown project (404) or one
+// the visitor may not see (403), and only for the files and layers the project
+// page shows the visitor (visibleProjectParts): {} if the layers are hidden (M3c).
+const apiTextAnnotationsUnsafe = async function (req, res) {
+  const json = await req.appConfig.db.queryProject({shortname: req.params.projectName, backup: {$exists: false}});
+  if (_.isNil(json)) {
+    res.status(404).json({error: 'Project not found'});
+
+    return;
+  }
+  const loggedUser = getLoggedUser(req);
+  if (!AccessControlService.canViewFiles(json, loggedUser)) {
+    res.status(403).json({error: 'Not authorized to view project'});
+
+    return;
+  }
+  res.json(await currentTextValues(req.appConfig.db.nativeMongoDB(), visibleProjectParts(json, loggedUser)));
+};
+
+const apiTextAnnotations = catchErrors(apiTextAnnotationsUnsafe);
+
 // Shortnames of all the projects the requester may view.
 const viewableProjectNames = async (req) => {
   const loggedUser = getLoggedUser(req);
@@ -456,6 +480,7 @@ module.exports = {
   apiProject,
   apiProjectAll,
   apiProjectFiles,
+  apiTextAnnotations,
   project,
   projectNew,
   settings,
