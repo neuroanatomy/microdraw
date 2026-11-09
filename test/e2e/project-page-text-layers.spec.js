@@ -202,10 +202,9 @@ describe('Project page shows the values of text layers (text layers step 3)', fu
     assert.isTrue(warnings.some((w) => w.includes('text layers')), `no warning: ${JSON.stringify(warnings)}`);
   }).timeout(U.mediumTimeout);
 
-  // Last: on this project the viewer's own load of the annotations answers 403,
-  // and microdraw.js reports it as an unhandled 'Forbidden' a moment after the
-  // page loads (as before step 3; project-page.spec.js's M3c test does not wait
-  // long enough to see it). Run earlier, it lands in the next test's pageErrors.
+  // On this project the viewer's own load of the annotations answers 403; since
+  // 2026-11-09 microdraw.js shows that as no annotations instead of an
+  // unhandled 'Forbidden' (project-page.spec.js's M3c test checks it).
   it('a visitor who may not see the layers gets no text column and no failing request (M3c)', async function () {
     await page.goto(projectURL(hiddenProject, CAT), { waitUntil: 'load' });
     await H.settleFrames(page);

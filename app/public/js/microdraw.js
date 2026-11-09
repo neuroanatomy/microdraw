@@ -1274,9 +1274,18 @@ const Microdraw = (function () {
             //   resolve(data);
             // }
           })
-          .catch(function({textStatus, errorThrown: err}) {
-            console.log("< microdrawDBLoad resolve ERROR: " + textStatus + " " + err);
+          .catch(function({textStatus, errorThrown: err, status}) {
             Microdraw.annotationLoadingFlag = false;
+            // 403: the visitor may not view this project's annotations (M3c):
+            // nothing to show, not an error (2026-11-09; until then the
+            // rejection was unhandled and showed as a page error)
+            if (status === 403) {
+              console.info("< microdrawDBLoad: no permission to view the annotations of this project");
+              resolve([]);
+
+              return;
+            }
+            console.log("< microdrawDBLoad resolve ERROR: " + textStatus + " " + err);
             reject(err);
           });
       });

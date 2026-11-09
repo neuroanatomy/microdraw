@@ -273,7 +273,15 @@ describe('Project page (M2b, M8a)', function () {
   }).timeout(U.shortTimeout);
 
   it('a visitor who may not see the annotations gets no layer in the page (M3c)', async function () {
+    // the viewer's own load of the slice's annotations answers 403: shown as
+    // no annotations, not as a page error (2026-11-09; it used to throw an
+    // unhandled 'Forbidden' a moment after load)
+    // this project's request only: a previous test's page may answer late (304)
+    const viewerLoad = page.waitForResponse((res) => res.url().includes('/api?action=load_last')
+      && new URL(res.url()).searchParams.get('project') === hiddenLayersProject.shortname, { timeout: U.shortTimeout });
     await openPage(page, projectURL(hiddenLayersProject, CAT));
+    assert.equal((await viewerLoad).status(), 403);
+    await H.settleFrames(page);
     assert.deepEqual(pageErrors, []);
     assert.deepEqual(await tableText(page, '#vecAnnotations'), []);
     assert.isTrue(await visible(page, '#noAnnotations'));
