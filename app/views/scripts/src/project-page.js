@@ -31,23 +31,46 @@
   - Long cells are clipped on one line with an ellipsis (project-style.css), as
     the old inputs clipped them, and show their full text in a title, so the
     left pane can be made narrower than its longest text (2026-10-28).
+  - Sorting (2026-11-10): both tables sort by a click on a column header, as
+    the user page. Only nwl-components/sort is used (1.6.0: sortRows,
+    nextSort, ariaSort, the SORT_ICON_* of SortableTh, and
+    nwl-components/sort/style.css); SortHeader below has SortableTh's markup,
+    so the headers look the same. Not nwl-components' main entry nor its
+    dist/style.css, whose global rules would restyle this page. The files
+    table sorts by Name, File and each named text layer (by the value its
+    cell shows, values saved on this page included), the layers table by
+    Name and Label Set. Strings compare with localeCompare, missing values
+    come last both ways. Unsorted until a header is clicked: the project's
+    order. A row is its file (or layer), not its position: a click opens that
+    file, the open file's row stays highlighted wherever it is shown, and
+    ArrowUp/ArrowDown open the previous/next row on screen, in the displayed
+    order, wrapping around. While a text cell's input is open the rows keep
+    their order; a save that changes the sort re-sorts when the input closes.
   - Moving to another file reloads the page with ?source=<file>&project=<name>,
     as before, both encoded with encodeURIComponent since N3; the viewer reads
     both from the URL (Microdraw.deparam decodes them).
 */
-import { createApp } from 'vue';
+import 'nwl-components/sort/style.css';
+import { SORT_ICON_ATTRS, SORT_ICON_PATHS, ariaSort, nextSort, sortRows } from 'nwl-components/sort';
+import { createApp, markRaw } from 'vue';
 
 // A project without a files or annotations list is shown as an empty one (M2b).
 const listOf = (key) => ((projectInfo[key] && Array.isArray(projectInfo[key].list)) ? projectInfo[key].list : []);
 const files = listOf('files');
 const layers = listOf('annotations');
 const { shortname } = projectInfo;
+// Rows are the project's own objects, never reactive copies: a row is found by
+// its file (or layer) wherever a sort puts it
+files.forEach(markRaw);
+layers.forEach(markRaw);
 const textTypes = ['text', 'hidden text', 'multiple choices'];
+// The layers table's columns (sortRows); the files table's are made in created
+const LAYER_COLUMNS = { Name: { key: 'name' }, 'Label Set': { key: 'values' } };
 
 // The source is encoded (N3): a source may hold `&`, `#`, `=` or spaces.
-const fileQuery = (index) => `source=${encodeURIComponent(files[index].source)}&project=${encodeURIComponent(shortname)}`;
-const fileURL = (index) => `/project/${shortname}?${fileQuery(index)}`;
-const goToFile = (index) => { location.href = fileURL(index); };
+const fileQuery = (file) => `source=${encodeURIComponent(file.source)}&project=${encodeURIComponent(shortname)}`;
+const fileURL = (file) => `/project/${shortname}?${fileQuery(file)}`;
+const goToFile = (file) => { location.href = fileURL(file); };
 
 // The login widget (project.mustache) shows a Log Out link to a logged-in user,
 // as unsaved-stash.js reads it. The write route refuses logged-out visitors,
@@ -68,9 +91,11 @@ const isTextEntry = (el) => Boolean(el && (el.isContentEditable || ['INPUT', 'TE
 const source = new URLSearchParams(location.search).get('source');
 const redirecting = files.length > 0 && source === null;
 if (redirecting) {
-  location.search = fileQuery(0);
+  location.search = fileQuery(files[0]);
 }
 const fileIndex = Math.max(0, files.findIndex((f) => f.source === source));
+// The open file, as an object: rows are known by their file, not their position
+const openFileRow = (files.length > 0 && !redirecting) ? files[fileIndex] : null;
 
 // Keys of the values come from user data (sources, layer names): read own
 // properties only, so a source named `constructor` finds nothing (null).
@@ -150,19 +175,51 @@ const nextAttempt = () => {
   return saveCount;
 };
 
+// A sortable header, with SortableTh's markup: `sort` is a table's
+// {column, ascending}; a click (or Enter/Space on its button) emits `sort`
+const SortHeader = {
+  props: {
+    sort: { type: Object, required: true },
+    column: { type: String, required: true }
+  },
+  emits: ['sort'],
+  data: () => ({ iconAttrs: SORT_ICON_ATTRS }),
+  computed: {
+    direction() {
+      if (this.sort.column !== this.column) {
+        return 'none';
+      }
+
+      return ariaSort(this.sort.ascending ? 'ascending' : 'descending');
+    },
+    paths() {
+      return SORT_ICON_PATHS[this.direction];
+    }
+  },
+  template: `
+    <th class="nwl-sortable" :aria-sort="direction">
+      <button type="button" class="nwl-sort-button" @click="$emit('sort', column)">
+        <span class="nwl-sort-label"><slot>{{ column }}</slot></span>
+        <svg v-bind="iconAttrs" :data-state="direction"><path v-for="d in paths" :key="d" :d="d"></path></svg>
+      </button>
+    </th>
+  `
+};
+
 const ProjectTables = {
+  components: { SortHeader },
   template: `
     <div id="projectFiles" class="block" style="flex:1 1 auto">
       <table style="width:100%;text-align:left">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>File</th>
-            <th v-for="(a, i) in textAnnotations" :key="i" :title="a.name">{{ a.name }}</th>
+            <SortHeader :sort="fileSort" column="Name" @sort="sortFiles" />
+            <SortHeader :sort="fileSort" column="File" @sort="sortFiles" />
+            <SortHeader v-for="(a, i) in textAnnotations" :key="i" :sort="fileSort" :column="textColumn(i)" :title="a.name" @sort="sortFiles">{{ a.name }}</SortHeader>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(f, i) in files" :key="i" :class="{selected: i === selectedFile}" @click="openFile(i)">
+          <tr v-for="f in shownFiles" :key="rowKey.get(f)" :class="{selected: f === selectedFile}" @click="openFile(f)">
             <td :class="{empty: isEmpty(f.name)}" :title="f.name">{{ f.name }}</td>
             <td :class="{empty: isEmpty(f.source)}" :title="f.source">{{ f.source }}</td>
             <td v-for="(a, j) in textAnnotations" :key="'t' + j"
@@ -182,12 +239,12 @@ const ProjectTables = {
       <table id="vecAnnotations" style="width:100%;text-align:left">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Label Set</th>
+            <SortHeader :sort="layerSort" column="Name" @sort="sortLayers" />
+            <SortHeader :sort="layerSort" column="Label Set" @sort="sortLayers" />
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(a, i) in layers" :key="i" :class="{selected: i === selectedLayer}" @click="selectedLayer = i">
+          <tr v-for="a in sortedLayers" :key="rowKey.get(a)" :class="{selected: a === selectedLayer}" @click="selectedLayer = a">
             <td :class="{empty: isEmpty(a.name)}" :title="a.name">{{ a.name }}</td>
             <td :class="{empty: isEmpty(a.values)}" :title="a.values">{{ a.values }}</td>
           </tr>
@@ -198,8 +255,17 @@ const ProjectTables = {
   `,
   data() {
     return {
-      files,
-      layers,
+      files: markRaw(files),
+      layers: markRaw(layers),
+      // v-for keys: each row's position in the project
+      rowKey: markRaw(new Map([...files.map((f, i) => [f, i]), ...layers.map((a, i) => [a, i])])),
+      // the two tables' sort ({column, ascending}; unsorted until a header is
+      // clicked: the project's order), the files table's columns (created)
+      // and, while a text cell is edited, its order when the edit started
+      fileSort: { column: null, ascending: true },
+      layerSort: { column: null, ascending: true },
+      fileColumns: null,
+      frozenFiles: null,
       // an unnamed text layer gets no column (2026-11-09): 18 projects on
       // production have one, probably left by the new-project form
       textAnnotations: layers.filter((a) => textTypes.includes(a.type) && String(a.name || '').trim() !== ''),
@@ -215,12 +281,39 @@ const ProjectTables = {
       draft: '',
       saved: new Map(),
       pending: new Map(),
-      selectedFile: (files.length > 0 && !redirecting) ? fileIndex : -1,
-      selectedLayer: 0,
+      selectedFile: openFileRow,
+      selectedLayer: layers.length > 0 ? layers[0] : null,
       settingsURL: `/project/${shortname}/settings`
     };
   },
+  computed: {
+    // the files in the order shown
+    shownFiles() {
+      return this.frozenFiles || this.sortedFiles;
+    },
+    sortedFiles() {
+      return sortRows(this.files, this.fileColumns[this.fileSort.column], this.fileSort.ascending);
+    },
+    sortedLayers() {
+      return sortRows(this.layers, LAYER_COLUMNS[this.layerSort.column], this.layerSort.ascending);
+    }
+  },
+  created() {
+    const fileColumns = { Name: { key: 'name' }, File: { key: 'source' } };
+    this.textAnnotations.forEach((a, i) => {
+      fileColumns[this.textColumn(i)] = { key: (f) => this.textShown(f, a) };
+    });
+    this.fileColumns = markRaw(fileColumns);
+  },
   methods: {
+    sortFiles(column) {
+      this.fileSort = nextSort(this.fileSort, column);
+    },
+    sortLayers(column) {
+      this.layerSort = nextSort(this.layerSort, column);
+    },
+    // a text layer's column in fileSort: by position, as two layers may share a name
+    textColumn: (i) => `text ${i}`,
     isEmpty: (value) => value === null || typeof value === 'undefined' || value === '',
     // a file's current value for a text layer, as a string, or null
     textValue(file, layer) {
@@ -289,7 +382,7 @@ const ProjectTables = {
       }
       // one cell at a time: the open one is saved first
       this.commitEdit();
-      this.editing = { source: file.source, layer: layer.name, cell };
+      this.openEdit(cell, file, layer);
       this.draft = this.textShown(file, layer) || '';
       await this.$nextTick();
       const input = cell.querySelector('input');
@@ -297,6 +390,11 @@ const ProjectTables = {
         input.focus();
         input.select();
       }
+    },
+    // Open the input; the rows keep their order while it is open
+    openEdit(cell, file, layer) {
+      this.frozenFiles = this.sortedFiles.slice();
+      this.editing = { source: file.source, layer: layer.name, cell };
     },
     // A pasted newline becomes a space; maxlength still holds
     pasteOneLine(e) {
@@ -324,6 +422,7 @@ const ProjectTables = {
     closeEdit(refocus) {
       const { cell } = this.editing;
       this.editing = null;
+      this.frozenFiles = null;
       if (refocus && cell.isConnected) {
         cell.focus();
       }
@@ -385,9 +484,20 @@ const ProjectTables = {
         this.textValues = values;
       }
     },
-    openFile(index) {
-      if (index !== this.selectedFile) {
-        goToFile(index);
+    // The row `step` (-1 or 1) rows from the open file's, on screen, wrapping
+    // around; null without a step or an open file
+    nextFile(step) {
+      const rows = this.shownFiles;
+      const position = rows.indexOf(this.selectedFile);
+      if (position < 0 || typeof step === 'undefined') {
+        return null;
+      }
+
+      return rows[(position + step + rows.length) % rows.length];
+    },
+    openFile(file) {
+      if (file !== this.selectedFile) {
+        goToFile(file);
       }
     }
   },
@@ -398,20 +508,16 @@ const ProjectTables = {
         this.loadCanEdit();
       }
     }
-    // the up and down arrows open the previous and next file, wrapping around
+    // the up and down arrows open the previous and next row on screen (the
+    // displayed order, sorted or not), wrapping around
     window.addEventListener('keydown', (e) => {
       // not while typing in an input (a text layer's value, step 4)
       if (isTextEntry(e.target)) {
         return;
       }
-      const { length } = this.files;
-      const step = { 38: length - 1, 40: 1 }[e.keyCode]; // up, down
-      if (this.selectedFile < 0 || length === 0 || typeof step === 'undefined') {
-        return;
-      }
-      const index = (this.selectedFile + step) % length;
-      if (index !== this.selectedFile) {
-        goToFile(index);
+      const next = this.nextFile({ 38: -1, 40: 1 }[e.keyCode]); // up, down
+      if (next !== null && next !== this.selectedFile) {
+        goToFile(next);
       }
     });
   }
