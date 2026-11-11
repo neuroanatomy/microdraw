@@ -449,9 +449,11 @@ const Microdraw = (function () {
 
       const color = me.regionColor(name);
 
-      // Update path
+      // Update path; the region is shown or hidden as its new label is
+      // (a region loaded hidden stayed invisible after a new label, 2026-11-11)
       reg.name = name;
       reg.path.fillColor = 'rgba(' + color.red + ',' + color.green + ',' + color.blue + ',0.5)';
+      reg.path.opacity = me._isRegionVisible(name) ? 1 : 0;
       paper.view.draw();
 
       // Update region tag
@@ -559,6 +561,10 @@ const Microdraw = (function () {
           return visible;
         }
       }
+
+      // a name that is not a label of the label set (e.g. "Untitled 48",
+      // from older versions): no label can hide it, so it is shown (2026-11-11)
+      return 1;
     },
 
     /**

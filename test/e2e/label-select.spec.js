@@ -77,6 +77,9 @@ describe('Choosing a label with no region selected', () => {
 
   it('sets the label for the next region, closes the panel, and throws nothing', async () => {
     assert.isNull(await page.evaluate(() => Microdraw.region), 'no region selected');
+    // its name is not a label of the label set: shown anyway (it was loaded
+    // with opacity 0 before 2026-11-11, and no label could show it again)
+    assert.equal(await page.evaluate(() => Microdraw.ImageInfo[0].Regions[0].path.opacity), 1);
     const labels = await page.evaluate(() => Microdraw.ontology.labels.length);
     assert.isAbove(labels, 1, 'the ontology has more than one label');
 
@@ -97,5 +100,22 @@ describe('Choosing a label with no region selected', () => {
 
     assert.deepEqual(errors, []);
     assert.deepEqual(await page.evaluate(() => Microdraw.ImageInfo[0].Regions.map((r) => r.name)), [name]);
+    assert.equal(await page.evaluate(() => Microdraw.ImageInfo[0].Regions[0].path.opacity), 1, 'shown');
+  }).timeout(U.longTimeout);
+
+  it('a region loaded hidden is shown once it gets a visible label, and hidden with a hidden one', async () => {
+    await page.evaluate(() => {
+      [Microdraw.region] = Microdraw.ImageInfo[0].Regions;
+      Microdraw.region.path.opacity = 0;
+      Microdraw.ontology.labels[4].visible = false;
+    });
+
+    await chooseLabel(3);
+    assert.equal(await page.evaluate(() => Microdraw.ImageInfo[0].Regions[0].path.opacity), 1, 'visible label');
+
+    await page.evaluate(() => { [Microdraw.region] = Microdraw.ImageInfo[0].Regions; });
+    await chooseLabel(4);
+    assert.equal(await page.evaluate(() => Microdraw.ImageInfo[0].Regions[0].path.opacity), 0, 'hidden label');
+    assert.deepEqual(errors, []);
   }).timeout(U.longTimeout);
 });
