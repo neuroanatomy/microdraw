@@ -1,9 +1,9 @@
 /**
- * NeuroWebLab's shared project-management suite, slices 1 (access matrix) and
- * 2 (create, save, delete, validation, versions), against the server
+ * NeuroWebLab's shared project-management suite, slices 1 (access matrix),
+ * 2 (create, save, delete, validation, versions) and 3 (listings and search), against the server
  * test/api/runner.js started (neuroweblab/conformance/README.md).
  */
-const { accessMatrix, projectLifecycle } = require('neuroweblab/conformance');
+const { accessMatrix, projectLifecycle, projectListings } = require('neuroweblab/conformance');
 const U = require('../mocha.test.util');
 
 const db = () => U.getNativeDB();
@@ -49,7 +49,10 @@ const adapter = {
       return Array.isArray(body) && body.length > 0;
     }
   },
-  routes: { files: null },
+  // slice 3 (3.7): a name and an email for a user
+  setUserFields: (username, fields) => db().collection('users')
+    .updateOne({ username }, { $set: fields }),
+  routes: { files: null, searchUsers: '/search/json/users?q=:q' },
   expectedDifferences: {
     'route:files': 'ledger "Paged project files route": /project/json/:p/files missing in microdraw (stage 3.1)',
     '1.5/status': 'inventory 1.5: no view right answers 403, BrainBox 401 (schema §4 "No view right")',
@@ -59,3 +62,4 @@ const adapter = {
 
 accessMatrix(adapter);
 projectLifecycle(adapter);
+projectListings(adapter);
