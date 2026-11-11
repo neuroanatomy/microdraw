@@ -105,12 +105,13 @@ describe('What the project page shows, and projects without \'anyone\' (M3)', fu
   });
 
   describe('a project without an \'anyone\' entry', function () {
-    it('is refused to anonymous visitors (403, not 500)', async function () {
+    // 401 since 2026-11-11 (shared suite 1.5: logged out; was 403)
+    it('is refused to anonymous visitors (401, not 500)', async function () {
       const anon = chai.request(U.serverURL);
       for (const url of [`/project/json/${noAnyone.shortname}`, `/project/${noAnyone.shortname}`, `/project/${noAnyone.shortname}/settings`]) {
         // eslint-disable-next-line no-await-in-loop
         const res = await anon.get(url);
-        assert.equal(res.status, 403, url);
+        assert.equal(res.status, 401, url);
       }
     }).timeout(U.shortTimeout);
 

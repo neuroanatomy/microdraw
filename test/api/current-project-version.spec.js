@@ -93,14 +93,15 @@ describe('Project reads use the current version only (T002 2.1a)', function () {
       assert.notInclude(res.text, source('old'));
     }).timeout(U.shortTimeout);
 
-    it('follows the current permissions: 403 when only the backup was public', async function () {
+    // 401 to a logged-out visitor since 2026-11-11 (shared suite 1.5; was 403)
+    it('follows the current permissions: 401 when only the backup was public', async function () {
       const shortname = `${PREFIX}pageprivate`;
       await insertVersions(
         version(shortname, { name: 'Old public', tag: 'old', anyone: access('view', 'view'), backup: true }),
         version(shortname, { name: 'Now private', tag: 'new', anyone: access('none', 'none') })
       );
       const res = await chai.request(U.serverURL).get(`/project/${shortname}`);
-      assert.equal(res.status, 403);
+      assert.equal(res.status, 401);
     }).timeout(U.shortTimeout);
 
     it('answers 404 when the project has only backups', async function () {
@@ -127,14 +128,15 @@ describe('Project reads use the current version only (T002 2.1a)', function () {
       assert.notInclude(res.text, user.username);
     }).timeout(U.shortTimeout);
 
-    it('follows the current permissions: 403 when only the backup was public', async function () {
+    // 401 to a logged-out visitor since 2026-11-11 (shared suite 1.5; was 403)
+    it('follows the current permissions: 401 when only the backup was public', async function () {
       const shortname = `${PREFIX}settingsprivate`;
       await insertVersions(
         version(shortname, { name: 'Old public', tag: 'old', anyone: access('view', 'view'), backup: true }),
         version(shortname, { name: 'Now private', tag: 'new', anyone: access('none', 'none') })
       );
       const res = await chai.request(U.serverURL).get(`/project/${shortname}/settings`);
-      assert.equal(res.status, 403);
+      assert.equal(res.status, 401);
     }).timeout(U.shortTimeout);
   });
 

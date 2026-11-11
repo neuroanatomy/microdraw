@@ -119,9 +119,10 @@ describe('A null project, a project without owner (M6, NWL IsOwner)', function (
       assert.equal(res.body.shortname, publicView.shortname);
     }).timeout(U.shortTimeout);
 
-    it('refuses (403, not 500) a project without owner and without \'anyone\'', async function () {
+    // the project routes answer 401 logged out since 2026-11-11 (shared suite 1.5; was 403); /api keeps 403
+    it('refuses (401 or 403, not 500) a project without owner and without \'anyone\'', async function () {
       const answers = await Promise.all(requesters().map((r) => statuses(r, noAnyone.shortname)));
-      assert.deepEqual(answers, [[403, 403, 403], [403, 403, 403]]);
+      assert.deepEqual(answers, [[401, 401, 403], [403, 403, 403]]);
     }).timeout(U.shortTimeout);
 
     it('lets nobody edit the annotations of a project without owner', async function () {

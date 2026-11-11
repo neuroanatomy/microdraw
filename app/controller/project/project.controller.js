@@ -32,6 +32,10 @@ const getLoggedUser = (req) => {
   return 'anyone';
 };
 
+// No view right on a project (shared suite 1.5, 2026-11-11): 401 logged out
+// ("who are you?"), 403 logged in, by session or by token
+const noViewStatus = (loggedUser) => (loggedUser === 'anyone' ? 401 : 403);
+
 // eslint-disable-next-line max-statements -- existing handler, not refactored in a lint-only change; 2026-10-11
 const project = async function (req, res) {
   const login = (req.user) ?
@@ -51,7 +55,7 @@ const project = async function (req, res) {
     const json = await findCurrentProject(req.appConfig.db.nativeMongoDB(), requestedProject);
     if (json) {
       if (!AccessControlService.canViewFiles(json, loggedUser)) {
-        res.status(403).send('Not authorized to view project');
+        res.status(noViewStatus(loggedUser)).send('Not authorized to view project');
 
         return;
       }
@@ -123,7 +127,7 @@ var settingsUnsafe = async function(req, res) {
   }
 
   if (!AccessControlService.canViewFiles(json, loggedUser)) {
-    res.status(403).send('Not authorized to view project');
+    res.status(noViewStatus(loggedUser)).send('Not authorized to view project');
 
     return;
   }
@@ -225,7 +229,7 @@ const apiProjectUnsafe = async function (req, res) {
   }
 
   if (!AccessControlService.canViewFiles(json, loggedUser)) {
-    res.status(403).json({error: 'Not authorized to view project'});
+    res.status(noViewStatus(loggedUser)).json({error: 'Not authorized to view project'});
 
     return;
   }
@@ -255,7 +259,7 @@ const apiProject = catchErrors(apiProjectUnsafe);
 // GET /project/json/:projectName/text-annotations: the current values of the
 // project's named text layers, { <source>: { <layer>: {value, user, modified} } }.
 // Answers as GET /project/json/:projectName for an unknown project (404) or one
-// the visitor may not see (403), and only for the files and layers the project
+// the visitor may not see (401 logged out, 403 logged in), and only for the files and layers the project
 // page shows the visitor (visibleProjectParts): {} if the layers are hidden (M3c).
 const apiTextAnnotationsUnsafe = async function (req, res) {
   const json = await findCurrentProject(req.appConfig.db.nativeMongoDB(), req.params.projectName);
@@ -266,7 +270,7 @@ const apiTextAnnotationsUnsafe = async function (req, res) {
   }
   const loggedUser = getLoggedUser(req);
   if (!AccessControlService.canViewFiles(json, loggedUser)) {
-    res.status(403).json({error: 'Not authorized to view project'});
+    res.status(noViewStatus(loggedUser)).json({error: 'Not authorized to view project'});
 
     return;
   }
@@ -309,17 +313,70 @@ const apiProjectAll = async function (req, res) {
   }
 };
 
-/**
- * @function apiProjectFiles
- */
+// The file entry the files route answers: `names=true`, only {source, name}
+// (a string entry, stored before files were objects, as {source, name: ''})
+const fileEntry = (entry, onlyNames) => {
+  if (!_.isPlainObject(entry)) {
+    return { source: String(entry), name: '' };
+  }
 
-/**
- * @todo Check access rights for this route
- */
-
-const apiProjectFiles = function (req, res) {
-  res.send({});
+  return onlyNames ? { source: entry.source, name: typeof entry.name === 'string' ? entry.name : '' } : entry;
 };
+
+// The current version of the project, if the visitor may view its files;
+// otherwise null, answered: 404 {error} unknown, 401 or 403 {error} (1.5)
+const viewableProject = async (req, res) => {
+  const json = await findCurrentProject(req.appConfig.db.nativeMongoDB(), req.params.projectName);
+  if (_.isNil(json)) {
+    res.status(404).json({ error: `No project ${req.params.projectName}` });
+
+    return null;
+  }
+  const loggedUser = getLoggedUser(req);
+  if (!AccessControlService.canViewFiles(json, loggedUser)) {
+    res.status(noViewStatus(loggedUser)).json({ error: 'Not authorized to view project' });
+
+    return null;
+  }
+
+  return json;
+};
+
+// The files from `start`, at most `length`, cut to the list; a value that is
+// not a number, or negative, counts as 0
+const filesSlice = (json, start, length, onlyNames) => {
+  const list = (_.isPlainObject(json.files) && Array.isArray(json.files.list)) ? json.files.list : [];
+  const from = Math.min(Math.max(0, parseInt(start) || 0), list.length);
+  const count = Math.min(Math.max(0, parseInt(length) || 0), list.length - from);
+
+  return list.slice(from, from + count).map((entry) => fileEntry(entry, onlyNames));
+};
+
+/**
+ * GET /project/json/:projectName/files?start&length[&names=true]: a slice of
+ * the current version's files, as BrainBox's apiProjectFiles: `start` and
+ * `length` are required (200 {error} without them), the slice is cut to the
+ * list (an empty list past its end), `names=true` sends {source, name} only.
+ * Unknown project: 404 {error}; no view right: 401 logged out, 403 logged in
+ * (shared suite 1.5, route:files).
+ * @param {Object} req Req object from express
+ * @param {Object} res Res object from express
+ * @returns {void}
+ */
+const apiProjectFilesUnsafe = async function (req, res) {
+  const missing = ['start', 'length'].find((key) => typeof req.query[key] === 'undefined');
+  if (missing) {
+    res.json({ error: `Provide '${missing}'` });
+
+    return;
+  }
+  const json = await viewableProject(req, res);
+  if (json) {
+    res.json(filesSlice(json, req.query.start, req.query.length, req.query.names === 'true'));
+  }
+};
+
+const apiProjectFiles = catchErrors(apiProjectFilesUnsafe);
 
 const listTypes = [AccessType.COLLABORATORS, AccessType.FILES, AccessType.ANNOTATIONS];
 

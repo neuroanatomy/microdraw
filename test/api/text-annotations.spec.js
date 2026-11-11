@@ -225,7 +225,8 @@ describe('Values of text layers (text layers step 2)', function () {
         assert.deepEqual(res.body, answer.body, shortname);
       }));
       assert.equal((await read('tl2nosuchproject')).status, 404);
-      assert.equal((await read('tl2private')).status, 403);
+      // logged out: 401 since 2026-11-11, as the JSON route (shared suite 1.5; was 403)
+      assert.equal((await read('tl2private')).status, 401);
       assert.equal((await read('tl2private', agents[viewer.username])).status, 200);
     }).timeout(U.shortTimeout);
   });

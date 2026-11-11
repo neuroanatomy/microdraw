@@ -124,12 +124,9 @@ const adapter = {
   // slice 3 (3.7): a name and an email for a user
   setUserFields: (username, fields) => db().collection('users')
     .updateOne({ username }, { $set: fields }),
-  routes: { files: null, searchUsers: '/search/json/users?q=:q' },
-  expectedDifferences: {
-    'route:files': 'ledger "Paged project files route": /project/json/:p/files missing in microdraw (stage 3.1)',
-    '1.5/status': 'inventory 1.5: no view right answers 403, BrainBox 401 (schema §4 "No view right")',
-    '1.6/status': 'inventory 1.6: unknown project JSON answers 404 {error}, BrainBox 200 empty (schema §4)'
-  }
+  routes: { searchUsers: '/search/json/users?q=:q' },
+  // none since NeuroWebLab 1.7.0: the statuses of 1.5 and 1.6 and the route /files (2026-11-11)
+  expectedDifferences: {}
 };
 
 accessMatrix(adapter);

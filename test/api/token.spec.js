@@ -43,13 +43,15 @@ describe('Token authentication on /project routes (M1)', function () {
 
   it('GET /project/json/:name still refuses it without the token', async function () {
     const res = await noCookie().get(`/project/json/${project.shortname}`);
-    assert.equal(res.status, 403);
+    // logged out: 401 since 2026-11-11 (shared suite 1.5; was 403)
+    assert.equal(res.status, 401);
   }).timeout(U.shortTimeout);
 
   it('GET /project/json/:name refuses it with an unknown token', async function () {
     const res = await noCookie().get(`/project/json/${project.shortname}`)
       .query({ token: 'not-a-token' });
-    assert.equal(res.status, 403);
+    // an unknown token is logged out: 401 since 2026-11-11 (shared suite 1.5, 1.12; was 403)
+    assert.equal(res.status, 401);
   }).timeout(U.shortTimeout);
 
   it('POST /project/json/:name saves with the token', async function () {
