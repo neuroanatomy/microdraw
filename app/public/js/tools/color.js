@@ -5,6 +5,10 @@ window.ToolColor = { color : (function() {
   var tool = {
     _findSelectedRegion: function () {
       const {currentImage, region} = Microdraw;
+      // no region selected: the label is for the next region (2026-11-11)
+      if (!region) {
+        return null;
+      }
       const {Regions: regions} = Microdraw.ImageInfo[currentImage];
       let regionIndex = null;
       for(let i=0; i<regions.length; i+=1) {
@@ -117,12 +121,8 @@ window.ToolColor = { color : (function() {
     _handleLabelColorClick: (l, i) => {
       Microdraw.currentLabelIndex = i;
       const regionIndex = tool._findSelectedRegion();
-      if(typeof regionIndex !== "undefined") {
-        console.log(regionIndex);
-        const {region} = Microdraw;
-        if (typeof region !== "undefined") {
-          Microdraw.changeRegionName(region, l.name);
-        }
+      if (regionIndex !== null) {
+        Microdraw.changeRegionName(Microdraw.region, l.name);
       }
       Microdraw.updateLabelDisplay();
       tool._detachLabelsetContainer();
