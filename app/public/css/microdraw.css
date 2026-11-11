@@ -82,6 +82,24 @@ html, body {
     transform: translateX(-50%);
     max-width: 60%;
 }
+#liveStatus {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    padding: 2px 8px;
+    background-color: rgba(51, 51, 51, 0.8);
+    color: white;
+    font-size: 12px;
+    line-height: 18px;
+    border-radius: 3px;
+    z-index: 20;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+#liveStatus.shown {
+    opacity: 1;
+}
 #saveDialog a, #importDialog a {
     color: #8cf;
 }

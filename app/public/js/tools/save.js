@@ -55,13 +55,12 @@ window.ToolSave = { save: (function() {
     const removed = new Set(value.RegionsToRemove);
     section.RegionsToRemove = section.RegionsToRemove.filter((uid) => !removed.has(uid));
     section.Hash = Microdraw.valueHash({ Regions: value.Regions, RegionsToRemove: [] });
+    // what the server has now, unless another user saved too (step 3b)
+    section.serverSignature = Microdraw.regionsSignature(value.Regions);
     UnsavedStash.snapshot(Microdraw, sl);
   };
 
-  // `value` is the {Regions, RegionsToRemove} sent in query.annotation.
-  const _processOneSection = async function (query, value) {
-    const sl = query.slice;
-
+  const _post = async function (query) {
     const res = await fetch('/api', {
       method: "POST",
       headers: { 'Content-Type': 'application/json' },
@@ -73,8 +72,24 @@ window.ToolSave = { save: (function() {
       err.status = res.status;
       throw err;
     }
+  };
 
-    _saved(sl, value);
+  // `value` is the {Regions, RegionsToRemove} sent in query.annotation.
+  const _processOneSection = async function (query, value) {
+    const sl = query.slice;
+    const section = Microdraw.ImageInfo[sl];
+
+    // While the save is out, a saved notice (maybe this save's own) only
+    // marks the slice stale: it is fetched again once the save is done and
+    // the slice is clean (step 3b).
+    section.savesPending = (section.savesPending || 0) + 1;
+    try {
+      await _post(query);
+      _saved(sl, value);
+    } finally {
+      section.savesPending -= 1;
+      Microdraw.liveRefresh();
+    }
 
     return sl;
   };

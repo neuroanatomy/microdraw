@@ -1432,19 +1432,55 @@ const Microdraw = (function () {
       me.clampToolbar();
     },
 
+    // A region stored without uid (older data) takes its document's _id, so
+    // that it keeps the same uid from one load to the next: the save matches
+    // regions by uid (2026-10-29)
+    _dbRegionUid: (doc) => {
+      const {uid} = doc.annotation;
+
+      return (typeof uid === 'undefined' || uid === null || uid === '') && doc._id ? String(doc._id) : uid;
+    },
+
+    /**
+       * @desc A string that is the same for two lists of regions with the same
+       * uids, names and paths, whatever their order and the key order of their
+       * paths (as the server compares regions, editorSave.js `canonical`).
+       * @param {Array} regions Items {uid, name, path}, path as stored (parsed JSON)
+       * @returns {string} The signature
+       */
+    regionsSignature: (regions) => {
+      const canonical = (value) => {
+        if (Array.isArray(value)) {
+          return `[${value.map(canonical).join(',')}]`;
+        }
+        if (value && typeof value === 'object') {
+          return `{${Object.keys(value).sort()
+            .map((k) => `${JSON.stringify(k)}:${canonical(value[k])}`)
+            .join(',')}}`;
+        }
+
+        return JSON.stringify(value);
+      };
+
+      return JSON.stringify(regions.map(({uid, name, path}) => canonical([uid, name, path])).sort());
+    },
+
+    // the signature of the regions of a GET /api answer
+    _dbSignature: (data) => me.regionsSignature(data.map((doc) => ({
+      uid: me._dbRegionUid(doc),
+      name: doc.annotation.name,
+      path: doc.annotation.path
+    }))),
+
     _convertDBAnnotationsToRegions: (data) => {
       const regions = [];
       let path;
       for( let i = 0; i < data.length; i += 1 ) {
         const json = data[i].annotation.path;
         const [type] = json;
-        // a region stored without uid (older data) takes its document's _id,
-        // so that it keeps the same uid from one load to the next: the save
-        // matches regions by uid (2026-10-29)
-        const {uid} = data[i].annotation;
         const reg = {
           name: data[i].annotation.name,
-          uid: (typeof uid === 'undefined' || uid === null || uid === '') && data[i]._id ? String(data[i]._id) : uid
+          uid: me._dbRegionUid(data[i])
         };
         switch(type) {
         case 'Path': {
@@ -1596,6 +1632,10 @@ const Microdraw = (function () {
       section.loadToken = token;
       const loaded = typeof section.Hash !== "undefined";
 
+      // live-update notices for this slice (step 3b)
+      me.shownSlice = slice;
+      me._joinLiveRoom(slice);
+
       // A slice with unsaved changes keeps its copy in memory. A slice
       // already loaded and unchanged is fetched again, so that it shows what
       // other users saved since (2026-10-29). (Regions without a Hash: not
@@ -1613,31 +1653,139 @@ const Microdraw = (function () {
         me._drawRegionsInPaper(section.Regions);
       }
 
-      const data = await me.microdrawDBLoad();
+      await me._fetchSlice(slice, token);
+    },
 
-      // The user moved to another slice, or came back to this one (a newer
-      // fetch is out): drop the answer.
-      if (slice !== me.currentImage || section.loadToken !== token) {
+    /**
+       * @desc Fetch the current slice and replace its regions with the answer,
+       * unless the answer is no longer wanted. Used when a slice is shown
+       * (step 2, 2026-10-29) and when another user saved it (step 3b).
+       * @param {string} slice The current slice (a key of ImageInfo)
+       * @param {object} token The slice's loadToken for this fetch
+       * @param {boolean} live True for a refresh after a saved notice: an
+       * answer equal to the regions last loaded or saved changes nothing (it
+       * is the user's own save), so the slice keeps its undo steps.
+       * @returns {Promise<void>} Resolves when the answer is handled
+       */
+    // eslint-disable-next-line max-statements
+    _fetchSlice: async (slice, token, live = false) => {
+      const section = me.ImageInfo[slice];
+      const loaded = typeof section.Hash !== "undefined";
+      // a notice from now on asks for another fetch, after this one
+      section.liveStale = false;
+      section.fetching = (section.fetching || 0) + 1;
+      let data;
+      try {
+        data = await me.microdrawDBLoad();
+      } finally {
+        section.fetching -= 1;
+      }
+
+      // A newer fetch of this slice is out (the user came back to it): it
+      // handles what is on the server.
+      if (section.loadToken !== token) {
         return;
       }
-      // The user started editing the slice while the fetch was out (its hash
-      // is no longer the one it had when loaded or saved, e.g. a region was
-      // drawn, moved or selected, or a polygon is being drawn): keep the edit,
-      // drop the answer.
-      if (loaded && (me.sectionChanges(section) !== null || me.drawingPolygonFlag)) {
+      // The user moved to another slice, or started editing this one while
+      // the fetch was out (its hash is no longer the one it had when loaded
+      // or saved, e.g. a region was drawn, moved or selected, or a polygon is
+      // being drawn): keep the edit, drop the answer. The slice is fetched
+      // again once clean (after the user's save) or at its next visit.
+      if (slice !== me.currentImage || (loaded && (me.sectionChanges(section) !== null || me.drawingPolygonFlag))) {
+        section.liveStale = true;
+
         return;
       }
-      if (loaded) {
-        me._dropSliceRegions(slice);
+
+      const signature = me._dbSignature(data);
+      if (!(live && loaded && signature === section.serverSignature)) {
+        if (loaded) {
+          me._dropSliceRegions(slice);
+        }
+
+        const {regions} = me._addRegions(data);
+        me._drawRegionsInPaper(regions);
+        section.serverSignature = signature;
+
+        // the regions as on the server; annotations kept in this browser (H3a)
+        /* global UnsavedStash */
+        UnsavedStash.snapshot(me, slice);
+        UnsavedStash.offerImport(me, slice);
+        if (live) {
+          me._showLiveStatus("Updated: saved by another user");
+        }
       }
 
-      const {regions} = me._addRegions(data);
-      me._drawRegionsInPaper(regions);
+      // a notice that came during this fetch
+      me.liveRefresh();
+    },
 
-      // the regions as on the server; annotations kept in this browser (H3a)
-      /* global UnsavedStash */
-      UnsavedStash.snapshot(me, slice);
-      UnsavedStash.offerImport(me, slice);
+    /*
+        Live updates (simultaneous editing step 3b): the viewer joins the
+        WebSocket room of the slice it shows (microdraw-ws.js); after another
+        user saves that slice, the server sends {type: 'saved', project,
+        source, slice} and the slice is fetched again, with the rules of a
+        visit: unsaved changes win.
+    */
+
+    _joinLiveRoom: (slice) => {
+      // no project, no join
+      if (!me.config.useDatabase || !me.project || !window.MicrodrawWS) {
+        return;
+      }
+      window.MicrodrawWS.joinSlice({ project: me.project, source: me.source, slice });
+    },
+
+    /**
+       * @desc A saved notice. Only the slice on screen is fetched again; a
+       * notice for another slice, image or project is ignored (that slice is
+       * fetched when it is shown).
+       * @param {object} notice {project, source, slice} of the saved slice
+       * @returns {void}
+       */
+    liveSaved: (notice) => {
+      if (!me.project || notice.project !== me.project || notice.source !== me.source ||
+          notice.slice !== me.currentImage || notice.slice !== me.shownSlice) {
+        return;
+      }
+      me.ImageInfo[notice.slice].liveStale = true;
+      me.liveRefresh();
+    },
+
+    /**
+       * @desc Fetch the slice on screen if a notice marked it stale and it is
+       * clean: loaded, no unsaved changes, no polygon being drawn, no fetch
+       * and no save of it out. Otherwise it stays stale, and this runs again
+       * when the fetch or the save ends. One fetch at a time.
+       * @returns {void}
+       */
+    liveRefresh: () => {
+      const slice = me.currentImage;
+      const section = me.ImageInfo[slice];
+      if (!section || !section.liveStale || slice !== me.shownSlice) {
+        return;
+      }
+      if (typeof section.Hash === "undefined" || section.fetching > 0 || section.savesPending > 0 ||
+          me.drawingPolygonFlag || me.sectionChanges(section) !== null) {
+        return;
+      }
+      const token = {};
+      section.loadToken = token;
+      me._fetchSlice(slice, token, true).catch((err) => {
+        console.warn("< liveRefresh: cannot fetch the slice", err);
+      });
+    },
+
+    // a short status, as text, that fades out
+    _showLiveStatus: (text) => {
+      const el = me.dom.querySelector("#liveStatus");
+      if (!el) {
+        return;
+      }
+      el.textContent = text;
+      el.classList.add("shown");
+      clearTimeout(me._liveStatusTimer);
+      me._liveStatusTimer = setTimeout(() => el.classList.remove("shown"), 3000);
     },
 
     /**

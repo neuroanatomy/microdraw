@@ -10,7 +10,7 @@ if(Microdraw.secure) {
 } else {
   wshostname = "ws://" + Microdraw.wshostname;
 }
-const ws = new window.WebSocket(wshostname);
+let ws = null;
 
 const randomUuid = Math.floor(Math.random() * 65535);
 
@@ -94,8 +94,49 @@ const sendChatMessage = () => {
   }
 };
 
+/*
+  Live updates (simultaneous editing step 3b). The viewer joins the room of
+  the slice it shows, {type: 'join', project, source, slice}, and again after
+  a reconnect. A join-refused is final for that slice: no retry. A saved
+  notice goes to Microdraw.liveSaved, which fetches the slice again through
+  the access-checked HTTP route: no field of a notice goes into the page.
+*/
+let liveTarget = null;
+const refusedJoins = new Set();
+const joinKey = ({ project, source, slice }) => JSON.stringify([project, source, String(slice)]);
+
+const sendJoin = () => {
+  if (!liveTarget || refusedJoins.has(joinKey(liveTarget)) || !ws || ws.readyState !== window.WebSocket.OPEN) {
+    return;
+  }
+  try {
+    ws.send(JSON.stringify({ type: 'join', ...liveTarget }));
+  } catch (ex) {
+    console.log("Unable to join the slice's live updates", ex);
+  }
+};
+
+const isString = (value) => typeof value === 'string';
+
+const receiveSaved = (data) => {
+  if (!isString(data.project) || !isString(data.source) || !isString(data.slice)) {
+    return;
+  }
+  Microdraw.liveSaved({ project: data.project, source: data.source, slice: data.slice });
+};
+
+const receiveJoinRefused = (data) => {
+  const key = joinKey(data);
+  if (liveTarget && key === joinKey(liveTarget)) {
+    refusedJoins.add(key);
+    console.info("No live updates for this slice:", String(data.reason));
+  }
+};
+
 const receiveFunctions = {
-  "chat": receiveChatMessage
+  "chat": receiveChatMessage,
+  "saved": receiveSaved,
+  "join-refused": receiveJoinRefused
 };
 
 /**
@@ -103,11 +144,21 @@ const receiveFunctions = {
 * @returns {void}
 */
 const receiveSocketMessage = (msg) => {
-  var data = JSON.parse(msg.data);
-  receiveFunctions[data.type](data);
+  let data;
+  try {
+    data = JSON.parse(msg.data);
+  } catch (ex) {
+    return;
+  }
+  // others ('joined') need nothing
+  if (data && Object.prototype.hasOwnProperty.call(receiveFunctions, data.type)) {
+    receiveFunctions[data.type](data);
+  }
 };
 
-ws.onopen = () => {
+// The first connection announces the user in the chat; reconnections don't.
+let entered = false;
+const onOpen = () => {
   console.log("open");
 
   const {dom} = Microdraw;
@@ -119,17 +170,59 @@ ws.onopen = () => {
 
   dom.querySelector("#notifications").innerHTML = "Chat";
 
-  const obj = {
-    type: "chat",
-    msg: "entered",
-    randomUuid,
-    username: _getUserName()
+  if (!entered) {
+    entered = true;
+    const obj = {
+      type: "chat",
+      msg: "entered",
+      randomUuid,
+      username: _getUserName()
+    };
+    ws.send(JSON.stringify(obj));
+  }
+
+  sendJoin();
+};
+
+// Reconnect after a close, waiting 1 s, 2 s, 4 s ... up to 30 s. The wait
+// starts again from 1 s only after a connection that stayed open 10 s, so a
+// server that accepts and drops connections at once is not retried quickly.
+const RECONNECT_MIN = 1000;
+const RECONNECT_MAX = 30000;
+const STABLE_CONNECTION = 10000;
+let reconnectDelay = RECONNECT_MIN;
+
+const connect = () => {
+  let openedAt = null;
+  ws = new window.WebSocket(wshostname);
+  ws.onopen = () => {
+    openedAt = Date.now();
+    onOpen();
   };
-  ws.send(JSON.stringify(obj));
+  ws.onmessage = receiveSocketMessage;
+  ws.onerror = () => {
+    console.log("error");
+  };
+  ws.onclose = () => {
+    if (openedAt !== null && Date.now() - openedAt >= STABLE_CONNECTION) {
+      reconnectDelay = RECONNECT_MIN;
+    }
+    setTimeout(connect, reconnectDelay);
+    reconnectDelay = Math.min(2 * reconnectDelay, RECONNECT_MAX);
+  };
 };
 
-ws.onmessage = receiveSocketMessage;
+window.MicrodrawWS = {
 
-ws.onerror = () => {
-  console.log("error");
+  /**
+   * Follow the saves of the slice on screen.
+   * @param {object} target {project, source, slice}, as the save sends them
+   * @returns {void}
+   */
+  joinSlice: (target) => {
+    liveTarget = { project: target.project, source: target.source, slice: String(target.slice) };
+    sendJoin();
+  }
 };
+
+connect();

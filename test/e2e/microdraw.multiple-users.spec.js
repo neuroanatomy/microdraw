@@ -287,19 +287,22 @@ describe('Editing tools: multiple users drawing on the same dataset', () => {
       await page2.mouse.click(400, 200);
       await page2.mouse.click(400, 100);
       await H.waitForSave(page2, () => shadowclick(UI.SAVE, page2));
+      // browser 1's triangle arrives through the live update (step 3b),
+      // before browser 2 draws or after its save
+      await page2.waitForFunction(() => Microdraw.ImageInfo[0].Regions.length === 2 && window.__mdTest.pendingApiGets === 0, { polling: 50, timeout: U.shortTimeout });
       await H.settleFrames(page2);
 
       res = await page2.evaluate(() => ({
         sliceIndex: Number(Microdraw.dom.querySelector("#slice").dataset.val),
         regionsExists: typeof (Microdraw.ImageInfo[0].Regions) !== 'undefined',
         regionsLength: Microdraw.ImageInfo[0].Regions.length,
-        pathSegments: Microdraw.ImageInfo[0].Regions[0].path.segments.length
+        pathSegments: Microdraw.ImageInfo[0].Regions.reduce((x, y) => x + y.path.segments.length, 0)
       }));
 
       assert(res.sliceIndex === 0, 'Slice index is not 0');
       assert(res.regionsExists === true, 'No Regions object');
-      assert(res.regionsLength === 1, `Regions.length is ${res.regionsLength} instead of 1`);
-      assert(res.pathSegments === 4, `Path has ${res.pathSegments} segments instead of 4`);
+      assert(res.regionsLength === 2, `Regions.length is ${res.regionsLength} instead of 2`);
+      assert(res.pathSegments === 7, `Path has ${res.pathSegments} segments instead of 7`);
     }).timeout(U.mediumTimeout);
 
     it('show triangle and square after reloading in browser 1', async () => {
