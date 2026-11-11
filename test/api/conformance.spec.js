@@ -1,12 +1,56 @@
 /**
  * NeuroWebLab's shared project-management suite, slices 1 (access matrix),
- * 2 (create, save, delete, validation, versions), 3 (listings and search) and 4 (annotations
- * by project), against the server test/api/runner.js started (neuroweblab/conformance/README.md).
+ * 2 (create, save, delete, validation, versions), 3 (listings and search), 4 (annotations
+ * by project) and 5 (admin), against the server test/api/runner.js started (neuroweblab/conformance/README.md).
  */
-const { accessMatrix, projectAnnotations, projectLifecycle, projectListings } = require('neuroweblab/conformance');
+const { accessMatrix, projectAdmin, projectAnnotations, projectLifecycle, projectListings, signUp } = require('neuroweblab/conformance');
 const U = require('../mocha.test.util');
+const admins = require('../../app/controller/admin/admins');
+const { projectVersion } = require('../../app/controller/project/project.check');
+const { findCurrentProject, saveProjectVersion } = require('../../app/controller/project/currentProject');
 
 const db = () => U.getNativeDB();
+
+/*
+ * Slice 5: an admin is a user of the slice added to the admins list (as the
+ * admin tests do, admins.setAdmins), and removed from it with the user. The
+ * admin change (5.4) is name-layers: a version whose layer lost its name is
+ * stored first (as the invalid projects A2 fixes), then the admin names it,
+ * as a new version.
+ */
+const admin = {
+  routes: [
+    { method: 'GET', path: '/admin/json/orphans' },
+    { method: 'GET', path: '/admin/json/orphans/projects?fileID=conformance' },
+    { method: 'POST', path: '/admin/json/orphans/remove' },
+    { method: 'POST', path: '/admin/json/orphans/restore' },
+    { method: 'POST', path: '/admin/json/orphans/assign' },
+    { method: 'GET', path: '/admin/json/projects/invalid' },
+    { method: 'POST', path: '/admin/json/projects/remove-blank-rows' },
+    { method: 'POST', path: '/admin/json/projects/name-layers' },
+    { method: 'POST', path: '/admin/json/projects/restore' },
+    { method: 'GET', path: '/admin/json/projects/search?q=conformance' },
+    { method: 'POST', path: '/admin/json/projects/delete' },
+    { method: 'POST', path: '/admin/json/projects/restore-deleted' },
+    { method: 'POST', path: '/admin/json/projects/transfer' }
+  ],
+  user: async () => {
+    const user = await signUp(U.serverURL, `cfadmin${Date.now().toString(36)}`);
+    admins.setAdmins([...admins.getAdmins(), user.username]);
+
+    return user;
+  },
+  changeProject: async (adminUser, shortname) => {
+    const unnamed = await findCurrentProject(db(), shortname);
+    unnamed.annotations.list[0].name = '';
+    await saveProjectVersion(db(), unnamed, { by: unnamed.owner, keepModified: true });
+    const version = projectVersion(await findCurrentProject(db(), shortname));
+    const res = await adminUser.client.post('/admin/json/projects/name-layers', { json: { project: shortname, version, names: { 0: 'Layer' } } });
+    if (res.status !== 200) {
+      throw new Error(`name-layers ${shortname}: ${res.status} ${res.text}`);
+    }
+  }
+};
 
 const adapter = {
   baseURL: () => U.serverURL,
@@ -24,6 +68,7 @@ const adapter = {
       .deleteMany({ project: shortname });
   },
   removeUser: async (username) => {
+    admins.setAdmins(admins.getAdmins().filter((name) => name !== username));
     await db().collection('users')
       .deleteMany({ username });
     await db().collection('log')
@@ -75,6 +120,7 @@ const adapter = {
       return res.status === 200;
     }
   },
+  admin,
   // slice 3 (3.7): a name and an email for a user
   setUserFields: (username, fields) => db().collection('users')
     .updateOne({ username }, { $set: fields }),
@@ -90,3 +136,4 @@ accessMatrix(adapter);
 projectLifecycle(adapter);
 projectListings(adapter);
 projectAnnotations(adapter);
+projectAdmin(adapter);
