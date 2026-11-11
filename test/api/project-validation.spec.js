@@ -207,8 +207,15 @@ describe('Validation of POST /project/json/:projectName (M3)', function () {
       await refused('m3anoname', project, /different/);
     }).timeout(U.shortTimeout);
 
-    it('a new shortname that is not alphanumeric', async function () {
-      await refused('m3a-hyphen', newProject('m3a-hyphen'), /letters and numbers/);
+    it('a new shortname with other characters than letters, numbers and hyphens', async function () {
+      await refused('m3a_underscore', newProject('m3a_underscore'), /letters, numbers and hyphens/);
+    }).timeout(U.shortTimeout);
+
+    it('a new shortname with a hyphen is accepted (shared suite 2.6, 2026-11-11)', async function () {
+      created.push('m3a-hyphen');
+      const res = await agent.post('/project/json/m3a-hyphen').send({ data: newProject('m3a-hyphen') });
+      assert.equal(res.status, 200, res.text);
+      assert.equal((await U.queryProject('m3a-hyphen')).shortname, 'm3a-hyphen');
     }).timeout(U.shortTimeout);
 
     it('a file that is not {name, source}', async function () {
@@ -307,8 +314,8 @@ describe('Validation of POST /project/json/:projectName (M3)', function () {
       assert.equal((await U.queryProject(shortname)).name, 'renamed by the owner');
     }).timeout(U.shortTimeout);
 
-    it('an existing shortname that is not alphanumeric can still be saved', async function () {
-      const legacy = { ...stored(), shortname: 'm3a-legacy' };
+    it('an existing shortname with other characters can still be saved', async function () {
+      const legacy = { ...stored(), shortname: 'm3a_legacy' };
       created.push(legacy.shortname);
       await U.insertProject(_.cloneDeep(legacy));
       const res = await agent.post(`/project/json/${legacy.shortname}`).send({ data: { ...legacy, name: 'legacy renamed' } });

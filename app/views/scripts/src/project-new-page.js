@@ -26,7 +26,7 @@ const NewPage = {
       >
         A project contains a list of histological files, a set of vectorials or
         text annotations, and a list of collaborators with their access rights.
-        The short name of a project can only contain letters and numbers, but
+        The short name of a project can only contain letters, numbers and hyphens, but
         you can choose a longer display name later.
       </NewProjectPage>
     `,
@@ -45,7 +45,7 @@ const NewPage = {
       checkInput(event) {
         if(event.target.value.length > 0) {
           checkIfProjectIsExisting(event.target.value);
-          validInput.value = (/^[a-zA-Z0-9]*$/).test(event.target.value);
+          validInput.value = (/^[a-zA-Z0-9-]*$/).test(event.target.value);
         }
       }
     };

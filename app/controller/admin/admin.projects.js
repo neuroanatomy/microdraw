@@ -14,7 +14,7 @@
  * T002 2.1b). Restore stores the logged document as a new version, if the
  * project has not changed since the fix.
  *
- * Shortnames that are not alphanumeric and users that don't exist are listed
+ * Shortnames with characters other than letters, numbers and hyphens, and users that don't exist are listed
  * only: renaming a project would break its URLs and the annotations that name
  * it, and removing a collaborator could revoke someone's access.
  *

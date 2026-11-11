@@ -53,8 +53,7 @@ const adapter = {
   expectedDifferences: {
     'route:files': 'ledger "Paged project files route": /project/json/:p/files missing in microdraw (stage 3.1)',
     '1.5/status': 'inventory 1.5: no view right answers 403, BrainBox 401 (schema §4 "No view right")',
-    '1.6/status': 'inventory 1.6: unknown project JSON answers 404 {error}, BrainBox 200 empty (schema §4)',
-    '2.6': 'approved 2.6 (2026-11-11): a new shortname may have a hyphen; microdraw allows letters and digits only (400)'
+    '1.6/status': 'inventory 1.6: unknown project JSON answers 404 {error}, BrainBox 200 empty (schema §4)'
   }
 };
 

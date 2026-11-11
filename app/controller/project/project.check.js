@@ -10,7 +10,7 @@
  * - the stored rows that would be refused if they were new or changed
  *   (annotation layers named as another one included, F1), and the strings
  *   the sanitising would change ('warning');
- * - a shortname that is not alphanumeric ('shortname');
+ * - a shortname with characters other than letters, numbers and hyphens ('shortname');
  * - the users it names that do not exist ('missing user');
  * and what the admin fixes can do about it: the blank rows they would
  * remove, and the unnamed layers that have values (with a proposed name).
@@ -125,8 +125,8 @@ const projectProblems = (project, users) => {
   if (!_.isEqual(sanitize(project), project)) {
     problems.push({ kind: KIND.WARNING, message: 'sanitising would change some strings (markup removed)' });
   }
-  if (typeof project.shortname !== 'string' || !(/^[a-zA-Z0-9]+$/).test(project.shortname)) {
-    problems.push({ kind: KIND.SHORTNAME, message: 'shortname is not alphanumeric (accepted for a stored project, refused for a new one)' });
+  if (typeof project.shortname !== 'string' || !(/^[a-zA-Z0-9-]+$/).test(project.shortname)) {
+    problems.push({ kind: KIND.SHORTNAME, message: 'shortname has characters other than letters, numbers and hyphens (accepted for a stored project, refused for a new one)' });
   }
   const list = listOf(project, 'collaborators');
   const names = [project.owner, ...list.filter((c) => _.isPlainObject(c) && !isAnyone(c)).map(collaboratorName)];

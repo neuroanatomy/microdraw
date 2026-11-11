@@ -15,7 +15,8 @@
  *   other than `anyone` that the stored project does not have yet;
  * - the owner is never taken from the client: the stored one is kept, a new
  *   project belongs to its creator;
- * - a new project's shortname is alphanumeric, as the new-project page asks;
+ * - a new project's shortname has letters, numbers and hyphens only, as the
+ *   new-project page asks (shared suite 2.6, 2026-11-11: hyphens allowed);
  * - every string is sanitised with DOMPurify: strings are plain text, so
  *   markup is removed and only the text is kept.
  */
@@ -34,7 +35,7 @@ const DOMPurify = createDOMPurify(window);
 
 const annotationTypes = ['text', 'vectorial'];
 const listTypes = ['files', 'collaborators', 'annotations'];
-const shortnamePattern = /^[a-zA-Z0-9]+$/;
+const shortnamePattern = /^[a-zA-Z0-9-]+$/;
 // Fields the client may not set: the database id, and the backup flag (a
 // project with `backup` is hidden from every read).
 const serverFields = ['_id', 'backup'];
@@ -353,7 +354,7 @@ const structureError = (project, { shortname, isNew, stored = {} }) => {
     return 'The project shortname in the data differs from the one in the URL';
   }
   if (isNew && !shortnamePattern.test(shortname)) {
-    return 'The project shortname can only contain letters and numbers';
+    return 'The project shortname can only contain letters, numbers and hyphens';
   }
   for (const field of ['name', 'description', 'url']) {
     if (typeof project[field] !== 'undefined' && typeof project[field] !== 'string') {
