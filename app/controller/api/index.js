@@ -7,6 +7,7 @@ const { catchErrors } = require('../catchErrors');
 const { saveEditorChanges } = require('./editorSave');
 const { textWriteError, storeTextValue } = require('../textAnnotations');
 const { findCurrentProject } = require('../project/currentProject');
+const microdrawWebsocketServer = require('../microdrawWebsocketServer/microdrawWebsocketServer');
 
 const fs = require('fs');
 const log = require('../../log');
@@ -20,6 +21,17 @@ const storage = TMP_DIR
 
 const buildFileID = function ({ source, slice }) {
   return `${source}&slice=${slice}`;
+};
+
+// After a save of an image slice is stored, tell the other viewers of the
+// slice (live-update notices, step 3a). The saver's own connection is not
+// known here, so it gets the notice too. A notice never fails a save.
+const notifySaved = ({ project, source, slice }) => {
+  try {
+    microdrawWebsocketServer.notifySaved({ project, source, slice });
+  } catch (err) {
+    log.error({ err }, 'cannot notify the viewers of the slice');
+  }
 };
 
 // API routes
@@ -202,6 +214,7 @@ const saveFromGUI = async function (req, res) {
     annotationString: annotation
   })
     .then(() => {
+      notifySaved({ project, source: req.body.source, slice: req.body.slice });
       res.status(200).send({success: true});
     })
     .catch((e) => {
@@ -311,7 +324,10 @@ const saveFromAPIUnsafe = async function (req, res) {
       Hash,
       regions: json.map((v) => v.annotation)
     })
-      .then(() => res.status(200).send({msg: "Annotation successfully saved"}))
+      .then(() => {
+        notifySaved({ project, source: req.query.source, slice: req.query.slice });
+        res.status(200).send({msg: "Annotation successfully saved"});
+      })
       .catch((e) => res.status(500).send({ err: e.message}));
   }
 };

@@ -23,20 +23,32 @@ const blacklist = JSON.parse(fs.readFileSync(path.join(__dirname, "blacklist.jso
 const WebSocket = require('ws');
 const log = require('../../log').child({ module: 'websocket' });
 const WebSocketServer = WebSocket.Server;
+const liveRooms = require('./liveRooms');
 var websocketserver;
 
 const microdrawWebsocketServer = (function () {
   const me = {
     dataDirectory: '',
+    // the app's session middleware and native Db (set by app.js)
+    sessionParser: null,
+    db: null,
 
-    _handleUserWebSocketMessage: ({data}) => {
+    // Joins and live-update notices: liveRooms.js
+    notifySaved: (target) => liveRooms.notifySaved(target),
+    _roomSize: (target) => liveRooms.roomSize(target),
+
+    _handleUserWebSocketMessage: ({data, ws}) => {
       switch(data.type) {
+      case 'join':
+        liveRooms.join({ data, ws, sessionParser: me.sessionParser, db: me.db })
+          .catch((err) => log.error({ err }, 'join failed'));
+        break;
       default:
         break;
       }
     },
 
-    _fitsBroadcastExclusionCriteria: () => false,
+    _fitsBroadcastExclusionCriteria: ({data}) => liveRooms.isServerType(data.type),
 
     _fitsBroadcastInclusionCriteria: ({data}) => {
       let include = false;
@@ -48,6 +60,11 @@ const microdrawWebsocketServer = (function () {
     },
 
     _handleBroadcastWebSocketMessage: function ({data, ws}) {
+      // joins and notices are not for the other clients
+      if (me._fitsBroadcastExclusionCriteria({data})) {
+        return;
+      }
+
       // scan through connected users
       websocketserver.clients.forEach((client) => {
         if (client !== ws && client.readyState === WebSocket.OPEN) {
@@ -94,7 +111,8 @@ const microdrawWebsocketServer = (function () {
       me._handleBroadcastWebSocketMessage({data, ws});
     },
 
-    _handleWebSocketConnection: (ws) => {
+    _handleWebSocketConnection: (ws, req) => {
+      liveRooms.connect(ws, req);
       ws.on('message', function (msg) {
         try {
           me._handleWebSocketMessage({msg, ws});
@@ -106,6 +124,7 @@ const microdrawWebsocketServer = (function () {
         log.error({ err }, 'connection error');
       });
       ws.on('close', () => {
+        liveRooms.disconnect(ws);
         log.debug('user disconnected');
       });
     },

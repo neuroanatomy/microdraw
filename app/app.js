@@ -180,6 +180,18 @@ const start = async function () {
   // indexes the queries need (idempotent; an error is logged, never fatal)
   await ensureIndexes(app.db.nativeMongoDB());
 
+  // The WebSocket server reads who opened a connection from its session
+  // cookie, with NeuroWebLab's session middleware (express-session), and
+  // checks joins against the projects (live-update notices, step 3a).
+  // express 4 keeps the middleware stack in app._router.
+  const sessionLayer = app._router.stack.find((layer) => layer.name === 'session');
+  if (sessionLayer) {
+    microdrawWebsocketServer.sessionParser = sessionLayer.handle;
+  } else {
+    log.error('no session middleware: the websocket server treats every user as logged out');
+  }
+  microdrawWebsocketServer.db = app.db.nativeMongoDB();
+
   /* setup GUI routes */
   routes(app);
 
