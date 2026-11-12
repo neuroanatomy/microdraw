@@ -1,12 +1,12 @@
 #projectFiles table tbody tr td select {
-    color:rgba(255,255,255,0.4);
+    color:var(--nwl-text-3);
 }
 
 #projectFiles {
     overflow:scroll;
 }
 .block {
-    border:thin solid #555;
+    border:thin solid var(--nwl-border-subtle);
     padding: 5px;
 }
 /* The left pane shrinks as far as the resize handle takes it, as on BrainBox's
@@ -34,7 +34,7 @@
     white-space: nowrap;
 }
 #right {
-    background-color: black;
+    background-color: var(--nwl-bg-canvas);
     user-select: none;
     -moz-user-select: none;
     -webkit-user-select: none;
@@ -44,7 +44,7 @@
 select {
     border:none;
     background:none; /* no color, no decoration */
-    color:white;
+    color:var(--nwl-text);
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
@@ -61,7 +61,7 @@ select {
     height:20px;
     top:50%;
     left:100%;
-    background-color:#333;
+    background-color:var(--nwl-bg-surface);
     transform:translate(-50%, -50%);
     border-radius:5px;
     z-index:10;
@@ -73,7 +73,7 @@ select {
     height: 100%;
     margin-left:0;
     margin-bottom:0;
-    background-color:#000;
+    background-color:var(--nwl-bg-canvas);
 }
 
 /* Text layers step 4: the values a user may edit, in place */
@@ -96,8 +96,8 @@ select {
     width: 100%;
     box-sizing: border-box;
     font: inherit;
-    color: white;
-    background-color: #222;
+    color: var(--nwl-text);
+    background-color: var(--nwl-bg);
     border: 1px solid rgba(255,255,255,0.5);
     padding: 1px 2px;
 }

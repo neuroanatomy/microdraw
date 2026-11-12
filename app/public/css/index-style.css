@@ -1,5 +1,5 @@
 html, #menu, #footer {
-    background-color: #222;
+    background-color: var(--nwl-bg);
 }
 #footer {
     display: block;
@@ -18,7 +18,7 @@ html, #menu, #footer {
     transform: translate( -50% , -50%);
     width:600px;
     max-width: calc( 100% - 20px );
-    font-family: 'Roboto', sans-serif;
+    font-family: var(--nwl-font-display);
 }
 #menu {
     position: fixed;
@@ -38,7 +38,7 @@ input#url, input#projectName {
     height:32px;
     border:0px;
     padding:0px;
-    color: black;
+    color: var(--nwl-text-inverse);
 }
 #go {
     height:30px;

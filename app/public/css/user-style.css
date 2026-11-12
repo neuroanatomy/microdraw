@@ -1,12 +1,12 @@
 #projects {
-    color:white;
+    color:var(--nwl-text);
     text-align:left;
     width:100%;
     border-collapse:collapse;
 }
 #projects,
 #projects th {
-    border-bottom:thin solid white;
+    border-bottom:thin solid var(--nwl-white);
 }
 #projects a {
     text-decoration:none;
@@ -30,7 +30,7 @@
 #userImage {
     position:relative;
     display: inline-block;
-    background:#333;
+    background:var(--nwl-bg-surface);
     width:200px;
     height:200px;
     vertical-align: top;

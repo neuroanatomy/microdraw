@@ -132,6 +132,9 @@ const start = async function () {
   app.use(bodyParser.json({ limit: '50mb', extended: true }));
   app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
   app.use(express.static(path.join(__dirname, 'public')));
+  // nwl-components' built files, among them the design tokens (tokens.css) that
+  // every page links from partials/header.mustache (UI kit decision U9)
+  app.use('/lib/nwl-components', express.static(path.dirname(require.resolve('nwl-components/tokens.css'))));
   app.use(log.requestLog);
 
   /* setup DB */

@@ -2,8 +2,8 @@
 -----------------------------------------------------------------------------*/
 
 .a {
-    border:thin solid #777;
-    border-radius:3px;
+    border:thin solid var(--nwl-border);
+    border-radius:var(--nwl-radius-sm);
     margin:1px;
     text-align:center;
     height: 22px;
@@ -15,7 +15,7 @@
     user-select:none;
 }
 .pressed {
-    background-color:#555 !important;
+    background-color:var(--nwl-bg-pressed) !important;
 }
 .icon {
     width:16px;
@@ -24,15 +24,15 @@
 }
 
 option {
-    background-color:#555;
+    background-color:var(--nwl-grey-55);
 }
 
 /* svg buttons
 ----------------------- */
 .pushButton {
-    border:1px solid #ddd;
-    border-radius:6px;
-    color:#ddd;
+    border:1px solid var(--nwl-border-strong);
+    border-radius:var(--nwl-radius-md);
+    color:var(--nwl-grey-dd);
     text-align:center;
     -webkit-appearance:none;
     cursor: pointer;
@@ -62,7 +62,7 @@ img.icon {
 select {
     border:none;
     background:none; /* no color, no decoration */
-    color:white;
+    color:var(--nwl-text);
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;

@@ -12,7 +12,7 @@
     opacity:0.5;
 }
 #header a {
-    color:white;
+    color:var(--nwl-link);
 }
 #header .linkNoULine {
     text-decoration: none;
@@ -32,7 +32,7 @@
     height:calc( 100% - 48px - 20px);
     margin-left:10px;
     margin-bottom: 20px;
-    background-color:  #fff;
+    background-color:  var(--nwl-white);
 }
 
 /* container styles */
@@ -49,5 +49,5 @@
 #colorSelector,
 #colorSelector *
 {
-    color: black;
+    color: var(--nwl-text-inverse);
 }

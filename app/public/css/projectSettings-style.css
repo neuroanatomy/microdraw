@@ -3,7 +3,7 @@ td {
     word-break: break-word;
 }
 #files, #annotations, #access {
-    color:white;
+    color:var(--nwl-text);
     text-align:left;
     width:100%;
     border-collapse:collapse;
@@ -13,7 +13,7 @@ td {
 }
 #files, #annotations, #access,
 #files th, #annotations th, #access th {
-    border-bottom:thin solid white;
+    border-bottom:thin solid var(--nwl-white);
 }
 #files a, #annotations a, #access a {
     text-decoration:none;

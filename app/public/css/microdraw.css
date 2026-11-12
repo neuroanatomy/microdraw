@@ -3,10 +3,10 @@ html, body {
     padding:0;
     width:100%;
     height:100%;
-    background: #222;
-    color: white;
-    font-family: "Lucida Grande", "Lucida Sans Unicode", Helvetica, Arial, Verdana, sans-serif;
-    font-size: 14px;
+    background: var(--nwl-bg);
+    color: var(--nwl-text);
+    font-family: var(--nwl-font-body);
+    font-size: var(--nwl-text-md);
     -webkit-font-smoothing: antialiased;
     -moz-font-smoothing: antialiased;
 }
@@ -54,9 +54,9 @@ html, body {
     width: 250px;
     top: 5px;
     /* height: 100%; */
-    background-color:rgba(0,0,0,0.7);
+    background-color:var(--nwl-black-70);
     z-index:10;
-    box-shadow: 2px 2px 5px grey;
+    box-shadow: var(--nwl-shadow-sm);
 }
 #bars-icon {
     width:28px;
@@ -70,8 +70,8 @@ html, body {
     position:absolute;
     top:20px;
     left:50%;
-    background-color:#333;
-    color: white;
+    background-color:var(--nwl-bg-surface);
+    color: var(--nwl-text);
     text-align:center;
     border:thin solid lightgrey;
     z-index:20;
@@ -88,10 +88,10 @@ html, body {
     left: 8px;
     padding: 2px 8px;
     background-color: rgba(51, 51, 51, 0.8);
-    color: white;
-    font-size: 12px;
+    color: var(--nwl-text);
+    font-size: var(--nwl-text-sm);
     line-height: 18px;
-    border-radius: 3px;
+    border-radius: var(--nwl-radius-sm);
     z-index: 20;
     pointer-events: none;
     opacity: 0;
@@ -117,11 +117,6 @@ html, body {
     margin:1px 1rem;
     padding:1px;
 }
-.selected {
-    background-color:#57d1df;
-    border-radius:100px;
-}
-
 .slice-nav * {
     vertical-align:middle;
 }
@@ -215,7 +210,7 @@ html, body {
 .region-color {
     width:1.5rem;
     height:1.5rem;
-    border:thin solid grey;
+    border:thin solid var(--nwl-grey-80);
     display:inline-block;
     vertical-align:middle;
 }
@@ -225,7 +220,7 @@ html, body {
     z-index:10;
 }
 .region-tag.selected {
-    background-color:rgba(255,255,255,0.75);
+    background-color:var(--nwl-white-75);
     border-radius:0px;
 }
 .region-name
@@ -258,9 +253,9 @@ html, body {
     position:absolute;
     bottom:5px;
     right:5px;
-    -webkit-filter: drop-shadow( 2px 2px 2px #777 );
-    -moz-filter: drop-shadow( 2px 2px 2px #777 );
-    filter: drop-shadow( 2px 2px 2px #777 );
+    -webkit-filter: drop-shadow( 2px 2px 2px var(--nwl-grey-77) );
+    -moz-filter: drop-shadow( 2px 2px 2px var(--nwl-grey-77) );
+    filter: drop-shadow( 2px 2px 2px var(--nwl-grey-77) );
     z-index:1;
 }
 
@@ -281,13 +276,13 @@ html, body {
 }
 
 .mui {
-    border:thin solid #777;
-    border-radius:3px;
+    border:thin solid var(--nwl-border);
+    border-radius:var(--nwl-radius-sm);
     margin:1px;
     text-align:center;
     height: 24px;
     position: relative;
-    color: white;
+    color: var(--nwl-text);
     user-select: none;
 }
 .mui:hover {
@@ -298,8 +293,8 @@ html, body {
 }
 
 .mui-chose {
-    border:thin solid #777;
-    border-radius:3px;
+    border:thin solid var(--nwl-border);
+    border-radius:var(--nwl-radius-sm);
     margin:1px;
     text-align:center;
     /* height: 24px; */
@@ -320,10 +315,10 @@ html, body {
 }
 
 .text {
-    border:thin solid #777;
-    background: #000;
+    border:thin solid var(--nwl-border);
+    background: var(--nwl-black);
     opacity: 0.5;
-    border-radius:3px;
+    border-radius:var(--nwl-radius-sm);
     margin:1px;
     /* user-select: text; */
 }
@@ -336,11 +331,11 @@ html, body {
 }
 
 .label {
-    color: white;
+    color: var(--nwl-text);
     user-select: none;
 }
 .mui-pressed {
-    background-color: #777 !important;
+    background-color: var(--nwl-grey-77) !important;
 }
 .hidden {
     display:none;
@@ -353,7 +348,7 @@ html, body {
 .mui-select {
     border:none;
     background:none; /* no color, no decoration */
-    color:white;
+    color:var(--nwl-text);
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
@@ -368,9 +363,9 @@ html, body {
     display:inline-block;
     width:32px;
     height:32px;
-    border: thin solid #777;
-    border-radius:50%;
-    background-color:#333;
+    border: thin solid var(--nwl-border);
+    border-radius:var(--nwl-radius-round);
+    background-color:var(--nwl-bg-surface);
     position:absolute;
     margin: 10px;
     cursor: pointer;
@@ -405,8 +400,8 @@ body[data-toolbarDisplay=right] #tools-minimized div {
   top: 50%;
   left: 50%;
   transform: translate( -50%, -50%);
-  background-color: rgba(0, 0, 0, 0.8);
-  border: thin solid #777;
+  background-color: var(--nwl-black-80);
+  border: thin solid var(--nwl-border);
   padding: 10px;
   text-align: left;
   z-index: 21;
@@ -415,7 +410,7 @@ body[data-toolbarDisplay=right] #tools-minimized div {
 }
 #labelset-header {
     height: 36px;
-    background-color: #666;
+    background-color: var(--nwl-grey-66);
     padding: 0 5px 0 10px;
     margin: -10px -10px 5px -10px;
     cursor:  pointer;
@@ -431,11 +426,11 @@ body[data-toolbarDisplay=right] #tools-minimized div {
   cursor:  pointer;
 }
 .label-color:hover {
-  border: thin solid white;
+  border: thin solid var(--nwl-white);
 }
 #label-template {
     display:none;
-    background: #333;
+    background: var(--nwl-bg-surface);
     margin: 3px;
     padding: 0 5px 0 0;
 }
@@ -443,19 +438,19 @@ body[data-toolbarDisplay=right] #tools-minimized div {
     display: inline-block;
     width: 10px;
     height: 10px;
-    background: white;
-    outline: 1px solid white;
+    background: var(--nwl-white);
+    outline: 1px solid var(--nwl-white);
     outline-offset: 1px;
-    border-radius: 50%;
+    border-radius: var(--nwl-radius-round);
     margin: 3px;
     vertical-align: middle;
 }
 .label-display.off {
     background: none;
-    outline: 1px solid white;
+    outline: 1px solid var(--nwl-white);
 }
 .label-display:hover {
-    outline: 2px solid white;
+    outline: 2px solid var(--nwl-white);
   }
 #label-list {
   display:flex;
@@ -483,8 +478,8 @@ body[data-toolbarDisplay=right] #tools-minimized div {
     top: 50%;
     left: 50%;
     transform: translate( -50%, -50%);
-    background-color: rgba(0, 0, 0, 0.8);
-    border: thin solid #777;
+    background-color: var(--nwl-black-80);
+    border: thin solid var(--nwl-border);
     padding: 10px;
     z-index: 100;
     font-size: 0.8rem;
@@ -492,7 +487,7 @@ body[data-toolbarDisplay=right] #tools-minimized div {
 }
 #layers-header {
     height: 36px;
-    background-color: #666;
+    background-color: var(--nwl-grey-66);
     padding: 0 5px 0 10px;
     margin: -10px -10px 5px -10px;
     cursor:  pointer;
@@ -537,7 +532,7 @@ b.layer-item {
 }
 #add-layer-panel {
     display: none;
-    background-color: #333;
+    background-color: var(--nwl-bg-surface);
     padding: 10px;
 }
 #layer-position {
@@ -562,14 +557,14 @@ b.layer-item {
     height: 200px;
     max-height: 300px;
     transform: translate( -50%, -50%);
-    background-color: rgba(0, 0, 0, 0.8);
+    background-color: var(--nwl-black-80);
     padding: 10px;
     z-index: 100;
     font-size: 0.8rem;
 }
 #text-annotation-panel > #header {
     height: 36px;
-    background-color: #666;
+    background-color: var(--nwl-grey-66);
     padding: 0 5px 0 10px;
     margin: -10px -10px 5px -10px;
     pointer-events: none;
@@ -616,8 +611,8 @@ b.layer-item {
 .codeflask__flatten {
     white-space: pre-wrap;
     word-wrap: break-word;
-    caret-color:white;
-    font-size: 12px;
+    caret-color:var(--nwl-text);
+    font-size: var(--nwl-text-sm);
     line-height: 15px;
     padding: 10px;
     position: absolute;
@@ -629,7 +624,7 @@ b.layer-item {
     text-align: left;
 }
 .codeflask {
-    background:rgba(0,0,0,1);
+    background:var(--nwl-black);
     position: relative;
 }
 #logChat:not(.hidden) {

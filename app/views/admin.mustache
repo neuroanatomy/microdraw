@@ -213,18 +213,18 @@ main {
     padding: 0 20px;
 }
 section {
-    background: #333;
+    background: var(--nwl-bg-surface);
     padding: 20px;
     margin-bottom: 20px;
     overflow-x: auto;
     text-align: left;
 }
 section h2 {
-    font-size: 14px;
+    font-size: var(--nwl-text-md);
     margin: 0 0 10px;
 }
 section a {
-    color: #fff;
+    color: var(--nwl-link);
 }
 section table {
     margin-left: 0;
@@ -253,18 +253,18 @@ ul.candidates li {
     gap: 5px;
 }
 input[type=text] {
-    color: #fff;
-    background: #222;
+    color: var(--nwl-text);
+    background: var(--nwl-bg);
     font: inherit;
     padding: 6px;
-    border: 1px solid #777;
-    border-radius: 3px;
+    border: 1px solid var(--nwl-border);
+    border-radius: var(--nwl-radius-sm);
 }
 .toolbar input[type=text] {
     flex: 1;
 }
 button.danger {
-    border-color: #c55;
+    border-color: var(--nwl-danger);
     color: #f99;
 }
 .help {
@@ -274,29 +274,29 @@ button.danger {
     color: #f77;
 }
 .warning {
-    color: #fc6;
+    color: var(--nwl-warning);
 }
 .result {
-    color: #8d8;
+    color: var(--nwl-success);
 }
 .tag {
-    font-size: 11px;
-    border: 1px solid #c55;
-    border-radius: 3px;
+    font-size: var(--nwl-text-xs);
+    border: 1px solid var(--nwl-danger);
+    border-radius: var(--nwl-radius-sm);
     padding: 0 3px;
 }
 code {
-    font-size: 12px;
+    font-size: var(--nwl-text-sm);
 }
 div.project {
-    border-top: 1px solid #555;
+    border-top: 1px solid var(--nwl-border-subtle);
     padding: 10px 0;
 }
 div.project p, div.project form {
     text-align: left;
 }
 div.project h3 {
-    font-size: 13px;
+    font-size: var(--nwl-text-base);
     margin: 0 0 6px;
 }
 div.project .owner {
@@ -312,7 +312,7 @@ ul.problems {
     background: #733;
 }
 .kind-warning .tag, .kind-shortname .tag, .kind-missing-user .tag {
-    color: #fc6;
+    color: var(--nwl-warning);
     border-color: #a83;
 }
 div.project .counts {
@@ -328,8 +328,8 @@ div.transfer-form {
     background: #2a2a2a;
 }
 div.transfer-form button.chosen {
-    border-color: #8d8;
-    color: #8d8;
+    border-color: var(--nwl-success);
+    color: var(--nwl-success);
 }
 form.name-layers label {
     display: block;
