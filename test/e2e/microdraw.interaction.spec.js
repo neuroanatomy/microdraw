@@ -178,7 +178,10 @@ describe('Viewer interactions', () => {
     await input.type(message);
     await page.keyboard.press('Enter');
 
-    await page2.waitForFunction((m) => window.Microdraw.dom.querySelector('#logChat .text').textContent.includes(m), { timeout: U.shortTimeout }, message);
+    // page 2 is in the background now: it gets no animation frames, so the
+    // default 'raf' polling would check only once, and miss a message that
+    // arrives after that check. Poll on a timer instead.
+    await page2.waitForFunction((m) => window.Microdraw.dom.querySelector('#logChat .text').textContent.includes(m), { polling: 100, timeout: U.shortTimeout }, message);
     const received = await page2.evaluate(() => window.Microdraw.dom.querySelector('#logChat .text').innerHTML);
     assert.notInclude(received, '(me)', 'page 2 shows the message as its own');
     const own = await page.evaluate(() => window.Microdraw.dom.querySelector('#logChat .text').innerHTML);
