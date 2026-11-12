@@ -113,6 +113,15 @@ describe('Toolbar widgets (M4b)', () => {
   });
 
   describe('chose: the click tools', () => {
+    // img.icon is in ui.css, which the viewer's shadow root loads before microdraw.css
+    it('shows each tool\'s icon centred in its button', async () => {
+      const offsets = await page.evaluate(() => Array.from(window.Microdraw.dom.querySelectorAll('#clickTool .mui img.icon'))
+        .map((img) => [img.getBoundingClientRect(), img.parentElement.getBoundingClientRect()])
+        .map(([i, b]) => Math.max(Math.abs((i.x + (i.width / 2)) - (b.x + (b.width / 2))), Math.abs((i.y + (i.height / 2)) - (b.y + (b.height / 2))))));
+      assert.isAbove(offsets.length, 10);
+      assert.isAtMost(Math.max(...offsets), 0.5);
+    }).timeout(U.shortTimeout);
+
     it('presses the chosen tool only, and selects it', async () => {
       assert.deepEqual(await pressed('#clickTool'), ['navigate']);
       await shadowClick('#draw');

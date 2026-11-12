@@ -1,28 +1,14 @@
-.tab {
-    padding-right:12px;
-    padding-left:12px;
-    padding-bottom:4px;
-    cursor: pointer;
-    height:20px;
-}
-.tab.selected {
-    background:#333;
-}
-#dataFiles, #atlasFiles, #projects {
+#projects {
     color:white;
     text-align:left;
     width:100%;
     border-collapse:collapse;
 }
-#dataFiles td, #atlasFiles td,
-#dataFiles th, #atlasFiles th {
-    padding:0px 4px;
-}
-#dataFiles, #atlasFiles, #projects,
-#dataFiles th, #atlasFiles th, #projects th {
+#projects,
+#projects th {
     border-bottom:thin solid white;
 }
-#dataFiles a, #atlasFiles a, #projects a {
+#projects a {
     text-decoration:none;
 }
 
@@ -41,11 +27,6 @@
 
 
 /*************************** resizable layout **************************/
-#centeringDiv {
-    position:relative;
-    display:block;
-    margin:0 auto;
-}
 #userImage {
     position:relative;
     display: inline-block;
@@ -62,22 +43,9 @@
 #userDescription p {
     margin: 0;
 }
-#userTable {		
-    position: relative;
-    display:inline-block;
-    min-height:400px;
-    max-width: 900px;
-    text-decoration:none;
-    vertical-align: top;
-    margin-top: 20px;
-}
 
 /* for larger screen (computer, big iPad, small iPad landscape) */
 @media all and (min-width: 1023px) {
-    #centeringDiv {
-        width:984px;
-        padding:20px;
-    }
     #userImage {
         float: left;
     }
@@ -86,20 +54,10 @@
         clear: both;
         width: 200px;
     }		
-    #userTable {
-        max-width: 900px;
-        width: calc(100% - 220px);
-        margin-left: 20px;
-        margin-top: 0px;
-    }
 }
 
 /* for smaller screen (small iPad portrait) */ 
 @media not all and (min-width: 1023px) {
-    #centeringDiv {
-        width:700px;
-        padding:20px;
-    }
     #userDescription {
         position: relative;
         top: 0px;
@@ -109,22 +67,10 @@
         width:calc(100% - 300px);
         text-align: justify;
     }
-    #userTable {
-        position: relative;
-        max-width: 700px;
-        width:calc(100% - 40px);
-        top: 0px;
-        left: 0px;
-    }
 }
 
 /* for even smaller screen (phone) */ 
 @media not all and (min-width: 739px) {
-    #centeringDiv {
-        text-align: center;
-        width:600px;
-        padding:10px;
-    }
     #userDescription {
         position: relative;
         top: 0px;
@@ -132,23 +78,11 @@
         padding-left:10px;
         width:calc(100% - 20px);
         text-align: justify;
-    }
-    #userTable {
-        position: relative;
-        max-width: 600px;
-        width:calc(100% - 40px);
-        top: 0px;
-        left: 0px;
     }
 }
 
 /* for even still smaller screen (phone) */ 
 @media not all and (min-width: 639px) {
-    #centeringDiv {
-        text-align: center;
-        width:480px;
-        padding:10px;
-    }
     #userDescription {
         position: relative;
         top: 0px;
@@ -156,12 +90,5 @@
         padding-left:10px;
         width:calc(100% - 20px);
         text-align: justify;
-    }
-    #userTable {
-        position: relative;
-        max-width: 420px;
-        width:calc(100% - 40px);
-        top: 0px;
-        left: 0px;
     }
 }

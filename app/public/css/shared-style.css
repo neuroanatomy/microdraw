@@ -30,6 +30,16 @@ a {
     font-weight: lighter;
 }
 
+/* The Roboto title beside the logo (askForLogin, project and data pages) */
+.titleFont {
+    font-family: Roboto, sans-serif;
+    font-size: 36px;
+    font-weight: 100;
+}
+.titleFontSmall {
+    font-size: 28px;
+}
+
 #menu {
     float: right;
     margin-right: 10px;
