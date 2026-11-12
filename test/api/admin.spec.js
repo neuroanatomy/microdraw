@@ -18,7 +18,6 @@ const { toId } = require('../../app/controller/toId');
 // eslint-disable-next-line max-statements
 describe('Admin: orphan annotations (A1)', function () {
   const admin = { username: 'a1-admin', password: 'a1-admin-password' };
-  const other = { username: 'a1-other', password: 'a1-other-password' };
   const tokens = {};
   const agents = {};
 
@@ -110,14 +109,14 @@ describe('Admin: orphan annotations (A1)', function () {
   before(async function () {
     this.timeout(U.mediumTimeout); // eslint-disable-line no-invalid-this
     previousAdmins = admins.getAdmins();
-    await Promise.all([admin, other].map(login));
+    await Promise.all([admin].map(login));
     admins.setAdmins([admin.username]);
   });
 
   after(async function () {
     admins.setAdmins(previousAdmins);
     await cleanup();
-    await Promise.all([admin, other].map((u) => U.removeLocalUser(u.username)));
+    await Promise.all([admin].map((u) => U.removeLocalUser(u.username)));
   });
 
   beforeEach(async function () {
@@ -126,30 +125,9 @@ describe('Admin: orphan annotations (A1)', function () {
     await U.insertAnnotations(fixtures());
   });
 
+  // 401 logged out, 403 to non-admins (session and token), 200 to an admin's
+  // GET, on every admin JSON route: the shared suite, slice 5 (5.1)
   describe('Access', function () {
-    const jsonRoutes = [
-      ['get', '/admin/json/orphans'],
-      ['get', '/admin/json/orphans/projects'],
-      ['post', '/admin/json/orphans/remove'],
-      ['post', '/admin/json/orphans/restore'],
-      ['post', '/admin/json/orphans/assign']
-    ];
-
-    it('refuses the JSON routes to anonymous visitors (401) and to non-admins (403)', async function () {
-      for (const [method, path] of jsonRoutes) {
-        // eslint-disable-next-line no-await-in-loop
-        const anonymous = await chai.request(U.serverURL)[method](path);
-        assert.equal(anonymous.status, 401, `${method} ${path} anonymous`);
-        // eslint-disable-next-line no-await-in-loop
-        const byToken = await chai.request(U.serverURL)[method](path)
-          .query({ token: tokens[other.username] });
-        assert.equal(byToken.status, 403, `${method} ${path} non-admin, token`);
-        // eslint-disable-next-line no-await-in-loop
-        const bySession = await agents[other.username][method](path);
-        assert.equal(bySession.status, 403, `${method} ${path} non-admin, session`);
-      }
-    }).timeout(U.mediumTimeout);
-
     it('lets an admin logged in with a session use the JSON routes', async function () {
       const res = await agents[admin.username].get('/admin/json/orphans')
         .query({ source: img1 });

@@ -90,6 +90,7 @@ describe('Last modified of a project (save date, newest annotation)', function (
     await removeAll();
   });
 
+  // an update sets them too, to the collaborator who saved: the shared suite, slice 2 (2.18)
   describe('a save sets modified and modifiedBy', function () {
     const name = `${PREFIX}save`;
 
@@ -104,17 +105,6 @@ describe('Last modified of a project (save date, newest annotation)', function (
       assert.isAtLeast(Date.parse(doc.modified), before - 1000);
       assert.isAtMost(Date.parse(doc.modified), Date.now() + 1000);
       assert.equal(doc.modifiedBy, owner.username);
-    }).timeout(U.shortTimeout);
-
-    it('on an update: a later date, by the collaborator who saved', async function () {
-      const first = (await U.queryProject(name)).modified;
-      await U.delay(5);
-      const res = await editorAgent.post(`/project/json/${name}`)
-        .send({ data: newProject(name, { name: 'Renamed' }) });
-      assert.equal(res.status, 200, res.text);
-      const doc = await U.queryProject(name);
-      assert.isAbove(Date.parse(doc.modified), Date.parse(first));
-      assert.equal(doc.modifiedBy, editor.username);
     }).timeout(U.shortTimeout);
 
     it('not on a refused save', async function () {

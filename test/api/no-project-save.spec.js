@@ -93,6 +93,7 @@ describe('Saving annotations requires a project (H3b)', function () {
   }).timeout(U.shortTimeout);
 
   // The maintainer, 2026-10-12: no logged-out saves, even where 'anyone' may edit.
+  // a logged-in user's save where anyone may edit is accepted: the shared suite, slice 4 (4.3)
   describe('without a logged-in user or a valid token', function () {
     const publicEdit = U.createPublicAnnotationProject('h3bpublicedit');
     const projectAnnotations = async () => {
@@ -136,10 +137,5 @@ describe('Saving annotations requires a project (H3b)', function () {
       }).timeout(U.shortTimeout);
     });
 
-    it('accepts a logged-in editor save into that project', async function () {
-      const res = await agent.post('/api').send(guiBody(publicEdit.shortname));
-      assert.equal(res.status, 200);
-      assert.deepEqual((await projectAnnotations()).map((a) => a.annotation.name), ['gui']);
-    }).timeout(U.shortTimeout);
   });
 });

@@ -105,35 +105,13 @@ describe('What the project page shows, and projects without \'anyone\' (M3)', fu
   });
 
   describe('a project without an \'anyone\' entry', function () {
-    // 401 since 2026-11-11 (shared suite 1.5: logged out; was 403)
-    it('is refused to anonymous visitors (401, not 500)', async function () {
-      const anon = chai.request(U.serverURL);
-      for (const url of [`/project/json/${noAnyone.shortname}`, `/project/${noAnyone.shortname}`, `/project/${noAnyone.shortname}/settings`]) {
-        // eslint-disable-next-line no-await-in-loop
-        const res = await anon.get(url);
-        assert.equal(res.status, 401, url);
-      }
-    }).timeout(U.shortTimeout);
-
-    it('is shown to its collaborator', async function () {
-      for (const url of [`/project/json/${noAnyone.shortname}`, `/project/${noAnyone.shortname}`]) {
-        // eslint-disable-next-line no-await-in-loop
-        const res = await agent.get(url);
-        assert.equal(res.status, 200, url);
-      }
-    }).timeout(U.shortTimeout);
-
-    it('is not listed or found for anonymous visitors, and lists still answer', async function () {
-      const anon = chai.request(U.serverURL);
-      let res = await anon.get('/project/json').query({ page: 0 });
-      assert.equal(res.status, 200);
-      assert.notInclude(res.body, noAnyone.shortname);
-      res = await anon.get('/search/json/projects').query({ q: 'm3cnoanyone' });
+    // refused (1.4), listed in neither GET /project/json nor the user's
+    // projects (3.1, 3.3), shown to its collaborators: the shared suite, slice 1
+    it('is not found by anonymous visitors', async function () {
+      const res = await chai.request(U.serverURL).get('/search/json/projects')
+        .query({ q: 'm3cnoanyone' });
       assert.equal(res.status, 200);
       assert.deepEqual(JSON.parse(res.text), []);
-      res = await anon.get('/user/json/m3c-owner/projects');
-      assert.equal(res.status, 200);
-      assert.deepEqual(res.body.list.map((p) => p.shortname), [filesOnly.shortname]);
     }).timeout(U.shortTimeout);
   });
 

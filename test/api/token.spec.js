@@ -8,7 +8,9 @@ const U = require('../mocha.test.util');
 
 // M1: the /project JSON routes accept an API token (?token=), as /api does
 // and as BrainBox's project routes do. Requests here carry the token but no
-// session cookie.
+// session cookie. Reads with a token, without one and with an unknown one are
+// in NeuroWebLab's shared suite (slice 1, rules 1.11 and 1.12); this save
+// sends its data as a JSON string.
 const member = { username: 'api-token-member', password: 'token-member-password' };
 const project = U.createProjectWithPermission('apitokenprivate', { files: 'edit', collaborators: 'view', annotations: 'view' });
 project.collaborators.list[1].username = member.username;
@@ -33,26 +35,6 @@ describe('Token authentication on /project routes (M1)', function () {
   after(async function () {
     await Promise.all([U.removeProject(project.shortname), U.removeLocalUser(member.username)]);
   });
-
-  it('GET /project/json/:name gives a private project to its collaborator', async function () {
-    const res = await noCookie().get(`/project/json/${project.shortname}`)
-      .query({ token });
-    assert.equal(res.status, 200);
-    assert.equal(res.body.shortname, project.shortname);
-  }).timeout(U.shortTimeout);
-
-  it('GET /project/json/:name still refuses it without the token', async function () {
-    const res = await noCookie().get(`/project/json/${project.shortname}`);
-    // logged out: 401 since 2026-11-11 (shared suite 1.5; was 403)
-    assert.equal(res.status, 401);
-  }).timeout(U.shortTimeout);
-
-  it('GET /project/json/:name refuses it with an unknown token', async function () {
-    const res = await noCookie().get(`/project/json/${project.shortname}`)
-      .query({ token: 'not-a-token' });
-    // an unknown token is logged out: 401 since 2026-11-11 (shared suite 1.5, 1.12; was 403)
-    assert.equal(res.status, 401);
-  }).timeout(U.shortTimeout);
 
   it('POST /project/json/:name saves with the token', async function () {
     const changed = { ...project, name: 'Changed through a token' };

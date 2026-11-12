@@ -37,21 +37,9 @@ describe('Search and user routes (M3)', function () {
     assert.isTrue(new RegExp(escapeRegex(special)).test(`x${special}y`));
   });
 
+  // "(" and "m3d.*" taken literally: the shared suite, slice 3 (3.8)
   for (const route of ['projects', 'users']) {
     describe(`GET /search/json/${route}`, function () {
-      it('an invalid pattern is searched literally: 200 and an empty JSON list', async function () {
-        const res = await get(`/search/json/${route}`, { q: '(' });
-        assert.equal(res.status, 200);
-        isJSON(res);
-        assert.deepEqual(res.body, []);
-      }).timeout(U.shortTimeout);
-
-      it('regular expression characters match literally', async function () {
-        const res = await get(`/search/json/${route}`, { q: 'm3d.*' });
-        assert.equal(res.status, 200);
-        assert.deepEqual(res.body, []);
-      }).timeout(U.shortTimeout);
-
       it('a catastrophic pattern answers at once', async function () {
         const res = await get(`/search/json/${route}`, { q: '(a+)+$' })
           .timeout(2000);

@@ -12,6 +12,9 @@ const { projectProblems } = require('../../app/controller/project/project.check'
 
 // M3 (T002 step 1.4): POST /project/json/:projectName validates and sanitises
 // the project, as BrainBox's isProjectObject, adapted to microdraw (D27).
+// The rules NeuroWebLab's shared suite asserts (slice 2: shortname, anyone
+// row, access values, users, layer types and names, owner, rows changed in
+// place) are tested there, in test/api/conformance.spec.js.
 const member = { username: 'm3a-member', password: 'm3a-member-password' };
 const collaborator = { username: 'm3a-collaborator', name: 'M3a Collaborator' };
 const editor = { username: 'm3a-editor', password: 'm3a-editor-password' };
@@ -161,31 +164,8 @@ describe('Validation of POST /project/json/:projectName (M3)', function () {
 
   // eslint-disable-next-line max-statements
   describe('refused projects (400, nothing stored)', function () {
-    it('the shortname in the data differs from the one in the URL', async function () {
-      await refused('m3aurlname', newProject('m3abodyname'), /URL/);
-      assert.isNull(await U.queryProject('m3abodyname'));
-    }).timeout(U.shortTimeout);
-
     it('a new project without lists', async function () {
       await refused('m3anolists', { shortname: 'm3anolists', name: 'x' }, /list/);
-    }).timeout(U.shortTimeout);
-
-    it('a collaborators list without an "anyone" entry', async function () {
-      const project = newProject('m3anoanyone');
-      project.collaborators.list = [{ username: collaborator.username, access: { collaborators: 'view', annotations: 'view', files: 'view' } }];
-      await refused('m3anoanyone', project, /anyone/);
-    }).timeout(U.shortTimeout);
-
-    it('an invalid access value', async function () {
-      const project = newProject('m3abadaccess');
-      project.collaborators.list[0].access.files = 'admin';
-      await refused('m3abadaccess', project, /access/);
-    }).timeout(U.shortTimeout);
-
-    it('a collaborator who does not exist', async function () {
-      const project = newProject('m3anouser');
-      project.collaborators.list.push({ username: 'm3a-no-such-user', access: { collaborators: 'none', annotations: 'view', files: 'view' } });
-      await refused('m3anouser', project, /m3a-no-such-user/);
     }).timeout(U.shortTimeout);
 
     it('several collaborators: names only those who do not exist, once each', async function () {
@@ -207,17 +187,6 @@ describe('Validation of POST /project/json/:projectName (M3)', function () {
       await refused('m3anoname', project, /different/);
     }).timeout(U.shortTimeout);
 
-    it('a new shortname with other characters than letters, numbers and hyphens', async function () {
-      await refused('m3a_underscore', newProject('m3a_underscore'), /letters, numbers and hyphens/);
-    }).timeout(U.shortTimeout);
-
-    it('a new shortname with a hyphen is accepted (shared suite 2.6, 2026-11-11)', async function () {
-      created.push('m3a-hyphen');
-      const res = await agent.post('/project/json/m3a-hyphen').send({ data: newProject('m3a-hyphen') });
-      assert.equal(res.status, 200, res.text);
-      assert.equal((await U.queryProject('m3a-hyphen')).shortname, 'm3a-hyphen');
-    }).timeout(U.shortTimeout);
-
     it('a file that is not {name, source}', async function () {
       await refused('m3afilestring', newProject('m3afilestring', { files: { list: ['/test_data/cat.json'] } }));
       await refused('m3afilenosource', newProject('m3afilenosource', { files: { list: [{ name: 'cat' }] } }));
@@ -228,12 +197,6 @@ describe('Validation of POST /project/json/:projectName (M3)', function () {
       // eslint-disable-next-line no-script-url
       await refused('m3ajssource', newProject('m3ajssource', { files: { list: [{ source: 'javascript:alert(1)', name: 'x' }] } }));
       await refused('m3adatasource', newProject('m3adatasource', { files: { list: [{ source: 'data:text/html,x', name: 'x' }] } }));
-    }).timeout(U.shortTimeout);
-
-    it('an annotation type other than text or vectorial', async function () {
-      const project = newProject('m3avolume');
-      project.annotations.list[0].type = 'volume';
-      await refused('m3avolume', project, /type/);
     }).timeout(U.shortTimeout);
 
     it('a name that is not a string', async function () {
@@ -273,12 +236,6 @@ describe('Validation of POST /project/json/:projectName (M3)', function () {
 
     const postAs = (who, data) => who.post(`/project/json/${shortname}`).send({ data });
 
-    it('keeps the stored owner (a collaborator cannot take the project)', async function () {
-      const res = await postAs(editorAgent, { ...stored(), owner: editor.username });
-      assert.equal(res.status, 200, res.text);
-      assert.equal((await U.queryProject(shortname)).owner, member.username);
-    }).timeout(U.shortTimeout);
-
     it('a collaborator who may only view the collaborators cannot change their access', async function () {
       const project = stored();
       project.collaborators.list[1].access = access('remove', 'remove', 'remove');
@@ -291,27 +248,12 @@ describe('Validation of POST /project/json/:projectName (M3)', function () {
       assert.deepEqual(after.collaborators.list[0].access, anyone().access);
     }).timeout(U.shortTimeout);
 
-    it('a collaborator who may only view the annotations cannot change the layers', async function () {
-      const project = stored();
-      project.annotations.list[0].type = 'text';
-      project.annotations.list[0].name = 'renamed';
-      const res = await postAs(editorAgent, project);
-      assert.equal(res.status, 200, res.text);
-      assert.deepEqual((await U.queryProject(shortname)).annotations.list, stored().annotations.list);
-    }).timeout(U.shortTimeout);
-
     it('checks the users through the native driver, for a new and for a stored project', async function () {
       created.push('m3anative');
       const added = await post('m3anative', newProject('m3anative'));
       assert.equal(added.status, 200, added.text);
       const updated = await postAs(agent, { ...stored(), name: 'read natively' });
       assert.equal(updated.status, 200, updated.text);
-    }).timeout(U.shortTimeout);
-
-    it('saving again a project that names a removed user is still possible', async function () {
-      const res = await postAs(agent, { ...stored(), name: 'renamed by the owner' });
-      assert.equal(res.status, 200, res.text);
-      assert.equal((await U.queryProject(shortname)).name, 'renamed by the owner');
     }).timeout(U.shortTimeout);
 
     it('an existing shortname with other characters can still be saved', async function () {
@@ -484,12 +426,6 @@ describe('Validation of POST /project/json/:projectName (M3)', function () {
     after(async function () {
       await U.removeProject(shortname);
     });
-
-    it('a new project with two layers of the same name, ignoring case, is refused', async function () {
-      const project = newProject('f1dupesnew');
-      project.annotations.list.push(layer(' LAYER '));
-      await refused('f1dupesnew', project, /same name/);
-    }).timeout(U.shortTimeout);
 
     it('stored duplicates are accepted unchanged, and new layers with other names too', async function () {
       let res = await save({ ...stored(), name: 'saved again' });

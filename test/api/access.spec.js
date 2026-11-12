@@ -9,9 +9,11 @@ const U = require('../mocha.test.util');
 // M1: the project list and the searches only return what the requester may
 // see. A private project is listed for its collaborators and owner, never for
 // an anonymous visitor or a logged-in stranger. User search returns public
-// fields only (T004 allow-list).
+// fields only (T004 allow-list). Who is listed, the pages of 20 and project
+// search by visitors and members are in NeuroWebLab's shared suite (slices 1
+// and 3, test/api/conformance.spec.js); here the stored order, a project found
+// by its owner and the exact fields.
 const collaborator = { username: 'api-access-collab', password: 'access-collab-password' };
-const stranger = { username: 'api-access-stranger', password: 'access-stranger-password' };
 
 const publicProject = U.createProjectWithPermission('apiaccesspublic', { files: 'view' });
 publicProject.collaborators.list[0].access.files = 'view';
@@ -60,57 +62,25 @@ const searchProjects = async (request, q) => {
 };
 
 describe('Route access checks: project list and search (M1)', function () {
-  let collaboratorAgent, strangerAgent;
+  let collaboratorAgent;
   const anonymous = () => chai.request(U.serverURL);
   const asCollaborator = () => collaboratorAgent;
-  const asStranger = () => strangerAgent;
 
   before(async function () {
     // eslint-disable-next-line no-invalid-this -- mocha passes the hook context as this
     this.timeout(U.mediumTimeout);
     await Promise.all([publicProject, privateProject, ownedProject].map((p) => U.insertProject(p)));
     collaboratorAgent = await login(collaborator);
-    strangerAgent = await login(stranger);
   });
 
   after(async function () {
     await Promise.all([
       ...[publicProject, privateProject, ownedProject].map((p) => U.removeProject(p.shortname)),
-      U.removeLocalUser(collaborator.username),
-      U.removeLocalUser(stranger.username)
+      U.removeLocalUser(collaborator.username)
     ]);
   });
 
   describe('GET /project/json', function () {
-    it('lists a public project but no private one (anonymous)', async function () {
-      const names = await listAllProjects(anonymous);
-      assert.include(names, publicProject.shortname);
-      assert.notInclude(names, privateProject.shortname);
-      assert.notInclude(names, ownedProject.shortname);
-    }).timeout(U.shortTimeout);
-
-    it('lists no private project to a logged-in stranger', async function () {
-      const names = await listAllProjects(asStranger);
-      assert.include(names, publicProject.shortname);
-      assert.notInclude(names, privateProject.shortname);
-      assert.notInclude(names, ownedProject.shortname);
-    }).timeout(U.shortTimeout);
-
-    it('lists the private projects a user collaborates on or owns', async function () {
-      const names = await listAllProjects(asCollaborator);
-      assert.include(names, publicProject.shortname);
-      assert.include(names, privateProject.shortname);
-      assert.include(names, ownedProject.shortname);
-    }).timeout(U.shortTimeout);
-
-    it('pages hold at most 20 projects and do not repeat', async function () {
-      const res = await anonymous().get('/project/json')
-        .query({ page: 0 });
-      assert.isAtMost(res.body.length, 20);
-      const names = await listAllProjects(anonymous);
-      assert.equal(new Set(names).size, names.length);
-    }).timeout(U.shortTimeout);
-
     // What the read gives, whichever driver reads it.
     describe('over several pages', function () {
       const PREFIX = 'apiaccesslist';
@@ -140,30 +110,10 @@ describe('Route access checks: project list and search (M1)', function () {
         assert.deepEqual(names.filter((name) => name.startsWith(PREFIX)), shown.map(shortname));
       }).timeout(U.shortTimeout);
 
-      it('fills a page with 20 visible projects when more follow', async function () {
-        const res = await anonymous().get('/project/json')
-          .query({ page: 0 });
-        assert.isArray(res.body);
-        assert.lengthOf(res.body, 20);
-      }).timeout(U.shortTimeout);
     });
   });
 
   describe('GET /search/json/projects', function () {
-    it('finds a public project but no private one (anonymous)', async function () {
-      const names = await searchProjects(anonymous, 'apiaccess');
-      assert.include(names, publicProject.shortname);
-      assert.notInclude(names, privateProject.shortname);
-      assert.notInclude(names, ownedProject.shortname);
-    }).timeout(U.shortTimeout);
-
-    it('finds no private project for a logged-in stranger', async function () {
-      const names = await searchProjects(asStranger, 'apiaccess');
-      assert.include(names, publicProject.shortname);
-      assert.notInclude(names, privateProject.shortname);
-      assert.notInclude(names, ownedProject.shortname);
-    }).timeout(U.shortTimeout);
-
     it('finds the private projects a user collaborates on or owns', async function () {
       const names = await searchProjects(asCollaborator, 'apiaccess');
       assert.include(names, publicProject.shortname);

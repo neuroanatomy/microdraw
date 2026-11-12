@@ -88,6 +88,7 @@ describe('Project versions: every change keeps the old version (T002 2.1b)', fun
     await U.removeLocalUser(admin.username);
   });
 
+  // a stored field the client does not send is kept: the shared suite, slice 2 (2.17)
   describe('POST /project/json/:projectName (settings save)', function () {
     // eslint-disable-next-line max-statements
     it('stores one new version per save; the old one becomes a backup; reads give the new one', async function () {
@@ -134,20 +135,6 @@ describe('Project versions: every change keeps the old version (T002 2.1b)', fun
       assert.match(docs[1].modified, isoDate);
       assert.isAtLeast(Date.parse(docs[1].modified), before - 1000);
       assert.equal(docs[1].modifiedBy, owner.username);
-    }).timeout(U.shortTimeout);
-
-    // As the $set of NWL's upsertProject before 2.1b: a stored top-level field
-    // that the client does not send is kept in the new version
-    it('keeps a stored field the client does not send (description, created)', async function () {
-      const shortname = `${PREFIX}keepfields`;
-      await save(shortname, project(shortname, { extra: { description: 'Kept description' } }));
-      const sent = _.omit(project(shortname, { name: 'Renamed' }), ['description', 'created']);
-      const res = await save(shortname, sent);
-      assert.equal(res.status, 200, res.text);
-      const [now] = await currents(shortname);
-      assert.equal(now.name, 'Renamed');
-      assert.equal(now.description, 'Kept description');
-      assert.equal(now.created, '2026-11-09T00:00:00.000Z');
     }).timeout(U.shortTimeout);
 
     it('two saves in parallel (lock) give two versions in order, and one current', async function () {

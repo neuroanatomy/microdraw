@@ -150,28 +150,9 @@ describe('Admin: delete a project, transfer ownership (A3)', function () {
     ]);
   });
 
+  // 401 logged out, 403 to non-admins (session and token), on every admin
+  // JSON route: the shared suite, slice 5 (5.1)
   describe('Access', function () {
-    const jsonRoutes = [
-      ['get', '/admin/json/projects/search'],
-      ['post', '/admin/json/projects/delete'],
-      ['post', '/admin/json/projects/restore-deleted'],
-      ['post', '/admin/json/projects/transfer']
-    ];
-
-    it('refuses the routes to anonymous visitors (401) and to non-admins (403)', async function () {
-      for (const [method, route] of jsonRoutes) {
-        /* eslint-disable no-await-in-loop */
-        const anonymous = await chai.request(U.serverURL)[method](route);
-        assert.equal(anonymous.status, 401, `${method} ${route} anonymous`);
-        const byToken = await chai.request(U.serverURL)[method](route)
-          .query({ token: tokens[other.username] });
-        assert.equal(byToken.status, 403, `${method} ${route} non-admin, token`);
-        const bySession = await agents[other.username][method](route);
-        assert.equal(bySession.status, 403, `${method} ${route} non-admin, session`);
-        /* eslint-enable no-await-in-loop */
-      }
-    }).timeout(U.mediumTimeout);
-
     it('a non-admin owner cannot use the admin delete or transfer on his own project', async function () {
       const { version } = await found('a3owned');
       let res = await post('/admin/json/projects/delete', { project: 'a3owned', version }, owner);
