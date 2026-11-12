@@ -4,6 +4,8 @@ const U = require('../mocha.test.util');
 const chai = require('chai');
 const {assert} = chai;
 const H = require('./helpers');
+const WebSocket = require('ws');
+const wsModule = require('../../app/controller/microdrawWebsocketServer/microdrawWebsocketServer');
 
 /*
   Ways into the viewer other than the toolbar: the landing page's Go button,
@@ -41,6 +43,17 @@ const sliceState = (p = page) => p.evaluate(() => ({
   label: window.Microdraw.dom.querySelector('#slice-number').textContent,
   url: new URLSearchParams(location.search).get('slice')
 }));
+
+// Send one message from a WebSocket connection outside the viewer.
+const sendChat = async (data) => {
+  const ws = await new Promise((resolve, reject) => {
+    const socket = new WebSocket(`ws://127.0.0.1:${wsModule.server.address().port}`);
+    socket.once('open', () => resolve(socket));
+    socket.once('error', reject);
+  });
+  ws.send(JSON.stringify(data));
+  ws.close();
+};
 
 describe('Viewer interactions', () => {
   before(async () => {
@@ -170,6 +183,45 @@ describe('Viewer interactions', () => {
     assert.notInclude(received, '(me)', 'page 2 shows the message as its own');
     const own = await page.evaluate(() => window.Microdraw.dom.querySelector('#logChat .text').innerHTML);
     assert.include(own, `<i>(me)</i>: ${message}`);
+    // logged out, both lines show the sender's animal nickname, not Anonymous
+    const names = await Promise.all([page, page2].map((p) => p.evaluate(() => [...window.Microdraw.dom.querySelectorAll('#logChat .text b')].map((b) => b.textContent)
+      .pop())));
+    assert.equal(names[1], `${names[0]}:`, 'the received name is not the own nickname');
+    assert.notEqual(names[0], 'Anonymous');
     await page2.close();
+  }).timeout(U.mediumTimeout);
+
+  it("shows an anonymous sender's animal nickname, whatever name it sent", async () => {
+    const msg = `animal ${Date.now()}`;
+    await sendChat({ type: 'chat', msg, username: 'mallory', randomUuid: 1234 });
+    await page.waitForFunction((m) => window.Microdraw.dom.querySelector('#logChat .text').textContent.includes(m), { timeout: U.shortTimeout }, msg);
+    const { name, nickname } = await page.evaluate(() => ({
+      name: [...window.Microdraw.dom.querySelectorAll('#logChat .text b')].pop().textContent,
+      // what _decodeRandomUuidToNickname(1234) gives
+      nickname: window.HippyHippo.HippyHippo.getNickName(1234)
+    }));
+    assert.isString(nickname);
+    assert.equal(name, `${nickname}:`);
+  }).timeout(U.mediumTimeout);
+
+  it('shows a received chat message with markup as text', async () => {
+    await page.bringToFront();
+    await H.openData(page, U.url(DATA_URL));
+    await page.waitForFunction(() => window.Microdraw.dom.querySelector('#notifications').innerHTML === 'Chat', { timeout: U.shortTimeout });
+    const markup = `<img src=x onerror="window.__chatInjected=true"><b>bold</b> & co ${Date.now()}`;
+    await sendChat({ type: 'chat', msg: markup, username: '<i>name</i>' });
+    await page.waitForFunction((m) => window.Microdraw.dom.querySelector('#logChat .text').textContent.includes(m), { timeout: U.shortTimeout }, markup);
+    const shown = await page.evaluate(() => {
+      const log = window.Microdraw.dom.querySelector('#logChat .text');
+
+      return {
+        img: log.querySelectorAll('img').length,
+        bold: [...log.querySelectorAll('b')].map((b) => b.textContent),
+        injected: window.__chatInjected === true
+      };
+    });
+    assert.deepInclude(shown, { img: 0, injected: false }, 'the markup made an img element, or its onerror ran');
+    assert.notInclude(shown.bold, 'bold', 'the markup made a bold element');
+    assert.include(shown.bold, 'Anonymous:', 'the server names the logged-out sender');
   }).timeout(U.mediumTimeout);
 });

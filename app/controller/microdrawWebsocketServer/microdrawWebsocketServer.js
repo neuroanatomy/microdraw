@@ -2,17 +2,6 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-// data sanitisation
-const createDOMPurify = require('dompurify');
-const {JSDOM} = require('jsdom');
-const {window} = (new JSDOM('', {
-  features: {
-    FetchExternalResources: false, // disables resource loading over HTTP / filesystem
-    ProcessExternalResources: false // do not execute JS within script blocks
-  }
-}));
-const DOMPurify = createDOMPurify(window);
-
 // Get whitelist and blacklist
 const useWhitelist = false;
 const useBlacklist = true;
@@ -25,6 +14,11 @@ const log = require('../../log').child({ module: 'websocket' });
 const WebSocketServer = WebSocket.Server;
 const liveRooms = require('./liveRooms');
 var websocketserver;
+
+// longer chat messages are dropped
+const MAX_CHAT_LENGTH = 1000;
+// connection -> the promise of its last relayed chat message
+const chatQueues = new WeakMap();
 
 const microdrawWebsocketServer = (function () {
   const me = {
@@ -48,47 +42,53 @@ const microdrawWebsocketServer = (function () {
       }
     },
 
-    _fitsBroadcastExclusionCriteria: ({data}) => liveRooms.isServerType(data.type),
-
-    _fitsBroadcastInclusionCriteria: ({data}) => {
-      let include = false;
-      if (data.type === "chat") {
-        include = true;
+    /**
+     * The chat message relayed for a received one, built from known fields
+     * only, or null if the received one is not a valid chat. The sender's
+     * name is the session user of its connection, never the one it sent.
+     * @param {object} data The received message
+     * @param {string|null} username The sender's session user
+     * @returns {object|null} The message to relay
+     */
+    _chatMessage: (data, username) => {
+      if (data.type !== 'chat' || typeof data.msg !== 'string' || data.msg.length > MAX_CHAT_LENGTH) {
+        return null;
+      }
+      const chat = { type: 'chat', msg: data.msg, username: username || 'Anonymous' };
+      if (typeof data.randomUuid === 'number') {
+        chat.randomUuid = data.randomUuid;
       }
 
-      return include;
+      return chat;
     },
 
-    _handleBroadcastWebSocketMessage: function ({data, ws}) {
-      // joins and notices are not for the other clients
-      if (me._fitsBroadcastExclusionCriteria({data})) {
-        return;
-      }
-
-      // scan through connected users
+    _broadcast: (text, ws) => {
       websocketserver.clients.forEach((client) => {
         if (client !== ws && client.readyState === WebSocket.OPEN) {
-          // check exclusion criteria
-          // if(me._fitsBroadcastExclusionCriteria({sourceUS, targetUS})) {
-          //   return;
-          // }
-
-          // check inclusion criteria
-          // if(!me._fitsBroadcastInclusionCriteria({sourceUS, targetUS, data})) {
-          //   return;
-          // }
-
-          // sanitise data
-          const cleanData = DOMPurify.sanitize(JSON.stringify(data));
-
-          // do broadcast
           try {
-            client.send(cleanData);
+            client.send(text);
           } catch (err) {
             log.error({ err }, 'cannot broadcast message');
           }
         }
       });
+    },
+
+    // Only chat messages go to the other clients (the chat is global). The
+    // sender's name is looked up for each message; the lookups of one
+    // connection are chained, so its messages are relayed in order.
+    _handleBroadcastWebSocketMessage: function ({data, ws}) {
+      if (me._chatMessage(data, null) === null) {
+        return;
+      }
+      const previous = chatQueues.get(ws) || Promise.resolve();
+      const next = previous
+        .then(() => liveRooms.sessionUsername(ws, me.sessionParser))
+        .then((username) => {
+          me._broadcast(JSON.stringify(me._chatMessage(data, username)), ws);
+        })
+        .catch((err) => log.error({ err }, 'cannot relay chat message'));
+      chatQueues.set(ws, next);
     },
 
     _handleWebSocketMessage: ({msg, ws}) => {

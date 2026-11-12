@@ -55,7 +55,8 @@ const sendThenChat = async (sender, frame, options) => {
   const received = nextMessage(receiver);
   sender.send(frame, options);
   sender.send(JSON.stringify(chat));
-  assert.deepEqual(JSON.parse(await received), chat);
+  // the server names the (logged-out) sender
+  assert.deepEqual(JSON.parse(await received), { ...chat, username: 'Anonymous' });
 };
 
 describe('Malformed WebSocket messages do not crash the server (F1)', function () {
@@ -82,11 +83,9 @@ describe('Malformed WebSocket messages do not crash the server (F1)', function (
     await assertStillServing();
   }).timeout(U.shortTimeout);
 
-  it('relays a JSON object without type, as before', async function () {
+  it('drops a JSON object without type (only chat is relayed)', async function () {
     const sender = await connect();
-    const received = nextMessage(receiver);
-    sender.send(JSON.stringify({ msg: 'no type' }));
-    assert.deepEqual(JSON.parse(await received), { msg: 'no type' });
+    await sendThenChat(sender, JSON.stringify({ msg: 'no type' }));
     await assertStillServing();
   }).timeout(U.shortTimeout);
 

@@ -200,4 +200,17 @@ const roomSize = (target) => {
 
 const isServerType = (type) => SERVER_TYPES.has(type);
 
-module.exports = { connect, disconnect, join, notifySaved, roomSize, isServerType };
+/**
+ * The session user of a connection, from the cookie kept at connect. Read
+ * again at each call, as for a join, so a logout or an expired session counts.
+ * @param {object} ws The connection
+ * @param {function} sessionParser The app's session middleware
+ * @returns {Promise<string|null>} The username, or null when logged out
+ */
+const sessionUsername = (ws, sessionParser) => {
+  const state = connections.get(ws);
+
+  return usernameFromCookie(sessionParser, state ? state.cookie : null);
+};
+
+module.exports = { connect, disconnect, join, notifySaved, roomSize, isServerType, sessionUsername };

@@ -307,12 +307,12 @@ describe('Live-update notices over the WebSocket (step 3a)', function () {
   });
 
   describe('relaying', function () {
-    it('chat still reaches the others, as before', async function () {
+    it("chat still reaches the others, named by the sender's session", async function () {
       const a = await connect(cookies[editorA.username]);
       const b = await connect();
       const chat = { type: 'chat', msg: 'live hello', username: 'whoever', randomUuid: 7 };
       a.send(JSON.stringify(chat));
-      assert.deepEqual(await nextMessage(b), chat);
+      assert.deepEqual(await nextMessage(b), { ...chat, username: editorA.username });
     }).timeout(U.shortTimeout);
 
     it('does not relay joins, or notices sent by a client', async function () {

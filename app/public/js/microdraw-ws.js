@@ -26,23 +26,44 @@ const _decodeRandomUuidToNickname = (n) => {
   return HippyHippo.getNickName(n);
 };
 
+// An element with a text, never parsed as HTML.
+const _element = (tag, text) => {
+  const el = document.createElement(tag);
+  el.textContent = text;
+
+  return el;
+};
+
+/**
+ * Add a line to the chat: the name in bold, then the text.
+ * @param {object} params Parameters
+ * @param {string} params.name The sender's name
+ * @param {boolean} params.own Whether it is the user's own message
+ * @param {string} params.msg The text
+ * @returns {void}
+ */
+const _addChatLine = ({ name, own, msg }) => {
+  const log = Microdraw.dom.querySelector("#logChat .text");
+  if (own) {
+    log.append(_element("b", name), " ", _element("i", "(me)"), ": " + msg, document.createElement("br"));
+  } else {
+    log.append(_element("b", name + ":"), " " + msg, document.createElement("br"));
+  }
+  log.scrollTop = log.scrollHeight;
+};
+
 /**
   * @param {object} data Data received
   * @returns {void}
   */
 const receiveChatMessage = (data) => {
-  const { dom } = Microdraw;
-  let theUsername;
-  if (data.username !== "Anonymous") {
+  let theUsername = "Anonymous";
+  if (typeof data.username === "string" && data.username !== "Anonymous") {
     theUsername = data.username;
   } else if (typeof data.randomUuid === 'number') {
     theUsername = _decodeRandomUuidToNickname(data.randomUuid);
-  } else {
-    theUsername = data.uid;
   }
-  const msg = "<b>" + theUsername + ":</b> " + data.msg + "<br />";
-  dom.querySelector("#logChat .text").innerHTML += msg;
-  dom.querySelector("#logChat .text").scrollTop = dom.querySelector("#logChat .text").scrollHeight;
+  _addChatLine({ name: theUsername, own: false, msg: String(data.msg) });
 };
 
 const _getUserName = () => {
@@ -74,9 +95,7 @@ const _displayOwnMessage = (msg) => {
   const username = _username === 'Anonymous'
     ? _decodeRandomUuidToNickname(randomUuid)
     : _username;
-  msg = `<b>${username}</b> <i>(me)</i>: ${msg}<br />`;
-  dom.querySelector("#logChat .text").innerHTML += msg;
-  dom.querySelector("#logChat .text").scrollTop = dom.querySelector("#logChat .text").scrollHeight;
+  _addChatLine({ name: username, own: true, msg });
   dom.querySelector('input#msg').value = "";
 };
 
