@@ -226,7 +226,7 @@ describe('Project title and settings pages (M7)', () => {
     await page.type('input.input', 'not valid');
     await page.waitForFunction(() => [...document.querySelectorAll('.warning')]
       .some((div) => div.style.display !== 'none'), { polling: 50, timeout: U.shortTimeout });
-    assert.deepEqual(await warnings(), ['This name is not allowed. Project short names can only contain letters and numbers']);
+    assert.deepEqual(await warnings(), ['This name is not allowed. Project short names can only contain letters, numbers and hyphens']);
 
     await page.$eval('input.input', (input) => { input.select(); });
     await page.keyboard.type(EXISTING);
