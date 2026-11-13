@@ -10,20 +10,35 @@ html,body {
     -webkit-font-smoothing: antialiased;
     -moz-font-smoothing: antialiased;
 }
-input, select {
+/*
+  Sizes and colours for the Mustache pages' own markup. Inside nwl-components'
+  wrapper (.app) the library sets them (its base.css, then its components): since
+  nwl-components 2.0 the library's CSS is in cascade layers, below this
+  unlayered file, so these rules would override it there.
+*/
+:is(input, select):where(:not(.app *)) {
     color: var(--nwl-text);
     font-size: 1rem;
 }
 h1 {
-    font-size: 1.2rem;
     text-align:center;
 }
+h1:where(:not(.app *)) {
+    font-size: 1.2rem;
+}
 h2, p {
-    font-size: 1rem;
     text-align:center;
+}
+:is(h2, p):where(:not(.app *)) {
+    font-size: 1rem;
 }
 a {
     color:var(--nwl-link);
+}
+/* Keyboard focus (UI kit U6), as nwl-components' base.css gives it inside .app */
+:focus-visible:where(:not(.app *)) {
+    outline: 2px solid var(--nwl-focus);
+    outline-offset: 2px;
 }
 .linkNoULine {
     text-decoration: none;

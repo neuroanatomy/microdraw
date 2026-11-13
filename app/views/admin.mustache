@@ -209,9 +209,6 @@
   </div>
 </script>
 <style>
-main {
-    padding: 0 20px;
-}
 section {
     background: var(--nwl-bg-surface);
     padding: 20px;
@@ -270,6 +267,10 @@ button.danger {
 .help {
     color: #aaa;
 }
+/* nwl-components 1.x's `*` rule made these white; since 2.0 they inherit */
+.help :is(b, code) {
+    color: var(--nwl-text);
+}
 .error, .tag {
     color: #f77;
 }
@@ -298,6 +299,10 @@ div.project p, div.project form {
 div.project h3 {
     font-size: var(--nwl-text-base);
     margin: 0 0 6px;
+}
+/* 14px, as nwl-components 1.x's `*` rule made them; since 2.0 they inherit the h3's size */
+div.project h3 > :is(.owner, .settings) {
+    font-size: var(--nwl-text-md);
 }
 div.project .owner {
     color: #aaa;

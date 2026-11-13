@@ -43,6 +43,10 @@
 #userDescription p {
     margin: 0;
 }
+/* the user's name: shared-style.css's h1 size, which doesn't reach inside .app */
+#userDescription h1 {
+    font-size: 1.2rem;
+}
 
 /* for larger screen (computer, big iPad, small iPad landscape) */
 @media all and (min-width: 1023px) {

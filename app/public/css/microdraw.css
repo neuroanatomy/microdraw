@@ -275,6 +275,14 @@ html, body {
     box-sizing: border-box;
 }
 
+/* Keyboard focus (UI kit U6), as nwl-components' base.css gives it: the page's
+   rules don't reach into this shadow root, only its custom properties do */
+:focus-visible,
+.codeflask__flatten:focus-visible {
+    outline: 2px solid var(--nwl-focus);
+    outline-offset: 2px;
+}
+
 .mui {
     border:thin solid var(--nwl-border);
     border-radius:var(--nwl-radius-sm);
@@ -352,7 +360,6 @@ html, body {
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
-    outline: none;
     cursor: pointer;
 }
 /*--------------------------------------*/
@@ -620,8 +627,10 @@ b.layer-item {
     left: 0;
     overflow: auto;
     margin: 0 !important;
-    outline: none;
     text-align: left;
+}
+.codeflask__flatten:focus:not(:focus-visible) {
+    outline: none;
 }
 .codeflask {
     background:var(--nwl-black);

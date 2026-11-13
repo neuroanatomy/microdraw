@@ -4,10 +4,6 @@
     text-decoration:none;
     border:none;
 }
-.view, .edit, .add, .remove {
-    /* cursor: pointer; */
-    padding:1px 1px 1px 0px;
-}
 .view:before, .edit:before, .add:before, .remove:before {
     background-size: 15px 15px;
     width: 15px;
