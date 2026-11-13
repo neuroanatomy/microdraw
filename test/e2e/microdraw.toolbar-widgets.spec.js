@@ -173,14 +173,15 @@ describe('Toolbar widgets (M4b)', () => {
     it('presses the button and enters fullscreen, then leaves it', async () => {
       const state = () => page.evaluate(() => ({
         pressed: window.Microdraw.dom.querySelector('#fullscreen').classList.contains('mui-pressed'),
+        ariaPressed: window.Microdraw.dom.querySelector('#fullscreen').getAttribute('aria-pressed'),
         position: document.querySelector('#content').style.position
       }));
       await shadowClick('#fullscreen');
       await H.waitForTools(page);
-      assert.deepEqual(await state(), { pressed: true, position: 'fixed' });
+      assert.deepEqual(await state(), { pressed: true, ariaPressed: 'true', position: 'fixed' });
       await shadowClick('#fullscreen');
       await H.waitForTools(page);
-      assert.deepEqual(await state(), { pressed: false, position: '' });
+      assert.deepEqual(await state(), { pressed: false, ariaPressed: 'false', position: '' });
     }).timeout(U.shortTimeout);
   });
 

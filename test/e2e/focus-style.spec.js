@@ -4,8 +4,8 @@
   UI kit step 7 (nwl-components 2.0.0, decision U6): keyboard focus shows a
   2px var(--nwl-focus) outline, mouse focus shows none. The viewer is in a
   shadow root, which nwl-components' base.css does not reach: microdraw.css
-  gives its controls the outline. (Its tool buttons, .mui divs, can't take
-  focus yet: keyboard access for them is step 9.)
+  gives its controls the outline. (Its tool buttons are native buttons since
+  step 9b: tool-buttons.spec.js.)
 
   With 2.0.0 the library's CSS is in cascade layers, below the app's own
   unlayered CSS: shared-style.css's `input { color }` then made the

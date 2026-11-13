@@ -1,23 +1,6 @@
 /* User interface widgets: buttons, sliders
 -----------------------------------------------------------------------------*/
 
-.a {
-    border:thin solid var(--nwl-border);
-    border-radius:var(--nwl-radius-sm);
-    margin:1px;
-    text-align:center;
-    height: 22px;
-}
-.a:hover {
-    opacity:0.5;
-    -webkit-user-select:none;
-    -moz-user-select:none;
-    user-select:none;
-}
-.pressed {
-    background-color:var(--nwl-bg-pressed) !important;
-}
-
 option {
     background-color:var(--nwl-grey-55);
 }
@@ -34,7 +17,7 @@ img.button {
 img.button:hover {
     opacity:0.5;
 }
-/* the viewer's tool icons (.nwl-icon), centred in their .mui button, at the
+/* the viewer's tool icons (.nwl-icon), centred in their tool button (.nwl-tool-button), at the
    viewer's size (1rem) rather than the kit's 16px */
 img.nwl-icon {
     width:1rem;

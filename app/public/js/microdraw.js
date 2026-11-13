@@ -2469,7 +2469,7 @@ const Microdraw = (function () {
       if( me.debug>1 ) { console.log("> initMicrodraw promise"); }
 
       // Enable click on toolbar buttons
-      Array.prototype.forEach.call(me.dom.querySelectorAll('#buttonsBlock div.mui.push'), (el) => {
+      Array.prototype.forEach.call(me.dom.querySelectorAll('#buttonsBlock .mui.push'), (el) => {
         el.addEventListener('click', me.toolSelection);
       });
       MUI.toggle(me.dom.querySelector("#fullscreen"), () => { me.clickTool("fullscreen"); });

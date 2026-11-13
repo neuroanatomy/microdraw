@@ -16,6 +16,12 @@
   - a missing element (null) is ignored, as an empty jQuery selection.
   Tests: test/e2e/microdraw.toolbar-widgets.spec.js, written on muijs 0.1.3
   with jQuery 1.11 and passing unchanged on this port.
+
+  The buttons are native <button class="nwl-tool-button"> (UI kit step 9b), so
+  Tab, Enter and Space reach them. A pressed button (chose, chose3state,
+  toggle) has the class mui-pressed, which code and tests query, and
+  aria-pressed="true", which the kit styles: both are set here only, by
+  setPressed.
 */
 /* eslint max-statements: ["error", 20] -- the IIFE and slider hold the widgets, as in muijs (M4b, 2026-10-13) */
 /* eslint callback-return: "off" -- callbacks notify, their result is not used, as in muijs (M4b, 2026-10-13) */
@@ -45,6 +51,12 @@ window.MUI = (function () {
     store.set(el, data);
 
     return data[key];
+  };
+
+  // the pressed state: the class mui-pressed and aria-pressed, together
+  const setPressed = (el, pressed) => {
+    el.classList.toggle("mui-pressed", pressed);
+    el.setAttribute("aria-pressed", String(pressed));
   };
 
   const setData = (el, obj) => {
@@ -136,8 +148,8 @@ window.MUI = (function () {
           if (this.classList.contains("mui-pressed")) {
             return callback(this.getAttribute("title"));
           }
-          ch.forEach((c) => { c.classList.remove("mui-pressed"); });
-          this.classList.add("mui-pressed");
+          ch.forEach((c) => { setPressed(c, false); });
+          setPressed(this, true);
           if (callback) {
             return callback(this.getAttribute("title"));
           }
@@ -157,12 +169,12 @@ window.MUI = (function () {
       ch.forEach((d) => {
         on(d, "click", () => {
           if (d.classList.contains("mui-pressed")) {
-            d.classList.remove("mui-pressed");
+            setPressed(d, false);
 
             return callback("none");
           }
-          ch.forEach((d1) => { d1.classList.remove("mui-pressed"); });
-          d.classList.add("mui-pressed");
+          ch.forEach((d1) => { setPressed(d1, false); });
+          setPressed(d, true);
           if (callback) {
             return callback(d.getAttribute("title"));
           }
@@ -179,7 +191,7 @@ window.MUI = (function () {
     toggle: function (elem, callback) {
       if (!elem) { return; }
       on(elem, "click", function () {
-        this.classList.toggle("mui-pressed");
+        setPressed(this, !this.classList.contains("mui-pressed"));
         if (callback) {
           callback(this.classList.contains("mui-pressed"));
         }

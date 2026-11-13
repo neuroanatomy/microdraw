@@ -284,21 +284,17 @@ html, body {
     outline-offset: 2px;
 }
 
+/* The tool buttons are nwl-components' .nwl-tool-button (look, hover, pressed:
+   aria-pressed="true"; UI kit step 9b). Only their layout is here, and the
+   panel's font: a <button> takes the browser's (Arial) otherwise. */
 .mui {
-    border:thin solid var(--nwl-border);
-    border-radius:var(--nwl-radius-sm);
-    margin:1px;
-    text-align:center;
-    height: 24px;
-    position: relative;
-    color: var(--nwl-text);
-    user-select: none;
+    font-family: inherit;
 }
-.mui:hover {
-    opacity:0.5;
-    -webkit-user-select:none;
-    -moz-user-select:none;
-    user-select:none;
+/* the text tools (- and +): at the top of the button, as on the divs they
+   were, not centred vertically as a <button> places its content */
+#sliderBlock .mui {
+    display: flex;
+    justify-content: center;
 }
 
 .mui-chose {
@@ -310,17 +306,14 @@ html, body {
     position: relative;
 }
 
+/* a tool in a group (.nwl-tool-button--sub): 41px wide, not its container's width */
 .mui.sub {
-    border:none;
-    margin:0;
-    height: 22px;
     width: 41px;
 }
-.mui.sub:hover {
-    opacity:0.5;
-    -webkit-user-select:none;
-    -moz-user-select:none;
-    user-select:none;
+/* the colour swatch holds no icon, and its inline background hides the kit's
+   hover background: it fades on hover as the icon tools do */
+#color:hover {
+    opacity: 0.5;
 }
 
 .text {
@@ -342,9 +335,6 @@ html, body {
 .label {
     color: var(--nwl-text);
     user-select: none;
-}
-.mui-pressed {
-    background-color: var(--nwl-grey-77) !important;
 }
 .hidden {
     display:none;
