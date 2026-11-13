@@ -23,15 +23,6 @@ td {
     text-decoration:underline;
 }
 
-/************************************ checkbox for display ******************************/ 
-[data-check="0"] .check:before {
-    background-image: url("/img/check.svg");
-}
-
-[data-check="1"] .check:before {
-    background-image: url("/img/checked.svg");
-}
-
 /* button disabled */
 .disabled {
     opacity: 0.4;
