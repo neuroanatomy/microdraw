@@ -1,7 +1,7 @@
 <div id="tools-side" style="display:block;height:100%">
   <div id="tools-minimized">
     <div>
-        <img id="bars-icon" alt="menu" src="/img/bars.svg" />
+        <img id="bars-icon" alt="menu" src="/lib/nwl-components/icons/bars.svg" />
     </div>
   </div>
 
@@ -10,10 +10,10 @@
       <!-- tools hide/show, display left/right -->
       <div id="headerBlock" style="flex:0 1 28px;background:#333">
           <div style="display:flex">
-              <div style="flex:0 0 28px"><button type="button" id="display-minimize" title="Minimize toolbar" class="nwl-tool-button mui push noBorder"><img class="nwl-icon" alt="close" src="/img/times-circle.svg" /></button></div>
+              <div style="flex:0 0 28px"><button type="button" id="display-minimize" title="Minimize toolbar" class="nwl-tool-button mui push noBorder"><img class="nwl-icon" alt="close" src="/lib/nwl-components/icons/times-circle.svg" /></button></div>
               <div id="toolsDragHandle" style="flex:1 1 auto" title="Drag to move toolbar"><div id="slice-number" style="padding:5px"></div></div>
-              <div style="flex:0 0 28px"><button type="button" id="display-left" title="Display to the left" class="nwl-tool-button mui push noBorder"><img class="nwl-icon" alt="left" src="/img/caret-square-o-left.svg" /></button></div>
-              <div style="flex:0 0 28px"><button type="button" id="display-right" title="Display to the right" class="nwl-tool-button mui push noBorder"><img class="nwl-icon" alt="right" src="/img/caret-square-o-right.svg" /></button></div>
+              <div style="flex:0 0 28px"><button type="button" id="display-left" title="Display to the left" class="nwl-tool-button mui push noBorder"><img class="nwl-icon" alt="left" src="/lib/nwl-components/icons/caret-square-o-left.svg" /></button></div>
+              <div style="flex:0 0 28px"><button type="button" id="display-right" title="Display to the right" class="nwl-tool-button mui push noBorder"><img class="nwl-icon" alt="right" src="/lib/nwl-components/icons/caret-square-o-right.svg" /></button></div>
           </div>
       </div>
 
@@ -43,55 +43,55 @@
 
               <div style="flex:1 0 250px;width:50px">
                   <div style="display:flex">
-                      <div style="flex:1"><button type="button" id="fullscreen" title="Full screen" class="nwl-tool-button mui toggle" aria-pressed="false"><img class="nwl-icon" alt="fullscreen" src="/img/fullscreen.svg" /></button></div>
+                      <div style="flex:1"><button type="button" id="fullscreen" title="Full screen" class="nwl-tool-button mui toggle" aria-pressed="false"><img class="nwl-icon" alt="fullscreen" src="/lib/nwl-components/icons/fullscreen.svg" /></button></div>
                       <div id="text" style="flex:2;display:flex" class="mui-chose">
-                          <div style="flex:1"><button type="button" id="bubble" title="Chat"   class="nwl-tool-button nwl-tool-button--sub mui sub mui-pressed" aria-pressed="true"><img class="nwl-icon" alt="chat"   src="/img/chat.svg" /></button></div>
-                          <div style="flex:1"><button type="button" id="script" title="Script" class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="script" src="/img/scroll.svg" /></button></div>
+                          <div style="flex:1"><button type="button" id="bubble" title="Chat"   class="nwl-tool-button nwl-tool-button--sub mui sub mui-pressed" aria-pressed="true"><img class="nwl-icon" alt="chat"   src="/lib/nwl-components/icons/chat.svg" /></button></div>
+                          <div style="flex:1"><button type="button" id="script" title="Script" class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="script" src="/lib/nwl-components/icons/scroll.svg" /></button></div>
                       </div>
-                      <div style="flex:1"><button type="button" id="home"     title="Home"     class="nwl-tool-button mui push"><img class="nwl-icon" alt="home"     src="/img/home.svg" /></button></div>
-                      <div style="flex:1"><button type="button" id="zoomIn"   title="Zoom In"  class="nwl-tool-button mui push"><img class="nwl-icon" alt="zoomIn"   src="/img/zoomIn.svg" /></button></div>
-                      <div style="flex:1"><button type="button" id="zoomOut"  title="Zoom Out" class="nwl-tool-button mui push"><img class="nwl-icon" alt="zoomOut"  src="/img/zoomOut.svg" /></button></div>
+                      <div style="flex:1"><button type="button" id="home"     title="Home"     class="nwl-tool-button mui push"><img class="nwl-icon" alt="home"     src="/lib/nwl-components/icons/home.svg" /></button></div>
+                      <div style="flex:1"><button type="button" id="zoomIn"   title="Zoom In"  class="nwl-tool-button mui push"><img class="nwl-icon" alt="zoomIn"   src="/lib/nwl-components/icons/zoomIn.svg" /></button></div>
+                      <div style="flex:1"><button type="button" id="zoomOut"  title="Zoom Out" class="nwl-tool-button mui push"><img class="nwl-icon" alt="zoomOut"  src="/lib/nwl-components/icons/zoomOut.svg" /></button></div>
                   </div>
                   <div id="paintTool" style="display:flex">
                     <div id="clickTool" style="flex:2;display:flex;flex-wrap:wrap" class="mui-chose">
-                      <div><button type="button" id="navigate"    title="Navigate"    class="nwl-tool-button nwl-tool-button--sub mui sub mui-pressed" aria-pressed="true"><img class="nwl-icon" alt="navigate" src="/img/navigate.svg" /></button></div>
-                      <div><button type="button" id="select"      title="Select"      class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="select"      src="/img/select.svg" /></button></div>
-                      <div><button type="button" id="move"        title="Move"        class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="move"        src="/img/move.svg" /></button></div>
-                      <div><button type="button" id="draw"        title="Draw"        class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="draw"        src="/img/draw.svg" /></button></div>
-                      <div><button type="button" id="drawPolygon" title="DrawPolygon" class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="drawPolygon" src="/img/drawPolygon.svg" /></button></div>
-                      <div><button type="button" id="drawLine"    title="DrawLine"    class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="drawLine"    src="/img/drawLine.svg" /></button></div>
-                      <div><button type="button" id="addPoint"    title="AddPoint"    class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="addPoint"    src="/img/addPoint.svg" /></button></div>
-                      <div><button type="button" id="deletePoint" title="DeletePoint" class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="deletePoint" src="/img/deletePoint.svg" /></button></div>
-                      <div><button type="button" id="addRegion"      title="AddRegion"      class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="addRegion"      src="/img/addRegion.svg" /></button></div>
-                      <div><button type="button" id="subtractRegion" title="SubtractRegion" class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="subtractRegion" src="/img/subtractRegion.svg" /></button></div>
-                      <div><button type="button" id="splitRegion"    title="SplitRegion"    class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="splitRegion"    src="/img/splitRegion.svg" /></button></div>
-                      <div><button type="button" id="rotate"         title="Rotate"         class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="rotate"         src="/img/rotate.svg" /></button></div>
-                      <div><button type="button" id="flipRegion" title="FlipRegion" class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="flipRegion" src="/img/flipRegion.svg" /></button></div>
-                      <div><button type="button" id="textAnnotation" title="TextAnnotation" class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="textAnnotation" src="/img/textAnnotation.svg" /></button></div>
+                      <div><button type="button" id="navigate"    title="Navigate"    class="nwl-tool-button nwl-tool-button--sub mui sub mui-pressed" aria-pressed="true"><img class="nwl-icon" alt="navigate" src="/lib/nwl-components/icons/navigate.svg" /></button></div>
+                      <div><button type="button" id="select"      title="Select"      class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="select"      src="/lib/nwl-components/icons/select.svg" /></button></div>
+                      <div><button type="button" id="move"        title="Move"        class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="move"        src="/lib/nwl-components/icons/move.svg" /></button></div>
+                      <div><button type="button" id="draw"        title="Draw"        class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="draw"        src="/lib/nwl-components/icons/draw.svg" /></button></div>
+                      <div><button type="button" id="drawPolygon" title="DrawPolygon" class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="drawPolygon" src="/lib/nwl-components/icons/drawPolygon.svg" /></button></div>
+                      <div><button type="button" id="drawLine"    title="DrawLine"    class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="drawLine"    src="/lib/nwl-components/icons/drawLine.svg" /></button></div>
+                      <div><button type="button" id="addPoint"    title="AddPoint"    class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="addPoint"    src="/lib/nwl-components/icons/addPoint.svg" /></button></div>
+                      <div><button type="button" id="deletePoint" title="DeletePoint" class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="deletePoint" src="/lib/nwl-components/icons/deletePoint.svg" /></button></div>
+                      <div><button type="button" id="addRegion"      title="AddRegion"      class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="addRegion"      src="/lib/nwl-components/icons/addRegion.svg" /></button></div>
+                      <div><button type="button" id="subtractRegion" title="SubtractRegion" class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="subtractRegion" src="/lib/nwl-components/icons/subtractRegion.svg" /></button></div>
+                      <div><button type="button" id="splitRegion"    title="SplitRegion"    class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="splitRegion"    src="/lib/nwl-components/icons/splitRegion.svg" /></button></div>
+                      <div><button type="button" id="rotate"         title="Rotate"         class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="rotate"         src="/lib/nwl-components/icons/rotate.svg" /></button></div>
+                      <div><button type="button" id="flipRegion" title="FlipRegion" class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="flipRegion" src="/lib/nwl-components/icons/flipRegion.svg" /></button></div>
+                      <div><button type="button" id="textAnnotation" title="TextAnnotation" class="nwl-tool-button nwl-tool-button--sub mui sub" aria-pressed="false"><img class="nwl-icon" alt="textAnnotation" src="/lib/nwl-components/icons/textAnnotation.svg" /></button></div>
                     </div>
                   </div>
                   <div style="display:flex">
                       <div style="flex:1"><button type="button" id="color"    title="Color"    class="nwl-tool-button mui push" style="height:24px;background:#f00"></button></div>
-                      <div style="flex:1"><button type="button" id="layers"   title="Layers"   class="nwl-tool-button mui push"><img class="nwl-icon" alt="layers"   src="/img/layers.svg" /></button></div>
-                      <div style="flex:1"><button type="button" id="back"     title="Back"     class="nwl-tool-button mui push"><img class="nwl-icon" alt="back"     src="/img/back.svg" /></button></div>
-                      <div style="flex:1"><button type="button" id="backward" title="Backward" class="nwl-tool-button mui push"><img class="nwl-icon" alt="backward" src="/img/backward.svg" /></button></div>
-                      <div style="flex:1"><button type="button" id="foreward" title="Foreward" class="nwl-tool-button mui push"><img class="nwl-icon" alt="foreward" src="/img/foreward.svg" /></button></div>
-                      <div style="flex:1"><button type="button" id="front"    title="Front"    class="nwl-tool-button mui push"><img class="nwl-icon" alt="front"    src="/img/front.svg" /></button></div>
+                      <div style="flex:1"><button type="button" id="layers"   title="Layers"   class="nwl-tool-button mui push"><img class="nwl-icon" alt="layers"   src="/lib/nwl-components/icons/layers.svg" /></button></div>
+                      <div style="flex:1"><button type="button" id="back"     title="Back"     class="nwl-tool-button mui push"><img class="nwl-icon" alt="back"     src="/lib/nwl-components/icons/back.svg" /></button></div>
+                      <div style="flex:1"><button type="button" id="backward" title="Backward" class="nwl-tool-button mui push"><img class="nwl-icon" alt="backward" src="/lib/nwl-components/icons/backward.svg" /></button></div>
+                      <div style="flex:1"><button type="button" id="foreward" title="Foreward" class="nwl-tool-button mui push"><img class="nwl-icon" alt="foreward" src="/lib/nwl-components/icons/foreward.svg" /></button></div>
+                      <div style="flex:1"><button type="button" id="front"    title="Front"    class="nwl-tool-button mui push"><img class="nwl-icon" alt="front"    src="/lib/nwl-components/icons/front.svg" /></button></div>
                   </div>
                   <div style="display:flex">
-                      <div style="flex:1"><button type="button" id="simplify"       title="Simplify"       class="nwl-tool-button mui push"><img class="nwl-icon" alt="simplify"       src="/img/simplify.svg" /></button></div>
-                      <div style="flex:1"><button type="button" id="toPolygon"      title="ToPolygon"      class="nwl-tool-button mui push"><img class="nwl-icon" alt="toPolygon"      src="/img/toPolygon.svg" /></button></div>
-                      <div style="flex:1"><button type="button" id="toBezier"       title="ToBezier"       class="nwl-tool-button mui push"><img class="nwl-icon" alt="toBezier"       src="/img/toBezier.svg" /></button></div>
-                      <div style="flex:1"><button type="button" id="copy"           title="Copy"           class="nwl-tool-button mui push"><img class="nwl-icon" alt="copy"           src="/img/copy.svg" /></button></div>
-                      <div style="flex:1"><button type="button" id="paste"          title="Paste"          class="nwl-tool-button mui push"><img class="nwl-icon" alt="paste"          src="/img/paste.svg" /></button></div>
+                      <div style="flex:1"><button type="button" id="simplify"       title="Simplify"       class="nwl-tool-button mui push"><img class="nwl-icon" alt="simplify"       src="/lib/nwl-components/icons/simplify.svg" /></button></div>
+                      <div style="flex:1"><button type="button" id="toPolygon"      title="ToPolygon"      class="nwl-tool-button mui push"><img class="nwl-icon" alt="toPolygon"      src="/lib/nwl-components/icons/toPolygon.svg" /></button></div>
+                      <div style="flex:1"><button type="button" id="toBezier"       title="ToBezier"       class="nwl-tool-button mui push"><img class="nwl-icon" alt="toBezier"       src="/lib/nwl-components/icons/toBezier.svg" /></button></div>
+                      <div style="flex:1"><button type="button" id="copy"           title="Copy"           class="nwl-tool-button mui push"><img class="nwl-icon" alt="copy"           src="/lib/nwl-components/icons/copy.svg" /></button></div>
+                      <div style="flex:1"><button type="button" id="paste"          title="Paste"          class="nwl-tool-button mui push"><img class="nwl-icon" alt="paste"          src="/lib/nwl-components/icons/paste.svg" /></button></div>
                   </div>
                   <div style="display:flex">
-                      <div style="flex:1"><button type="button" id="save"         title="Save"         class="nwl-tool-button mui push"><img class="nwl-icon" alt="save"         src="/img/save.svg" /></button></div>
-                      <div style="flex:1"><button type="button" id="screenshot"   title="Screenshot"   class="nwl-tool-button mui push"><img class="nwl-icon" alt="screenshot"   src="/img/screenshot.svg" /></button></div>
-                      <div style="flex:1"><button type="button" id="delete"       title="Delete"       class="nwl-tool-button mui push"><img class="nwl-icon" alt="delete"       src="/img/delete.svg" /></button></div>
-                      <div style="flex:1"><button type="button" id="findContours" title="FindContours" class="nwl-tool-button mui push"><img class="nwl-icon" alt="findContours" src="/img/findContours.svg" /></button></div>
-                      <div style="flex:1"><button type="button" id="undo"         title="Undo"         class="nwl-tool-button mui push"><img class="nwl-icon" alt="undo"         src="/img/undo.svg" /></button></div>
-                      <div style="flex:1"><button type="button" id="redo"         title="Redo"         class="nwl-tool-button mui push"><img class="nwl-icon" alt="redo"         src="/img/redo.svg" /></button></div>
+                      <div style="flex:1"><button type="button" id="save"         title="Save"         class="nwl-tool-button mui push"><img class="nwl-icon" alt="save"         src="/lib/nwl-components/icons/save.svg" /></button></div>
+                      <div style="flex:1"><button type="button" id="screenshot"   title="Screenshot"   class="nwl-tool-button mui push"><img class="nwl-icon" alt="screenshot"   src="/lib/nwl-components/icons/screenshot.svg" /></button></div>
+                      <div style="flex:1"><button type="button" id="delete"       title="Delete"       class="nwl-tool-button mui push"><img class="nwl-icon" alt="delete"       src="/lib/nwl-components/icons/delete.svg" /></button></div>
+                      <div style="flex:1"><button type="button" id="findContours" title="FindContours" class="nwl-tool-button mui push"><img class="nwl-icon" alt="findContours" src="/lib/nwl-components/icons/findContours.svg" /></button></div>
+                      <div style="flex:1"><button type="button" id="undo"         title="Undo"         class="nwl-tool-button mui push"><img class="nwl-icon" alt="undo"         src="/lib/nwl-components/icons/undo.svg" /></button></div>
+                      <div style="flex:1"><button type="button" id="redo"         title="Redo"         class="nwl-tool-button mui push"><img class="nwl-icon" alt="redo"         src="/lib/nwl-components/icons/redo.svg" /></button></div>
                   </div>
               </div>
 
@@ -129,7 +129,7 @@
 <div id="labelset-panel">
     <div id="labelset-header">
         <img
-            id="labels-close" class="button" alt="close" src="/img/times-circle.svg"
+            id="labels-close" class="button" alt="close" src="/lib/nwl-components/icons/times-circle.svg"
             style="float:right;pointer-events:auto;"/><br />
         <b>Labels</b>
     </div>
@@ -174,7 +174,7 @@
 <div id="layers-panel">
     <div id="layers-header">
         <img
-        id="layers-close" class="button" alt="close" src="/img/times-circle.svg"
+        id="layers-close" class="button" alt="close" src="/lib/nwl-components/icons/times-circle.svg"
         onclick="Microdraw.tools.layers._detachLayersContainer()"
         style="float:right;pointer-events:auto;"/><br />
         <b>Layers</b>
@@ -197,7 +197,7 @@
 <div id="text-annotation-panel">
     <div id="header">
         <img
-        id="text-annotation-close" class="button" alt="close" src="/img/times-circle.svg"
+        id="text-annotation-close" class="button" alt="close" src="/lib/nwl-components/icons/times-circle.svg"
         onclick="Microdraw.tools.textAnnotation.cancelTextAnnotation()"
         style="float:right;pointer-events:auto;"/><br />
         <b>Text Annotation</b>

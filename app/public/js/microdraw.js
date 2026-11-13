@@ -339,7 +339,7 @@ const Microdraw = (function () {
         }
         str = `
 <div class='region-tag' id='${uid}' style='padding:2px'>
-  <img class='eye' title='Region visible' id='eye_${uid}' src='/img/eyeOpened.svg' />
+  <img class='eye' title='Region visible' id='eye_${uid}' src='/lib/nwl-components/icons/eyeOpened.svg' />
   <div
     class='region-color'
     style='background-color: rgba(${Math.floor(color.red*mult)}, ${Math.floor(color.green*mult)}, ${Math.floor(color.blue*mult)}, 0.67)'
@@ -477,12 +477,12 @@ const Microdraw = (function () {
           reg.path.strokeWidth = 0;
           reg.path.fullySelected = false;
           reg.storeName = reg.name;
-          me.dom.querySelector('#eye_' + reg.uid).setAttribute('src', '/img/eyeClosed.svg');
+          me.dom.querySelector('#eye_' + reg.uid).setAttribute('src', '/lib/nwl-components/icons/eyeClosed.svg');
         } else {
           reg.path.fillColor = reg.path.storeColor;
           reg.path.strokeWidth = 1;
           reg.name = reg.storeName;
-          me.dom.querySelector('#eye_' + reg.uid).setAttribute('src', '/img/eyeOpened.svg');
+          me.dom.querySelector('#eye_' + reg.uid).setAttribute('src', '/lib/nwl-components/icons/eyeOpened.svg');
         }
         paper.view.draw();
         me.dom.querySelector(".region-tag#" + reg.uid + ">.region-name").textContent = reg.name;
