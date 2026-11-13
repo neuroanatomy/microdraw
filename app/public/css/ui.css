@@ -17,11 +17,6 @@
 .pressed {
     background-color:var(--nwl-bg-pressed) !important;
 }
-.icon {
-    width:16px;
-    vertical-align:middle;
-    user-select: none;
-}
 
 option {
     background-color:var(--nwl-grey-55);
@@ -29,14 +24,6 @@ option {
 
 /* svg buttons
 ----------------------- */
-.pushButton {
-    border:1px solid var(--nwl-border-strong);
-    border-radius:var(--nwl-radius-md);
-    color:var(--nwl-grey-dd);
-    text-align:center;
-    -webkit-appearance:none;
-    cursor: pointer;
-}
 img.button {
     width:0.9rem;
     height:0.9rem;
@@ -47,8 +34,9 @@ img.button {
 img.button:hover {
     opacity:0.5;
 }
-/* the viewer's tool icons, centred in their .mui button */
-img.icon {
+/* the viewer's tool icons (.nwl-icon), centred in their .mui button, at the
+   viewer's size (1rem) rather than the kit's 16px */
+img.nwl-icon {
     width:1rem;
     height:1rem;
     position: absolute;
@@ -60,12 +48,15 @@ img.icon {
 
 
 select {
-    border:none;
     background:none; /* no color, no decoration */
-    color:var(--nwl-text);
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
     width: 100px;
     text-overflow: ellipsis;
+}
+/* not on a push button (<select class="nwl-push-button">): it has the kit's border and colour */
+select:where(:not(.nwl-push-button)) {
+    border:none;
+    color:var(--nwl-text);
 }

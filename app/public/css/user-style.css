@@ -11,6 +11,10 @@
 #projects a {
     text-decoration:none;
 }
+/* an underline on hover (U8: links are the text colour) */
+#projects a:hover {
+    text-decoration:underline;
+}
 
 /************************* link to project settings  ********************/
 /* when hovering over project name */

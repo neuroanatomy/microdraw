@@ -18,6 +18,10 @@ td {
 #files a, #annotations a, #access a {
     text-decoration:none;
 }
+/* an underline on hover (U8: links are the text colour) */
+:is(#files, #annotations, #access) a:hover {
+    text-decoration:underline;
+}
 
 /************************************ checkbox for display ******************************/ 
 [data-check="0"] .check:before {

@@ -40,9 +40,14 @@ input#url, input#projectName {
     padding:0px;
     color: var(--nwl-text-inverse);
 }
+/* the Go push button (.nwl-push-button, border-box): the 34x32px box it had */
 #go {
-    height:30px;
-    width:30px;
+    height:32px;
+    width:34px;
+}
+/* the list and Go push buttons sit on the text's baseline, as before the kit */
+#list, #go {
+    vertical-align: baseline;
 }
 h2 {
     margin-left:5rem;

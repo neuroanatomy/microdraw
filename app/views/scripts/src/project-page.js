@@ -219,7 +219,7 @@ const ProjectTables = {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="f in shownFiles" :key="rowKey.get(f)" :class="{selected: f === selectedFile}" @click="openFile(f)">
+          <tr v-for="f in shownFiles" :key="rowKey.get(f)" :class="{selected: f === selectedFile}" :aria-selected="String(f === selectedFile)" @click="openFile(f)">
             <td :class="{empty: isEmpty(f.name)}" :title="f.name">{{ f.name }}</td>
             <td :class="{empty: isEmpty(f.source)}" :title="f.source">{{ f.source }}</td>
             <td v-for="(a, j) in textAnnotations" :key="'t' + j"
@@ -244,7 +244,7 @@ const ProjectTables = {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="a in sortedLayers" :key="rowKey.get(a)" :class="{selected: a === selectedLayer}" @click="selectedLayer = a">
+          <tr v-for="a in sortedLayers" :key="rowKey.get(a)" :class="{selected: a === selectedLayer}" :aria-selected="String(a === selectedLayer)" @click="selectedLayer = a">
             <td :class="{empty: isEmpty(a.name)}" :title="a.name">{{ a.name }}</td>
             <td :class="{empty: isEmpty(a.values)}" :title="a.values">{{ a.values }}</td>
           </tr>

@@ -100,8 +100,9 @@ html, body {
 #liveStatus.shown {
     opacity: 1;
 }
+/* links are the text colour (U8), and keep their underline */
 #saveDialog a, #importDialog a {
-    color: #8cf;
+    color: var(--nwl-link);
 }
 .dialogButtons {
     margin-top: 12px;

@@ -14,10 +14,6 @@
 #header a {
     color:var(--nwl-link);
 }
-#header .linkNoULine {
-    text-decoration: none;
-    font-weight: lighter;
-}
 #menu {
     margin-right: 10px;
     display: inline-block;

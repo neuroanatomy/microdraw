@@ -142,6 +142,13 @@ describe('Unsaved annotations are kept in the browser (H3a)', () => {
     assert.include(await dialogText('#saveDialog'), 'kept in this browser');
     const link = await page.evaluate(() => Microdraw.dom.querySelector('#saveDialog a').getAttribute('href'));
     assert.equal(link, '/project/new');
+    // UI kit U8: the link is the text colour (was #8cf), and keeps its underline
+    const linkStyle = await page.evaluate(() => {
+      const cs = getComputedStyle(Microdraw.dom.querySelector('#saveDialog a'));
+
+      return [cs.color, cs.textDecorationLine];
+    });
+    assert.deepEqual(linkStyle, ['rgb(255, 255, 255)', 'underline']);
 
     const all = await stashes();
     assert.lengthOf(Object.keys(all), 1);

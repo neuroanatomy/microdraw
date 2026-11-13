@@ -16,7 +16,8 @@ html,body {
   nwl-components 2.0 the library's CSS is in cascade layers, below this
   unlayered file, so these rules would override it there.
 */
-:is(input, select):where(:not(.app *)) {
+/* not on a push button (<select class="nwl-push-button">): the kit sets its colour and size */
+:is(input, select):where(:not(.app *, .nwl-push-button)) {
     color: var(--nwl-text);
     font-size: 1rem;
 }
@@ -44,6 +45,14 @@ a {
     text-decoration: none;
     font-weight: lighter;
 }
+/* The header's title link (beside the logo) has no underline either */
+a.titleFont {
+    text-decoration: none;
+}
+/* Links shown without an underline get one on hover (U8: links are the text colour) */
+:is(.linkNoULine, a.titleFont):hover {
+    text-decoration: underline;
+}
 
 /* The Roboto title beside the logo (askForLogin, project and data pages) */
 .titleFont {
@@ -65,10 +74,6 @@ a {
 #MyLogin {
      display:inline-block;
      margin-left:15px;
-}
-
-tr.selected{
-    background-color:var(--nwl-bg-elevated);
 }
 
 /*
