@@ -6,7 +6,7 @@
 }
 #projects,
 #projects th {
-    border-bottom:thin solid var(--nwl-white);
+    border-bottom:thin solid var(--nwl-text);
 }
 #projects a {
     text-decoration:none;
