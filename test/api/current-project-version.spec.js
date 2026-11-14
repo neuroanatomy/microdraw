@@ -113,6 +113,7 @@ describe('Project reads use the current version only (T002 2.1a)', function () {
   });
 
   describe('GET /project/:projectName/settings', function () {
+    // eslint-disable-next-line max-statements -- one page, with its checks
     it('shows the current name, files and collaborators, not the backup\'s', async function () {
       const shortname = `${PREFIX}settings`;
       await insertVersions(
@@ -122,7 +123,10 @@ describe('Project reads use the current version only (T002 2.1a)', function () {
       const res = await chai.request(U.serverURL).get(`/project/${shortname}/settings`);
       assert.equal(res.status, 200);
       assert.include(res.text, 'Current settings name');
-      assert.include(res.text, source('new'));
+      // the page loads its files from the files route (T002 3.1)
+      const files = await chai.request(U.serverURL).get(`/project/json/${shortname}/files?start=0&length=100&names=true`);
+      assert.include(files.body.map((f) => f.source), source('new'));
+      assert.notInclude(files.body.map((f) => f.source), source('old'));
       assert.notInclude(res.text, 'Old settings name');
       assert.notInclude(res.text, source('old'));
       assert.notInclude(res.text, user.username);

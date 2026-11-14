@@ -8,7 +8,7 @@
 const _ = require('lodash');
 const logger = require('../../log');
 const { AccessControlService, AccessLevel, AccessType } = require('neuroweblab');
-const { checkProject, collaboratorName, withBothKeys } = require('./project.validation');
+const { asFileObject, checkProject, collaboratorName, listOf, withBothKeys } = require('./project.validation');
 const { withProjectLock } = require('../projectLock');
 const { deleteStoredProject } = require('./project.delete');
 const { findCurrentProject, saveProjectVersion } = require('./currentProject');
@@ -132,8 +132,11 @@ var settingsUnsafe = async function(req, res) {
     return;
   }
 
-  // @todo empty the files.list because it will be filled progressively from the client
-  // json.files.list = [];
+  // the files are not in the page: the settings page loads them in batches
+  // from /project/json/:p/files, and says how many it received in
+  // filesLoaded.count when saving (see filesListIncomplete), as BrainBox does
+  // (T002 3.1)
+  const filesTotal = listOf(json, 'files').length;
 
   // only what the visitor may see goes into the page, as on the project page
   // (M3c, S2): no annotation layers without annotations view rights, no
@@ -167,10 +170,14 @@ var settingsUnsafe = async function(req, res) {
     }
   }
 
+  json.files = { ...json.files, list: [] };
+  json.filesLoaded = { count: 0 };
+
   var context = {
     projectShortname: json.shortname,
     owner: json.owner,
     projectInfo: scriptJSON(json),
+    filesTotal,
     loggedUser: scriptJSON(req.user || null)
   };
   res.render('projectSettings', context);
@@ -314,8 +321,14 @@ const apiProjectAll = async function (req, res) {
 };
 
 // The file entry the files route answers: `names=true`, only {source, name}
-// (a string entry, stored before files were objects, as {source, name: ''})
+// (a string entry, stored before files were objects, as the settings page
+// showed it when the files were in the page, nwl-components'
+// transformProjectFiles: {source, name: the text after the last '/'}; the
+// stored-row check, asFileObject, matches it, T002 3.1)
 const fileEntry = (entry, onlyNames) => {
+  if (typeof entry === 'string') {
+    return asFileObject(entry);
+  }
   if (!_.isPlainObject(entry)) {
     return { source: String(entry), name: '' };
   }
@@ -421,6 +434,19 @@ const droppedMessage = (dropped) => {
   return parts.length > 0 ? ` Empty rows were not saved (${parts.join(', ')}).` : '';
 };
 
+/**
+ * Whether the files list sent is incomplete: the settings page loads the files
+ * in batches and sends how many it received (filesLoaded.count); if that is not
+ * the stored list's length, the list it sends lacks files. A project sent
+ * without filesLoaded (API clients, the new-project page) is taken as complete.
+ * As BrainBox's postProject (T002 3.1).
+ * @param {object} newProject The project sent
+ * @param {object} oldProject The stored project
+ * @returns {boolean} true if the stored list must be kept
+ */
+const filesListIncomplete = (newProject, oldProject) => typeof newProject.filesLoaded !== 'undefined' &&
+  !(_.isPlainObject(newProject.filesLoaded) && newProject.filesLoaded.count === listOf(oldProject, 'files').length);
+
 const sendError = (res, status, message) => res.status(status).json({ success: false, error: 'error', message });
 
 /**
@@ -454,6 +480,16 @@ const saveProject = async function (req, res, loggedUser) {
     return;
   }
 
+  // an incomplete files list (a save made before the settings page received
+  // every file) is replaced by the stored one, before the rights are checked:
+  // the files are then unchanged. filesLoaded is never stored.
+  const filesIncomplete = !_.isNil(oldProject) && filesListIncomplete(newProject, oldProject);
+  delete newProject.filesLoaded;
+  if (filesIncomplete) {
+    newProject.files.list = listOf(oldProject, 'files');
+    dropped.files = 0;
+  }
+
   let ignoredChanges = [];
   if (!_.isNil(oldProject)) {
     ignoredChanges = AccessControlService.preventUnauthorizedUpdates(newProject, oldProject, loggedUser);
@@ -468,6 +504,9 @@ const saveProject = async function (req, res, loggedUser) {
   if(ignoredChanges.length > 0) {
     successMessage += ` Some changes (on ${ignoredChanges.join(', ')}) were ignored due to a lack of permissions.`;
   }
+  if (filesIncomplete) {
+    successMessage += ' The list of files was not saved because it had not been completely loaded: reload the page to edit it.';
+  }
   successMessage += droppedMessage(dropped);
 
   // A new version (T002 2.1b): `modified` and `modifiedBy` are set by the
@@ -477,7 +516,7 @@ const saveProject = async function (req, res, loggedUser) {
   // new version starts from the stored one, as the $set of NWL's upsertProject
   // did before 2.1b: a top-level field the client did not send is kept.
   try {
-    const version = _.isNil(oldProject) ? newProject : { ..._.omit(oldProject, ['deletedWithProject']), ...newProject };
+    const version = _.isNil(oldProject) ? newProject : { ..._.omit(oldProject, ['deletedWithProject', 'filesLoaded']), ...newProject };
     const saved = await saveProjectVersion(req.appConfig.db.nativeMongoDB(), version, { by: loggedUser });
     res.json({success: true, response: { insertedId: saved._id }, message: successMessage, dropped});
   } catch (err) {

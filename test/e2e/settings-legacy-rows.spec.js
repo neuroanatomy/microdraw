@@ -73,6 +73,8 @@ describe('Saving a project with legacy rows from the settings page (M3a2)', () =
   it('saves unchanged, keeping the stored rows', async () => {
     await page.goto(U.url(`/project/${SHORTNAME}/settings`), { waitUntil: 'load' });
     await page.waitForSelector('#access tbody tr', { timeout: U.shortTimeout });
+    // the files arrive in batches after the page (T002 3.1): save once they are all in
+    await page.waitForFunction(() => document.querySelectorAll('#files tbody tr').length === 5 && !document.querySelector('.filesLoading'), { timeout: U.shortTimeout });
     const answer = page.waitForResponse((r) => r.request().method() === 'POST' && r.url().includes(`/project/json/${SHORTNAME}`), { timeout: U.shortTimeout });
     const [save] = await page.$$('xpath///button[contains(normalize-space(.), "Save Changes")]');
     await save.click();

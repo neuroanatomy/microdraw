@@ -81,7 +81,9 @@ describe('What the settings page shows (S2)', function () {
     const info = inlineValue(res.text, 'project');
     assert.deepEqual(info.annotations.list, []);
     assert.deepEqual(info.collaborators.list.map((c) => c.username), ['anyone']);
-    assert.deepEqual(info.files.list, filesOnly.files.list);
+    // the files are loaded by the page from /project/json/:p/files (T002 3.1)
+    assert.deepEqual(info.files.list, []);
+    assert.equal(inlineValue(res.text, 'filesTotal'), filesOnly.files.list.length);
   }).timeout(U.shortTimeout);
 
   it('a visitor who may view the layers but not the collaborators gets the layers only', async function () {
@@ -105,6 +107,10 @@ describe('What the settings page shows (S2)', function () {
     assert.equal(res.status, 200);
     const info = inlineValue(res.text, 'project');
     assert.deepEqual(info.annotations.list, []);
+    // the files, as the page loads them (T002 3.1)
+    const files = await editorAgent.get(`/project/json/${filesOnly.shortname}/files?start=0&length=100&names=true`);
+    info.files.list = files.body;
+    info.filesLoaded.count = files.body.length;
     info.files.list[0].name = 'renamed cat';
     res = await editorAgent.post(`/project/json/${filesOnly.shortname}`).send({ data: info });
     assert.equal(res.status, 200, res.text);
