@@ -33,6 +33,33 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+/* The headers are not clipped, so the column handles (nwl-components/resize)
+   reach 4px past their right edge, and show their line there; the label is
+   clipped instead, with an ellipsis */
+#projectFiles table th,
+#vecAnnotations th {
+    overflow: visible;
+}
+#projectFiles .nwl-sort-button,
+#vecAnnotations .nwl-sort-button {
+    max-width: 100%;
+}
+#projectFiles .nwl-sort-label,
+#vecAnnotations .nwl-sort-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* A table whose columns were resized (nwl-components/resize): its cells wrap,
+   even inside a word, so nothing is cut; the table scrolls in its wrapper when
+   it is wider than the pane. A double-click on a handle gives the clipped
+   layout back. */
+#projectFiles table.nwl-resized :is(th, td),
+#vecAnnotations.nwl-resized :is(th, td) {
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
 #right {
     background-color: var(--nwl-bg-canvas);
     user-select: none;

@@ -46,13 +46,24 @@
     ArrowUp/ArrowDown open the previous/next row on screen, in the displayed
     order, wrapping around. While a text cell's input is open the rows keep
     their order; a save that changes the sort re-sorts when the input closes.
+  - Resizable columns (2026-11-14, nwl-components 3.1.0): both tables get
+    nwl-components/resize's resizableColumns() after mount, a handle at the
+    right edge of every header (drag, ArrowLeft/ArrowRight; a double-click or
+    Enter goes back to the automatic layout). Each table sits in its own
+    .nwl-resize-wrap div, written in the template so Vue owns it, given to the
+    helper as its wrapper. The headers never change after mount; if they did,
+    the helper's MutationObserver would give new ones a handle. Widths are
+    not remembered. A resized table's cells wrap instead of being clipped
+    with an ellipsis (project-style.css).
   - Moving to another file reloads the page with ?source=<file>&project=<name>,
     as before, both encoded with encodeURIComponent since N3; the viewer reads
     both from the URL (Microdraw.deparam decodes them).
 */
 import 'nwl-components/sort/style.css';
+import 'nwl-components/resize/style.css';
 import { SORT_ICON_ATTRS, SORT_ICON_PATHS, ariaSort, nextSort, sortRows } from 'nwl-components/sort';
 import { createApp, markRaw } from 'vue';
+import { resizableColumns } from 'nwl-components/resize';
 
 // A project without a files or annotations list is shown as an empty one (M2b).
 const listOf = (key) => ((projectInfo[key] && Array.isArray(projectInfo[key].list)) ? projectInfo[key].list : []);
@@ -210,7 +221,7 @@ const ProjectTables = {
   components: { SortHeader },
   template: `
     <div id="projectFiles" class="block" style="flex:1 1 auto">
-      <table style="width:100%;text-align:left">
+      <div ref="filesWrap" class="nwl-resize-wrap"><table ref="filesTable" style="width:100%;text-align:left">
         <thead>
           <tr>
             <SortHeader :sort="fileSort" column="Name" @sort="sortFiles" />
@@ -232,11 +243,11 @@ const ProjectTables = {
               /><template v-else>{{ textShown(f, a) }}</template></td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
       <p id="noFiles" class="emptyState" v-if="files.length === 0">This project has no files yet. Add them in the <a :href="settingsURL">project settings</a>.</p>
     </div>
     <div id="annotations" class="block" style="flex:1 1 200px">
-      <table id="vecAnnotations" style="width:100%;text-align:left">
+      <div ref="layersWrap" class="nwl-resize-wrap"><table ref="layersTable" id="vecAnnotations" style="width:100%;text-align:left">
         <thead>
           <tr>
             <SortHeader :sort="layerSort" column="Name" @sort="sortLayers" />
@@ -249,7 +260,7 @@ const ProjectTables = {
             <td :class="{empty: isEmpty(a.values)}" :title="a.values">{{ a.values }}</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
       <p id="noAnnotations" class="emptyState" v-if="layers.length === 0">This project has no annotation layers.</p>
     </div>
   `,
@@ -502,6 +513,9 @@ const ProjectTables = {
     }
   },
   mounted() {
+    // resizable columns: a handle on every header (nwl-components 3.1.0)
+    resizableColumns(this.$refs.filesTable, { wrapper: this.$refs.filesWrap });
+    resizableColumns(this.$refs.layersTable, { wrapper: this.$refs.layersWrap });
     if (this.textAnnotations.length > 0 && this.files.length > 0 && !redirecting) {
       this.loadTextValues();
       if (loggedIn()) {
