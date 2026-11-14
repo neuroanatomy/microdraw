@@ -59,7 +59,7 @@ const validatedSave = async (appDb, stored, data) => {
     return { status: 400, error: `The project would not validate after this change: ${error}` };
   }
 
-  return { write: (by) => saveProjectVersion(appDb.nativeMongoDB(), project, { by }) };
+  return { write: (by) => saveProjectVersion(appDb.nativeMongoDB(), project, { by, datasetOwner: project.owner }) };
 };
 
 /**
@@ -217,7 +217,7 @@ const restoreProject = async (appDb, { logId, username }) => {
       return { status: 409, error: `Project ${shortname} has changed since this fix (restored already, or edited): not restored` };
     }
     await log(db, 'adminRestoreProject', { username, shortname, restored: String(entry._id), project: _.omit(stored, ['_id']) });
-    await saveProjectVersion(db, previous, { by: username });
+    await saveProjectVersion(db, previous, { by: username, datasetOwner: previous.owner });
 
     return { version: projectVersion(await findCurrentProject(db, shortname)) };
   });

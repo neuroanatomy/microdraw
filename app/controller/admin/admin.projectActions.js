@@ -136,7 +136,7 @@ const transferProject = async (appDb, { shortname, version, owner, username }) =
 
       return { data: { ...project, owner }, details: { from: project.owner, to: owner } };
     },
-    save: (db, stored) => Promise.resolve({ write: (by) => saveProjectVersion(db.nativeMongoDB(), { ...stored, owner }, { by }) })
+    save: (db, stored) => Promise.resolve({ write: (by) => saveProjectVersion(db.nativeMongoDB(), { ...stored, owner }, { by, datasetOwner: owner }) })
   }).then(({ from, to, ...result }) => (result.error ? result : { ...result, owner: to, previousOwner: from }));
 };
 

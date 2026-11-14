@@ -13,6 +13,8 @@
  */
 
 const _ = require('lodash');
+const log = require('../../log');
+const { addedDatasets, createDatasets } = require('../datasets');
 
 const CURRENT = { backup: { $exists: false } };
 
@@ -35,6 +37,23 @@ const findCurrentProject = (db, shortname) => {
 };
 
 /**
+ * Create the documents of the datasets a project version adds (T002 3.3).
+ * Never rejects: a failure is logged, the version is saved already.
+ * @param {object} db Native MongoDB Db
+ * @param {object} previous The current version before the save (or null)
+ * @param {object} version The version saved
+ * @param {string} owner The owner of the documents created
+ * @returns {Promise<void>} Resolves once done
+ */
+const recordDatasets = async (db, previous, version, owner) => {
+  try {
+    await createDatasets(db, addedDatasets(previous, version), { owner });
+  } catch (err) {
+    log.error({ err, project: version.shortname }, 'cannot create the dataset documents of a project save');
+  }
+};
+
+/**
  * Store a new version of a project (T002 2.1b): insert it as a new document,
  * then mark every other current document of its shortname `backup: true`.
  * Insert first: a failure between the two writes leaves two current versions
@@ -45,23 +64,32 @@ const findCurrentProject = (db, shortname) => {
  * 2.4, scripts/migrate-projects.js) passes `keepModified`: the version keeps
  * the `modified` and `modifiedBy` of `doc` (or keeps them absent), so that the
  * user page's "Last modified" does not change.
+ *
+ * The datasets the version adds (http(s) sources the previous current
+ * version does not list) get their document if they have none (T002 3.3,
+ * datasets.js), owned by `datasetOwner`: the user saving, or for an admin
+ * action the project's owner. A failure there is logged: the project is saved.
  * @param {object} db Native MongoDB Db (app.db.nativeMongoDB())
  * @param {object} doc The project; an `_id` or `backup` in it is ignored
  * @param {object} options { by: the username stored as `modifiedBy`;
- *   keepModified: true to keep `doc`'s `modified` and `modifiedBy` instead }
+ *   keepModified: true to keep `doc`'s `modified` and `modifiedBy` instead;
+ *   datasetOwner: the owner of the dataset documents it creates (default
+ *   `by`, else the project's owner) }
  * @returns {Promise<object>} The document as stored, with its new `_id`
  */
-const saveProjectVersion = async (db, doc, { by, keepModified = false }) => {
+const saveProjectVersion = async (db, doc, { by, keepModified = false, datasetOwner }) => {
   // an ISO string, as before 2.1b and as BrainBox
   const version = keepModified ?
     _.omit(doc, ['_id', 'backup']) :
     { ..._.omit(doc, ['_id', 'backup']), modified: (new Date()).toJSON(), modifiedBy: by };
   const projects = db.collection('projects');
+  const previous = await projects.findOne({ shortname: version.shortname, ...CURRENT }, { ...NEWEST_FIRST, projection: { 'files.list': 1 } });
   await projects.insertOne(version); // sets version._id
   await projects.updateMany(
     { shortname: version.shortname, ...CURRENT, _id: { $ne: version._id } },
     { $set: { backup: true } }
   );
+  await recordDatasets(db, previous, version, datasetOwner || by || version.owner);
 
   return version;
 };

@@ -314,7 +314,7 @@ const assignOrphansUnlocked = async (db, { group, target, addImage, username }) 
     const listedMeanwhile = await db.collection('projects').countDocuments({ _id: project._id, ...listsSourceQuery(source) });
     if (listedMeanwhile === 0) {
       const files = { ...(_.isPlainObject(project.files) ? project.files : {}), list: [...listOf(project, 'files'), { name: fileName(source), source }] };
-      await saveProjectVersion(db, { ...project, files }, { by: username });
+      await saveProjectVersion(db, { ...project, files }, { by: username, datasetOwner: project.owner });
       addedImage = true;
     }
   }

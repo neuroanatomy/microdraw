@@ -100,7 +100,7 @@ const restoreDeletedProject = async (db, { entry, username }) => {
     date: (new Date()).toJSON()
   };
   await db.collection('log').insertOne(restore); // sets restore._id
-  const doc = await saveProjectVersion(db, project, { by: username });
+  const doc = await saveProjectVersion(db, project, { by: username, datasetOwner: project.owner });
   await Promise.all(['annotations', 'textAnnotations'].map((name) => db.collection(name)
     .updateMany(marked, { $unset: { backup: '', deletedWithProject: '' } })));
   await db.collection('projects').updateMany(marked, { $unset: { deletedWithProject: '' } });
