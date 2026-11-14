@@ -43,7 +43,8 @@ describe('Widgets (UI kit step 9a)', () => {
     });
     assert.deepEqual(await style(), { weight: '700', padding: '5px 0px', background: 'rgba(0, 0, 0, 0)', opacity: '1' });
     await page.hover('#go');
-    assert.deepEqual(await style(), { weight: '700', padding: '5px 0px', background: 'rgb(85, 85, 85)', opacity: '1' });
+    // --nwl-bg-pressed: #404040 in the 2027 theme, which the home page has since UI kit step 13b (#555 without it)
+    assert.deepEqual(await style(), { weight: '700', padding: '5px 0px', background: 'rgb(64, 64, 64)', opacity: '1' });
   }).timeout(U.mediumTimeout);
 
   it('underlines the footer link, drawn without an underline, on hover', async () => {

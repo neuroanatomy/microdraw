@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" data-nwl-theme="2027">
 <head>
     {{> partials/header }}
+    <link rel="stylesheet" type="text/css" href="/lib/nwl-components/fonts.css" />
     <link rel="stylesheet" type="text/css" href="css/index-style.css"/>
     <link rel="stylesheet" type="text/css" href="css/ui.css" />
     <link href='/lib/roboto/roboto.css' rel='stylesheet' type='text/css'>
@@ -10,7 +11,7 @@
 <body>
     {{> partials/menu }}
     <!-- Content  -->
-    <div class="slide" style="background:#222">
+    <div class="slide" style="background:var(--nwl-bg)">
     <!-- Slide: Landing -->
         <img id="neuronsImg" src="img/neurons.png" width="100%" />
         <video id="neurons" width="100%" autoplay muted loop>
