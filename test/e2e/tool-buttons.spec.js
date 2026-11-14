@@ -89,7 +89,7 @@ describe('Tool buttons (UI kit step 9b)', () => {
       });
     }
     assert.equal(reached, 'display-minimize');
-    // --nwl-focus: #e8e8e8 in the 2027 theme, which the viewer has since UI kit step 13c (#fff without it)
+    // --nwl-focus: #e8e8e8, nwl-components 3.0.0's default (#fff before it)
     assert.deepEqual(await active(page), { id: 'display-minimize', outline: 'solid 2px rgb(232, 232, 232)' });
   }).timeout(U.shortTimeout);
 
@@ -133,7 +133,7 @@ describe('Tool buttons (UI kit step 9b)', () => {
         navigate: getComputedStyle(d.querySelector('#navigate')).backgroundColor
       };
     });
-    // --nwl-bg-pressed: #404040 in the 2027 theme, which the viewer has since UI kit step 13c (#555 without it)
+    // --nwl-bg-pressed: #404040, nwl-components 3.0.0's default (#555 before it)
     assert.deepEqual(bg, { pressed: 'rgb(64, 64, 64)', draw: 'rgb(64, 64, 64)', navigate: 'rgba(0, 0, 0, 0)' });
   }).timeout(U.shortTimeout);
 });

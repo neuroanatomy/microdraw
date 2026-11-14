@@ -43,7 +43,7 @@ describe('Widgets (UI kit step 9a)', () => {
     });
     assert.deepEqual(await style(), { weight: '700', padding: '5px 0px', background: 'rgba(0, 0, 0, 0)', opacity: '1' });
     await page.hover('#go');
-    // --nwl-bg-pressed: #404040 in the 2027 theme, which the home page has since UI kit step 13b (#555 without it)
+    // --nwl-bg-pressed: #404040, nwl-components 3.0.0's default (#555 before it)
     assert.deepEqual(await style(), { weight: '700', padding: '5px 0px', background: 'rgb(64, 64, 64)', opacity: '1' });
   }).timeout(U.mediumTimeout);
 
@@ -60,7 +60,7 @@ describe('Widgets (UI kit step 9a)', () => {
     await page.waitForSelector('#projectFiles tbody tr.selected', { timeout: U.shortTimeout });
     const rows = await page.evaluate(() => [...document.querySelectorAll('#projectFiles tbody tr')]
       .map((tr) => [tr.getAttribute('aria-selected'), getComputedStyle(tr).backgroundColor]));
-    // --nwl-bg-elevated: #2e2e2e in the 2027 theme, which the project page has since UI kit step 13c (#444 without it)
+    // --nwl-bg-elevated: #2e2e2e, nwl-components 3.0.0's default (#444 before it)
     assert.deepEqual(rows, [['true', 'rgb(46, 46, 46)'], ['false', 'rgba(0, 0, 0, 0)']]);
   }).timeout(U.mediumTimeout);
 

@@ -34,7 +34,7 @@ describe('Design tokens (UI kit step 5)', () => {
         .trim(),
       background: getComputedStyle(document.body).backgroundColor
     }));
-    // the home page is in the 2027 theme since UI kit step 13b: --nwl-bg is #1a1a1a there (#222 without it)
+    // --nwl-bg: #1a1a1a, nwl-components 3.0.0's default (#222 before it)
     assert.deepEqual(style, { token: '#1a1a1a', background: 'rgb(26, 26, 26)' });
   }).timeout(U.mediumTimeout);
 

@@ -50,7 +50,7 @@ describe('Focus style and form colours (UI kit step 7)', () => {
     await page.keyboard.down('Shift');
     await page.keyboard.press('Tab');
     await page.keyboard.up('Shift');
-    // --nwl-focus (the text colour): #e8e8e8 in the 2027 theme, which the viewer has since UI kit step 13c (#fff without it)
+    // --nwl-focus (the text colour): #e8e8e8, nwl-components 3.0.0's default (#fff before it)
     assert.deepEqual(await focusState(page), { tag: 'BUTTON', text: 'Cancel', outline: 'solid 2px rgb(232, 232, 232)' }, 'keyboard focus');
   }).timeout(U.mediumTimeout);
 
