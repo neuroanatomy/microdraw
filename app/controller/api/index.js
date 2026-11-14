@@ -7,6 +7,7 @@ const { catchErrors } = require('../catchErrors');
 const { saveEditorChanges } = require('./editorSave');
 const { textWriteError, storeTextValue } = require('../textAnnotations');
 const { findCurrentProject } = require('../project/currentProject');
+const { getLabelsets } = require('./labelsets');
 const microdrawWebsocketServer = require('../microdrawWebsocketServer/microdrawWebsocketServer');
 
 const fs = require('fs');
@@ -80,6 +81,9 @@ const getAnnotationsUnsafe = async function (req, res) {
 const serverError = (res) => res.status(500).send({err: 'Server error'});
 
 router.get('/', catchErrors(getAnnotationsUnsafe, serverError));
+
+// The label sets of app/public/labels/, as BrainBox's (T002 3.2)
+router.get('/getLabelsets', catchErrors(getLabelsets));
 
 // What the current user (or 'anyone' when logged out) may do with a project's
 // annotations, and, with ?source=, whether the project lists that image (as the

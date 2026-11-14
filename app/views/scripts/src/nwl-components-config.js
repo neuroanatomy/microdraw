@@ -6,8 +6,8 @@ export default {
   issuesURL: "https://github.com/neuroanatomy/microdraw/issues",
   docURL: "https://microdraw.pasteur.fr/doc/",
   userSearchURL: "/search/json/users?q=",
-  // eslint-disable-next-line
-  fetchLabelSets: async () => [{name: 'Set 1', source: 'set1.json'}, {name: 'Set 2', source: 'set2.json'}],
+  // the label sets of app/public/labels/, as BrainBox's (T002 3.2)
+  fetchLabelSets: async () => (await fetch('/api/getLabelsets')).json(),
   annotationTypes: ["text", "vectorial"],
   usernameField: 'username',
   // nwl-components >= 1.4.0: no "Embed Project" button (microdraw has no

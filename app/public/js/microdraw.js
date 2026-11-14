@@ -1683,6 +1683,8 @@ const Microdraw = (function () {
       let data;
       try {
         data = await me.microdrawDBLoad();
+        // the regions are coloured by their label
+        await me.labelSetReady;
       } finally {
         section.fetching -= 1;
       }
@@ -2531,11 +2533,94 @@ const Microdraw = (function () {
         me.resizeAnnotationOverlay();
       });
 
-      // Load regions label set
-      const res = await fetch("/js/10regions.json");
-      const labels = await res.json();
-      me.ontology = labels;
-      me.updateLabelDisplay();
+      // Show the label set's current label once it is loaded (init starts
+      // loading it, before the slices)
+      await me.labelSetReady;
+      if (me.ontology) {
+        me.updateLabelDisplay();
+      }
+    },
+
+    /** GET a URL and parse its JSON answer; an error status throws.
+     * @param {string} url The URL
+     * @returns {Promise<any>} The parsed answer
+     */
+    fetchJSON: async (url) => {
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`${url} answered ${res.status}`);
+      }
+
+      return res.json();
+    },
+
+    /** The label set used when the project has none: 10 regions. */
+    defaultLabelSet: "/labels/10regions.json",
+
+    /** The URL of the label set of the project's first vectorial layer (T002
+     * 3.2): its `values` is the file name (`source`) or the name of one of the
+     * label sets of /api/getLabelsets. Without a vectorial layer, or with a
+     * `values` that is not a known label set, the default label set. A failed
+     * request throws.
+     * @param {string} project The project's shortname
+     * @returns {Promise<string>} The URL of the label set
+     */
+    projectLabelSetURL: async (project) => {
+      // only the layers, which the visitor may see, not the project's files
+      const layers = await me.fetchJSON(`/project/json/${encodeURIComponent(project)}?var=annotations/list`);
+      const layer = Array.isArray(layers) ? layers.find((a) => a && a.type === "vectorial") : null;
+      if (!layer) {
+        return me.defaultLabelSet;
+      }
+      const sets = await me.fetchJSON("/api/getLabelsets");
+      const found = Array.isArray(sets) && sets.find((s) => s.source === layer.values || s.name === layer.values);
+      if (!found) {
+        console.warn(`Project ${project}: the vectorial layer's label set "${layer.values}" is not known, using 10 regions`);
+
+        return me.defaultLabelSet;
+      }
+
+      return `/labels/${encodeURIComponent(found.source)}`;
+    },
+
+    /** Resolves once loadLabelSet is done: the regions of a slice are coloured
+     * by their label, so a slice's regions wait for it (_fetchSlice). */
+    labelSetReady: Promise.resolve(),
+
+    /** Load the label set into me.ontology: the project's (projectLabelSetURL),
+     * or 10 regions without a project or when a request fails. Never rejects.
+     * @returns {Promise<void>} Resolves once the label set is loaded
+     */
+    loadLabelSet: async () => {
+      try {
+        me.ontology = await me._fetchLabelSet();
+      } catch (err) {
+        console.error("cannot load the 10 regions label set:", err.message);
+      }
+    },
+
+    /** The label set for loadLabelSet.
+     * @returns {Promise<object>} The label set
+     */
+    _fetchLabelSet: async () => {
+      let url = me.defaultLabelSet;
+      if (me.project) {
+        try {
+          url = await me.projectLabelSetURL(me.project);
+        } catch (err) {
+          console.log(`cannot find the label set of project ${me.project}, using 10 regions:`, err.message);
+        }
+      }
+      try {
+        return await me.fetchJSON(url);
+      } catch (err) {
+        if (url === me.defaultLabelSet) {
+          throw err;
+        }
+        console.log(`cannot load the label set ${url}, using 10 regions:`, err.message);
+
+        return me.fetchJSON(me.defaultLabelSet);
+      }
     },
 
     /** Configuration of the layers from the URL parameters.
@@ -2762,6 +2847,7 @@ const Microdraw = (function () {
         }
       }
 
+      me.labelSetReady = me.loadLabelSet();
       me.initMicrodraw();
 
       const json = await me.loadSourceJson();

@@ -1,0 +1,9 @@
+{
+  "name": "E2E 3 regions",
+  "source": "/labels/e2e3regions.json",
+  "labels": [
+    { "name": "E2E A", "value": 1, "color": [200, 0, 0], "url": "" },
+    { "name": "E2E B", "value": 2, "color": [0, 200, 0], "url": "" },
+    { "name": "E2E C", "value": 3, "color": [0, 0, 200], "url": "" }
+  ]
+}

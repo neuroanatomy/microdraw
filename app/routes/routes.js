@@ -57,6 +57,12 @@ module.exports = (app) => {
     res.redirect(302, `/examples${req.path}${query}`);
   });
 
+  // The 10 regions label set moved to /labels/ (T002 3.2): keep the old URL
+  // working. 302, not 301 (N3), as above.
+  app.get('/js/10regions.json', (req, res) => {
+    res.redirect(302, '/labels/10regions.json');
+  });
+
   app.get('/microdraw', (req, res /*, next*/) => {
     res.render('partials/microdraw');
   });

@@ -20,6 +20,38 @@ const withLists = (p) => {
   };
 };
 
+// The label sets of the menu of a vectorial layer: those of /api/getLabelsets,
+// then each `values` stored in a vectorial layer that is not one of them (as
+// 'Set 1', from before T002 3.2), named as stored. nwl-components' layer row
+// is a <select> bound to `values`: without an option for it, a stored value
+// shows as an empty menu (it is still saved unchanged). If the list cannot be
+// fetched, only the stored values are offered.
+const fetchedLabelSets = async (fetchLabelSets) => {
+  try {
+    const answer = await fetchLabelSets();
+
+    return Array.isArray(answer) ? answer : [];
+  } catch (err) {
+    console.error('cannot fetch the label sets', err);
+
+    return [];
+  }
+};
+const withStoredLabelSets = async (fetchLabelSets, p) => {
+  const sets = await fetchedLabelSets(fetchLabelSets);
+  const layers = (p && p.annotations && Array.isArray(p.annotations.list)) ? p.annotations.list : [];
+  const stored = layers
+    .filter((a) => a && a.type === 'vectorial' && typeof a.values === 'string' && a.values !== '')
+    .map((a) => a.values);
+  for (const values of new Set(stored)) {
+    if (!sets.some((s) => s.source === values)) {
+      sets.push({ name: values, source: values });
+    }
+  }
+
+  return sets;
+};
+
 // The files are loaded in batches from /project/json/:p/files, as BrainBox's
 // settings page does (T002 3.1; copied from BrainBox's
 // view/brainbox/src/pages/project-settings-page.js, same names and constants)
@@ -183,7 +215,7 @@ const PageContents = {
 
 const app = createApp(PageContents);
 app.component('SettingsPage', SettingsPage);
-app.provide('config', config);
+app.provide('config', { ...config, fetchLabelSets: () => withStoredLabelSets(config.fetchLabelSets, project) });
 app.provide('user', loggedUser);
 
 app.mount('#app');
