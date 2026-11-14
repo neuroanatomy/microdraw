@@ -60,7 +60,8 @@ describe('Widgets (UI kit step 9a)', () => {
     await page.waitForSelector('#projectFiles tbody tr.selected', { timeout: U.shortTimeout });
     const rows = await page.evaluate(() => [...document.querySelectorAll('#projectFiles tbody tr')]
       .map((tr) => [tr.getAttribute('aria-selected'), getComputedStyle(tr).backgroundColor]));
-    assert.deepEqual(rows, [['true', 'rgb(68, 68, 68)'], ['false', 'rgba(0, 0, 0, 0)']]);
+    // --nwl-bg-elevated: #2e2e2e in the 2027 theme, which the project page has since UI kit step 13c (#444 without it)
+    assert.deepEqual(rows, [['true', 'rgb(46, 46, 46)'], ['false', 'rgba(0, 0, 0, 0)']]);
   }).timeout(U.mediumTimeout);
 
   it('gives the kit\'s icon rules to the tool icons in the viewer\'s shadow root', async () => {

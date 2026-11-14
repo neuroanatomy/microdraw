@@ -290,6 +290,12 @@ html, body {
 .mui {
     font-family: inherit;
 }
+/* the panels' other form controls (chat, layers, labels, text annotation): the panel's font
+   too, rather than the browser's (UI kit step 13c). No specificity, so CodeFlask's own
+   monospace rules for its textarea still win. */
+:where(button, input, select, textarea) {
+    font-family: inherit;
+}
 /* the text tools (- and +): at the top of the button, as on the divs they
    were, not centred vertically as a <button> places its content */
 #sliderBlock .mui {

@@ -239,8 +239,9 @@ describe('Project page: sortable tables (2026-11-10)', function () {
       return [c.fontSize, c.color, c.boxSizing, Math.round(r.width), Math.round(r.height)];
     });
     const [title, handle] = [await style('#fontLogo a'), await style('#resizeButton')];
-    assert.deepEqual(title.slice(0, 3), ['36px', 'rgb(255, 255, 255)', 'content-box']);
-    assert.deepEqual(handle, ['14px', 'rgb(255, 255, 255)', 'content-box', 22, 32]);
+    // the text colour: #e8e8e8 in the 2027 theme, which the project page has since UI kit step 13c (#fff without it)
+    assert.deepEqual(title.slice(0, 3), ['36px', 'rgb(232, 232, 232)', 'content-box']);
+    assert.deepEqual(handle, ['14px', 'rgb(232, 232, 232)', 'content-box', 22, 32]);
     assert.equal((await style('#projectFiles'))[2], 'content-box');
   }).timeout(U.mediumTimeout);
 

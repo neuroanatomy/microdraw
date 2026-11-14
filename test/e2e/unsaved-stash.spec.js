@@ -148,7 +148,8 @@ describe('Unsaved annotations are kept in the browser (H3a)', () => {
 
       return [cs.color, cs.textDecorationLine];
     });
-    assert.deepEqual(linkStyle, ['rgb(255, 255, 255)', 'underline']);
+    // #e8e8e8 in the 2027 theme, which the viewer has since UI kit step 13c (#fff without it)
+    assert.deepEqual(linkStyle, ['rgb(232, 232, 232)', 'underline']);
 
     const all = await stashes();
     assert.lengthOf(Object.keys(all), 1);

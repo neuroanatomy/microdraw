@@ -89,7 +89,8 @@ describe('Tool buttons (UI kit step 9b)', () => {
       });
     }
     assert.equal(reached, 'display-minimize');
-    assert.deepEqual(await active(page), { id: 'display-minimize', outline: 'solid 2px rgb(255, 255, 255)' });
+    // --nwl-focus: #e8e8e8 in the 2027 theme, which the viewer has since UI kit step 13c (#fff without it)
+    assert.deepEqual(await active(page), { id: 'display-minimize', outline: 'solid 2px rgb(232, 232, 232)' });
   }).timeout(U.shortTimeout);
 
   it('selects a tool with Space and with Enter, once each, as a click does', async () => {
@@ -132,6 +133,7 @@ describe('Tool buttons (UI kit step 9b)', () => {
         navigate: getComputedStyle(d.querySelector('#navigate')).backgroundColor
       };
     });
-    assert.deepEqual(bg, { pressed: 'rgb(85, 85, 85)', draw: 'rgb(85, 85, 85)', navigate: 'rgba(0, 0, 0, 0)' });
+    // --nwl-bg-pressed: #404040 in the 2027 theme, which the viewer has since UI kit step 13c (#555 without it)
+    assert.deepEqual(bg, { pressed: 'rgb(64, 64, 64)', draw: 'rgb(64, 64, 64)', navigate: 'rgba(0, 0, 0, 0)' });
   }).timeout(U.shortTimeout);
 });
