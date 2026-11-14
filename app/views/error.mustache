@@ -11,8 +11,10 @@
 <body>
 <div id="content">
   <h1>{{message}}</h1>
+  {{#path}}<p><code>{{path}}</code></p>{{/path}}
   <h2>{{error.status}}</h2>
   <pre>{{error.stack}}</pre>
+  <p><a href="/">Go to the home page</a></p>
 </div>
 </body>
 </html>

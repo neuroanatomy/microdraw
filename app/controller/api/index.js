@@ -406,6 +406,4 @@ const saveTextAnnotationUnsafe = async function (req, res) {
 
 router.post('/text-annotation', catchErrors(saveTextAnnotationUnsafe));
 
-router.use('', (req, res) => res.redirect('/'));
-
 module.exports = router;

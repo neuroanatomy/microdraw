@@ -58,9 +58,24 @@
         if (!this.loadingDiv) {
 	    	this.loadingDiv = document.createElement("div");
             this.loadingDiv.style.background = 'rgba(1,1,1, 0.3)';
-	    	var img = document.createElement("img");
-	    	img.src = this.viewer.prefixUrl + "ajax_loader_gray_32.gif";
-			img.setAttribute('crossOrigin', 'anonymous');
+	    	// microdraw: differs from upstream f0c5169 here. Upstream shows
+	    	// prefixUrl + "ajax_loader_gray_32.gif", which OpenSeadragon does not
+	    	// ship (every viewer load asked for it and got a 404). A CSS spinner
+	    	// drawn with the nwl-components tokens takes its place: no request.
+	    	if (!document.getElementById("screenshot-spinner-style")) {
+	    		var spinnerStyle = document.createElement("style");
+	    		spinnerStyle.id = "screenshot-spinner-style";
+	    		spinnerStyle.textContent =
+	    			".screenshot-spinner { display: block; box-sizing: border-box; width: 32px; height: 32px;" +
+	    			" border: 3px solid var(--nwl-grey-cc); border-top-color: var(--nwl-grey-66);" +
+	    			" border-radius: 50%; animation: screenshot-spin 0.8s linear infinite; }" +
+	    			" @keyframes screenshot-spin { to { transform: rotate(360deg); } }" +
+	    			" @media (prefers-reduced-motion: reduce) { .screenshot-spinner { animation-duration: 3s; } }";
+	    		document.head.appendChild(spinnerStyle);
+	    	}
+	    	var img = document.createElement("span");
+	    	img.className = "screenshot-spinner";
+	    	img.setAttribute("role", "presentation");
 	    	this.loadingDiv.style.position = "absolute";
 	    	this.loadingDiv.style.top = "0px";
 	    	this.loadingDiv.style.left = "0px";

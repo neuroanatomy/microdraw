@@ -65,6 +65,32 @@ const onListening = function () {
   log.info({ address: typeof addr === 'string' ? addr : addr.port }, 'http server listening');
 };
 
+// What a request no route answered gets: 'json' when it accepts JSON first, or
+// has /json/ in its path, or is under /api/; 'page' for a GET or HEAD that
+// accepts HTML, on a path without a file extension other than .html; 'text'
+// for anything else, such as a missing script, image or font.
+const notFoundKind = function (req) {
+  const accepted = req.accepts(['html', 'json']);
+  if (accepted === 'json' || req.path.includes('/json/') || req.path.startsWith('/api/')) {
+    return 'json';
+  }
+  const extension = path.extname(req.path).toLowerCase();
+  const isPage = (req.method === 'GET' || req.method === 'HEAD') &&
+    accepted === 'html' &&
+    ['', '.html', '.htm'].includes(extension);
+
+  return isPage ? 'page' : 'text';
+};
+
+// The path as the visitor typed it, for the 404 page (the template escapes it)
+const shownPath = function (req) {
+  try {
+    return decodeURIComponent(req.path);
+  } catch (err) { // a malformed escape: show the path as sent
+    return req.path;
+  }
+};
+
 // eslint-disable-next-line max-statements
 const start = async function () {
   const app = express();
@@ -199,13 +225,21 @@ const start = async function () {
   routes(app);
 
 
-  // // catch 404 and forward to error handler
-  // app.use(function (req, res, next) {
-  //   console.log('ERROR: File not found', req.url);
-  //   // var err = new Error('Not Found'); //, req);
-  //   // err.status = 404;
-  //   // next(err);
-  // });
+  // Nothing matched: answer 404 in the form the request expects (notFoundKind),
+  // never Express's bare "Cannot GET": the error page, {"error":"Not found"}, or
+  // plain text. The request log line records the 404; nothing more is logged
+  // (bots probe a lot of URLs).
+  app.use(function (req, res) {
+    res.status(404);
+    const kind = notFoundKind(req);
+    if (kind === 'json') {
+      res.json({ error: 'Not found' });
+    } else if (kind === 'page') {
+      res.render('error', { message: 'Page not found', path: shownPath(req) });
+    } else {
+      res.type('text/plain').send('Not found');
+    }
+  });
 
   // error handler
   // eslint-disable-next-line no-unused-vars

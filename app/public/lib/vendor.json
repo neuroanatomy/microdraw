@@ -35,8 +35,9 @@
       "version": "v0.0.1",
       "path": "app/public/lib/openseadragon-screenshot/openseadragonScreenshot-v0.0.1.js",
       "url": "https://cdn.jsdelivr.net/gh/r03ert0/Openseadragon-screenshot@v0.0.1/openseadragonScreenshot.js",
-      "sha256": "da1eb10f1d9c7316612d661aab3ebba92a30ec418ccecdddf8998814181c6439",
-      "note": "Kept under its own filename because it is NOT identical to the openseadragonScreenshot.js already in that directory: the CDN build adds a viewer.screenshotInstance.showOptions guard. The suffixed name preserves both."
+      "sha256": "68d7f36c1abc435a59e493f72dd9ba506a014e0a8742f096f9d4ede110706b88",
+      "upstreamStable": false,
+      "note": "Kept under its own filename because it is NOT identical to the openseadragonScreenshot.js already in that directory: the CDN build adds a viewer.screenshotInstance.showOptions guard. The suffixed name preserves both. Patched locally (2026-11-14): its loading overlay draws a CSS spinner instead of requesting ajax_loader_gray_32.gif, which OpenSeadragon does not ship (CDN sha256 da1eb10f1d9c7316612d661aab3ebba92a30ec418ccecdddf8998814181c6439). The checksum is the patched file's, so --refetch skips this asset (upstreamStable false)."
     },
     {
       "name": "roboto-100-latin",

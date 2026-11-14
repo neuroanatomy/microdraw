@@ -5,10 +5,10 @@
   and widgets, and the fonts of its fonts.css (Source Sans 3), which each page
   links from /lib/nwl-components, with the font files beside it.
 
-  UI kit step 13 opted every page in to the kit's 2027 theme, with a
-  data-nwl-theme="2027" attribute on <html>. nwl-components 3.0.0 made those
-  values the defaults and the attribute a no-op, so step 14 removed it: a page
-  now only needs the fonts.css link.
+  This look is the kit's default since nwl-components 3.0.0. It first shipped
+  as an opt-in "2027" theme (UI kit step 13, a data-nwl-theme="2027" attribute
+  on <html>); 3.0.0 ignores that attribute and step 14 removed it, so a page
+  only needs the fonts.css link.
 
   The home and error pages are not inside .app and don't load base.css: their
   font and colours come from shared-style.css, through the tokens. The viewer
