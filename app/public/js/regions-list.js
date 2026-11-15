@@ -1,14 +1,15 @@
 /* global Microdraw */
-/* eslint max-lines: ["error", 350] */
+/* eslint max-lines: ["error", 400] */
 
 /*
   The Regions list of the labels panel (#labelset-panel, T002 3.5): the
   regions of the current slice, top-most first (the reverse of the paint
   order, Microdraw.ImageInfo[slice].Regions), as in Inkscape's "Layers and
-  Objects" panel. A row selects its region; it is moved with its drag handle
-  (mouse or touch: pointer events), its move up and move down buttons, or
-  Alt+Up and Alt+Down; it is deleted with its delete button or the Delete
-  key. Moves go through Microdraw.moveRegion and deletions through
+  Objects" panel. A row selects its region; it is moved by dragging the row
+  (mouse or pen at once, touch after a long press so that a swipe still
+  scrolls the list; pointer events), or with Alt+Up and Alt+Down; it is
+  deleted with its delete button, its only button (maintainer, 2026-11-15),
+  or the Delete key. Moves go through Microdraw.moveRegion and deletions through
   Microdraw.cmdDeleteSelected: one undo step each, and the slice is saved as
   after any other edit.
 
@@ -18,7 +19,8 @@
 */
 window.RegionsList = (function () {
   const TEXT_LENGTH = 40; // characters of a text annotation shown in its row
-  const DRAG_THRESHOLD = 4; // px before a press on the handle becomes a drag
+  const DRAG_THRESHOLD = 4; // px before a press on a row becomes a drag
+  const LONG_PRESS = 350; // ms a finger rests on a row before it can drag it
   const KEYS = {ArrowUp: 1, ArrowDown: -1};
 
   const L = {
@@ -97,21 +99,19 @@ window.RegionsList = (function () {
       return td;
     },
 
-    row: (reg, index, count) => {
+    row: (reg, index) => {
       const tr = document.createElement("tr");
       const selected = reg === Microdraw.region;
       Object.assign(tr.dataset, {uid: reg.uid, index});
       tr.tabIndex = selected ? 0 : -1;
       tr.classList.toggle("selected", selected);
       tr.setAttribute("aria-selected", String(selected));
-      const handle = L.cell("region-handle", "⠇");
-      handle.title = "Drag to move";
-      tr.append(handle, L.cell("region-color", L.swatch(reg)), L.nameCell(reg), L.cell(
-        "region-actions",
-        L.button("up", "Move up", "foreward", index === count - 1),
-        L.button("down", "Move down", "backward", index === 0),
-        L.button("delete", "Delete", "delete", false)
-      ));
+      tr.title = "Drag to move";
+      tr.append(
+        L.cell("region-color", L.swatch(reg)),
+        L.nameCell(reg),
+        L.cell("region-actions", L.button("delete", "Delete", "delete", false))
+      );
 
       return tr;
     },
@@ -139,7 +139,7 @@ window.RegionsList = (function () {
     fill: (list, regions) => {
       const fragment = document.createDocumentFragment();
       for (let i = regions.length - 1; i >= 0; i -= 1) {
-        fragment.appendChild(L.row(regions[i], i, regions.length));
+        fragment.appendChild(L.row(regions[i], i));
       }
       // the list keeps its scroll position
       const {scrollTop} = list;
@@ -197,13 +197,8 @@ window.RegionsList = (function () {
         return;
       }
       const b = e.target.closest("button");
-      const action = {
-        "region-up": () => L.moveBy(reg, 1),
-        "region-down": () => L.moveBy(reg, -1),
-        "region-delete": () => L.remove(reg)
-      }[b ? b.className : ""];
-      if (action) {
-        action();
+      if (b && b.className === "region-delete") {
+        L.remove(reg);
       } else {
         L.selectRow(tr);
       }
@@ -262,33 +257,47 @@ window.RegionsList = (function () {
       return to > from ? to - 1 : to;
     },
 
-    // a row is dragged by its handle, with pointer events (mouse and touch)
+    // a row is dragged anywhere but on its button, with pointer events: a mouse
+    // or a pen at once, a finger after a long press (before it, a swipe scrolls)
     dragStart: (e) => {
-      const handle = e.target.closest(".region-handle");
-      const tr = handle && e.button === 0 && handle.closest("tr[data-uid]");
+      const tr = e.button === 0 && !e.target.closest("button") && e.target.closest("tr[data-uid]");
       const reg = tr && L.regionOf(tr);
       if (!reg) {
         return;
       }
-      e.preventDefault();
-      handle.setPointerCapture(e.pointerId);
-      const drag = {
-        handle,
-        tr,
-        reg,
-        startY: e.clientY,
-        moved: false,
-        target: null,
-        onMove: (ev) => L.dragMove(drag, ev),
-        onUp: () => L.dragEnd(drag)
-      };
+      const touch = e.pointerType === "touch";
+      if (!touch) {
+        // no text selection while dragging
+        e.preventDefault();
+      }
+      const drag = L.newDrag(e, tr, reg, touch);
+      tr.setPointerCapture(e.pointerId);
       L.dragListen(drag, "addEventListener");
     },
 
+    newDrag: (e, tr, reg, touch) => {
+      const drag = {tr, reg, pointerId: e.pointerId, startY: e.clientY, armed: !touch, moved: false, target: null, timer: null};
+      drag.onMove = (ev) => L.dragMove(drag, ev);
+      drag.onUp = (ev) => L.dragEnd(drag, ev);
+      // once armed, a finger moving drags the row instead of scrolling the list
+      drag.onTouchMove = (ev) => {
+        if (drag.armed && ev.cancelable) { ev.preventDefault(); }
+      };
+      if (touch) {
+        drag.timer = setTimeout(() => {
+          drag.armed = true;
+          tr.classList.add("dragging");
+        }, LONG_PRESS);
+      }
+
+      return drag;
+    },
+
     dragListen: (drag, method) => {
-      drag.handle[method]("pointermove", drag.onMove);
-      drag.handle[method]("pointerup", drag.onUp);
-      drag.handle[method]("pointercancel", drag.onUp);
+      drag.tr[method]("pointermove", drag.onMove);
+      drag.tr[method]("pointerup", drag.onUp);
+      drag.tr[method]("pointercancel", drag.onUp);
+      drag.tr[method]("touchmove", drag.onTouchMove, {passive: false});
     },
 
     clearDrop: (tbody) => {
@@ -299,6 +308,10 @@ window.RegionsList = (function () {
       if (!drag.moved && Math.abs(ev.clientY - drag.startY) < DRAG_THRESHOLD) {
         return;
       }
+      if (!drag.armed) {
+        // a finger that moves before the long press: a scroll, not a drag
+        return L.dragCancel(drag);
+      }
       drag.moved = true;
       drag.tr.classList.add("dragging");
       L.clearDrop(drag.tr.parentNode);
@@ -308,12 +321,24 @@ window.RegionsList = (function () {
       }
     },
 
-    dragEnd: (drag) => {
-      const {tr, reg, target} = drag;
+    dragCancel: (drag) => {
+      const {tr} = drag;
+      clearTimeout(drag.timer);
       L.dragListen(drag, "removeEventListener");
+      if (tr.hasPointerCapture(drag.pointerId)) {
+        tr.releasePointerCapture(drag.pointerId);
+      }
       tr.classList.remove("dragging");
       if (tr.parentNode) {
         L.clearDrop(tr.parentNode);
+      }
+    },
+
+    dragEnd: (drag, ev) => {
+      const {tr, reg, target} = drag;
+      L.dragCancel(drag);
+      if (ev.type === "pointercancel" && !drag.moved) {
+        return;
       }
       L.select(reg);
       if (drag.moved && target && target.tr !== tr) {

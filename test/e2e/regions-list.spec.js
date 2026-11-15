@@ -4,8 +4,8 @@
 
 /*
   T002 3.5: the Regions list of the labels panel lists the regions of the
-  current slice, top-most first; a row selects its region, moves it (buttons,
-  Alt+Up/Down, drag by the handle) and deletes it, with one undo step each,
+  current slice, top-most first; a row selects its region, moves it (drag the
+  row, Alt+Up/Down) and deletes it (its only button), with one undo step each,
   through Microdraw.moveRegion and Microdraw.cmdDeleteSelected. It follows a
   load, a slice change, the canvas selection, the toolbar order tools, undo,
   and another user's save.
@@ -72,6 +72,13 @@ const $ = (sel) => page.evaluateHandle((s) => Microdraw.dom.querySelector(s), se
 const rowSel = (uid) => `#regions-table tr[data-uid="${uid}"]`;
 const clickIn = async (uid, sel = '.region-name') => (await $(`${rowSel(uid)} ${sel}`)).click();
 const undo = () => page.evaluate(() => Microdraw.cmdUndo());
+// a row clicked, then Alt+key: the keyboard move (no move buttons, maintainer 2026-11-15)
+const altMove = async (uid, key) => {
+  await clickIn(uid);
+  await page.keyboard.down('Alt');
+  await page.keyboard.press(key);
+  await page.keyboard.up('Alt');
+};
 const waitForRows = (n) => page.waitForFunction((count) => Microdraw.dom.querySelectorAll('#regions-table tbody tr').length === count, { polling: 50, timeout: U.shortTimeout }, n);
 
 // eslint-disable-next-line max-statements -- one test per case
@@ -125,11 +132,11 @@ describe('The Regions list of the labels panel (T002 3.5)', () => {
     assert.deepEqual(s.names, [BOLD, 'Region 2', 'Region 1']);
     assert.isFalse(await page.evaluate((sel) => Boolean(Microdraw.dom.querySelector(sel)), `${rowSel('c')} .region-name b`), 'no <b> element');
     assert.deepEqual(s.selected, []);
-    // accessible: a labelled table, named buttons
+    // accessible: a labelled table, named buttons; delete is the only one (maintainer, 2026-11-15)
     assert.equal(await page.evaluate(() => Microdraw.dom.querySelector('#regions-table').getAttribute('aria-labelledby')), 'regions-heading');
     assert.deepEqual(
       await page.evaluate((sel) => [...Microdraw.dom.querySelectorAll(`${sel} button`)].map((b) => b.getAttribute('aria-label')), rowSel('b')),
-      ['Move up', 'Move down', 'Delete']
+      ['Delete']
     );
   }).timeout(U.longTimeout);
 
@@ -154,9 +161,9 @@ describe('The Regions list of the labels panel (T002 3.5)', () => {
   }).timeout(U.longTimeout);
 
   // eslint-disable-next-line max-statements -- one test, step by step
-  it('move up and move down change the canvas order and the list, one undo step each', async () => {
+  it('moves change the canvas order and the list, one undo step each', async () => {
     const before = await state();
-    await clickIn('a', '.region-up');
+    await altMove('a', 'ArrowUp');
     let s = await state();
     assert.deepEqual(s.regions, ['b', 'a', 'c']);
     assert.deepEqual(s.rows, ['c', 'a', 'b']);
@@ -164,7 +171,7 @@ describe('The Regions list of the labels panel (T002 3.5)', () => {
     assert.equal(s.undo, before.undo + 1);
     assert.isTrue(await page.evaluate(() => Microdraw.sectionChanges(Microdraw.ImageInfo[Microdraw.currentImage]) !== null), 'the slice is marked changed');
 
-    await clickIn('c', '.region-down');
+    await altMove('c', 'ArrowDown');
     s = await state();
     assert.deepEqual(s.regions, ['b', 'c', 'a']);
     assert.deepEqual(s.rows, ['a', 'c', 'b']);
@@ -212,8 +219,8 @@ describe('The Regions list of the labels panel (T002 3.5)', () => {
   }).timeout(U.longTimeout);
 
   // eslint-disable-next-line max-statements -- one test, step by step
-  it('a row dragged by its handle above the top row becomes the top-most', async () => {
-    const handle = await (await $(`${rowSel('a')} .region-handle`)).boundingBox();
+  it('a row dragged by its name above the top row becomes the top-most', async () => {
+    const handle = await (await $(`${rowSel('a')} .region-name`)).boundingBox();
     const top = await (await $(rowSel('c'))).boundingBox();
     await page.mouse.move(handle.x + (handle.width / 2), handle.y + (handle.height / 2));
     await page.mouse.down();
@@ -252,7 +259,7 @@ describe('The Regions list of the labels panel (T002 3.5)', () => {
   }).timeout(U.longTimeout);
 
   it('the order survives a save and a reload (T002 3.5)', async () => {
-    await clickIn('a', '.region-up');
+    await altMove('a', 'ArrowUp');
     assert.deepEqual((await state()).regions, ['b', 'a', 'c']);
     await H.waitForSave(page, () => page.evaluate(() => Microdraw.tools.save.click('select')));
     await H.openData(page, dataURL());

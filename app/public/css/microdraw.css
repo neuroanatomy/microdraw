@@ -482,13 +482,19 @@ body[data-toolbarDisplay=right] #tools-minimized div {
   background: var(--nwl-bg-surface);
   border-top: 2px solid transparent;
   border-bottom: 2px solid transparent;
-  cursor: pointer;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  /* a swipe scrolls the list; a long press then drags the row (regions-list.js) */
+  touch-action: pan-y;
+  -webkit-touch-callout: none;
 }
 #regions-table tr.selected {
   outline: 1px solid var(--nwl-white);
   outline-offset: -1px;
 }
 #regions-table tr.dragging {
+  cursor: grabbing;
   opacity: 0.5;
 }
 #regions-table tr.drop-before {
@@ -500,13 +506,6 @@ body[data-toolbarDisplay=right] #tools-minimized div {
 #regions-table td {
   padding: 2px 4px;
   vertical-align: middle;
-}
-#regions-table .region-handle {
-  width: 1rem;
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-  text-align: center;
 }
 #regions-table .region-swatch {
   display: inline-block;
@@ -532,10 +531,6 @@ body[data-toolbarDisplay=right] #tools-minimized div {
   border: none;
   padding: 2px;
   cursor: pointer;
-}
-#regions-table .region-actions button:disabled {
-  opacity: 0.3;
-  cursor: default;
 }
 #regions-table .region-actions img {
   width: 16px;
