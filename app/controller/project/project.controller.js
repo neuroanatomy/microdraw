@@ -14,8 +14,8 @@ const { deleteStoredProject } = require('./project.delete');
 const { findCurrentProject, saveProjectVersion } = require('./currentProject');
 const { visibleProjectParts } = require('./visibleProject');
 const { currentTextValues } = require('../textAnnotations');
-const { catchErrors } = require('../catchErrors');
-const { scriptJSON, escapeHTML } = require('../escape');
+const { catchErrors, jsonForScript } = require('neuroweblab');
+const { escapeHTML } = require('../escape');
 const validator = function (req, res, next) {
   next();
 };
@@ -63,7 +63,7 @@ const project = async function (req, res) {
       const context = {
         projectShortname: json.shortname,
         projectName: json.name,
-        projectInfo: scriptJSON(visibleProjectParts(json, loggedUser)),
+        projectInfo: jsonForScript(visibleProjectParts(json, loggedUser)),
         wsPort: req.app.get('wsPort') || 8080,
         login
       };
@@ -176,9 +176,9 @@ var settingsUnsafe = async function(req, res) {
   var context = {
     projectShortname: json.shortname,
     owner: json.owner,
-    projectInfo: scriptJSON(json),
+    projectInfo: jsonForScript(json),
     filesTotal,
-    loggedUser: scriptJSON(req.user || null)
+    loggedUser: jsonForScript(req.user || null)
   };
   res.render('projectSettings', context);
 };
@@ -209,12 +209,12 @@ const projectNew = function (req, res) {
     res.render('askForLogin', {
       title: "MicroDraw: New Project",
       functionality: "create a new project",
-      loggedUser: scriptJSON(req.user || null)
+      loggedUser: jsonForScript(req.user || null)
     });
   } else {
     res.render('projectNew', {
       title: "MicroDraw: New Project",
-      loggedUser: scriptJSON(req.user || null)
+      loggedUser: jsonForScript(req.user || null)
     });
   }
 };

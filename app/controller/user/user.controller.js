@@ -4,7 +4,7 @@
 const dateFormat = require('dateformat');
 const log = require('../../log');
 const { AccessControlService } = require('neuroweblab');
-const { scriptJSON } = require('../escape');
+const { jsonForScript } = require('neuroweblab');
 const { visibleProjectParts } = require('../project/visibleProject');
 const { findUserProjects } = require('../project/currentProject');
 const { lastModified, newestAnnotations } = require('./lastModified');
@@ -58,9 +58,9 @@ const user = function (req, res) {
           joined: dateFormat(json.joined, 'dddd d mmm yyyy, HH:MM'),
           avatar: json.avatarURL,
           title: json.name,
-          userInfo: scriptJSON(publicUser(json)),
+          userInfo: jsonForScript(publicUser(json)),
           tab: req.query.tab || 'data',
-          loggedUser: scriptJSON(req.user || null)
+          loggedUser: jsonForScript(req.user || null)
         };
         res.render('user', context);
       } else {

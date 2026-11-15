@@ -14,7 +14,7 @@ const { withProjectLock } = require('../projectLock');
 const { listOf } = require('../project/project.validation');
 const { projectVersion } = require('../project/project.check');
 const { deleteStoredProject, findDeleteEntry, restoreDeletedProject } = require('../project/project.delete');
-const { escapeRegex } = require('../search/search.controller');
+const { escapeRegex } = require('neuroweblab');
 const { changeProject } = require('./admin.projects');
 
 const current = { backup: { $exists: false } };

@@ -9,7 +9,7 @@ const WebSocket = require('ws');
 const U = require('../mocha.test.util');
 const admins = require('../../app/controller/admin/admins');
 const wsModule = require('../../app/controller/microdrawWebsocketServer/microdrawWebsocketServer');
-const { toId } = require('../../app/controller/toId');
+const { toId } = require('neuroweblab');
 
 // T002 3.6: the rest of BrainBox's admin tools. A: damaged projects (files
 // removed by a save still missing, several current versions); B: one dataset

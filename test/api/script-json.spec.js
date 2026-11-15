@@ -5,7 +5,7 @@ const chaiHttp = require('chai-http');
 chai.use(chaiHttp);
 const { assert } = chai;
 const U = require('../mocha.test.util');
-const { scriptJSON, escapeHTML } = require('../../app/controller/escape');
+const { escapeHTML } = require('../../app/controller/escape');
 
 // H2b: user-set names written into server-rendered pages. JSON in an inline
 // <script> must not be able to close it, and HTML built as a string escapes
@@ -22,14 +22,7 @@ const inlineValue = (html, name) => {
 };
 
 describe('Escaping user-set names in pages (H2b)', function () {
-  describe('scriptJSON and escapeHTML', function () {
-    it('scriptJSON leaves no "<" or ">" and parses back to the same value', function () {
-      const value = { name: SCRIPT_NAME, other: 'a & b \u2028 \u2029 \u003c' };
-      const json = scriptJSON(value);
-      assert.notMatch(json, /[<>]/);
-      assert.deepEqual(JSON.parse(json), value);
-    });
-
+  describe('escapeHTML', function () {
     it('escapeHTML escapes the five HTML special characters', function () {
       assert.equal(escapeHTML('<a href="x">\'&\'</a>'), '&lt;a href=&quot;x&quot;&gt;&#39;&amp;&#39;&lt;/a&gt;');
     });

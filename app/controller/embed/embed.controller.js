@@ -10,8 +10,7 @@
  *   button frames, the embed of the project's first dataset.
  */
 const _ = require('lodash');
-const { scriptJSON } = require('../escape');
-const { catchErrors } = require('../catchErrors');
+const { catchErrors, jsonForScript } = require('neuroweblab');
 const { findCurrentProject } = require('../project/currentProject');
 const { mayEmbedData, embedLayers } = require('./embed-access');
 const EmbedAccessService = require('./EmbedAccessService');
@@ -77,8 +76,8 @@ const dataEmbedUnsafe = async function (req, res) {
 
   res.render('dataEmbed', {
     title: decision.project && decision.project.name ? `${decision.project.name}: MicroDraw` : 'MicroDraw',
-    params: scriptJSON(embedParams(req.query)),
-    embedWsTicket: scriptJSON(embedWsTicket),
+    params: jsonForScript(embedParams(req.query)),
+    embedWsTicket: jsonForScript(embedWsTicket),
     wsPort: req.app.get('wsPort') || 8080
   });
 };

@@ -14,18 +14,16 @@
  */
 const _ = require('lodash');
 const logger = require('../../log');
-const { toId } = require('../toId');
+const { escapeRegex, toId } = require('neuroweblab');
 const { DATASETS, defaultName, fileRows, isDatasetSource } = require('../datasets');
 const { plainText } = require('../project/project.validation');
 const { CURRENT: current } = require('../project/currentProject');
 
 const MAX_NAME_LENGTH = 200;
 
-const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
 // The current annotations of a dataset, in a project and by a user if given
 const annotationsQuery = ({ source, project, user }) => {
-  const query = { ...current, fileID: new RegExp(`^${escapeRegExp(source)}&slice=`) };
+  const query = { ...current, fileID: new RegExp(`^${escapeRegex(source)}&slice=`) };
   if (typeof project === 'string') {
     query.project = project;
   }

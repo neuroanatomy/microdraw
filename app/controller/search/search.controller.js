@@ -1,5 +1,5 @@
 /* eslint-disable camelcase */
-const { AccessControlService } = require('neuroweblab');
+const { AccessControlService, escapeRegex } = require('neuroweblab');
 const log = require('../../log');
 // const async = require('async');
 // const dateFormat = require('dateformat');
@@ -21,12 +21,6 @@ const validator = function (req, res, next) {
     */
   next();
 };
-
-// The search text, escaped so that it matches literally: the raw text went
-// into a MongoDB $regex, so a crafted one could make the database backtrack
-// for a long time (ReDoS), and an invalid one made the query fail. As
-// BrainBox's escapeRegex (controller/api/api.controller.js).
-const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // The search text of the request, or undefined (and a 400 answer) if q is
 // not a string (e.g. ?q[$ne]=). Not escaped: NeuroWebLab's searchUsers
@@ -87,7 +81,6 @@ const api_searchProjects = function (req, res) {
 };
 
 module.exports = {
-  escapeRegex,
   validator,
   api_searchUsers,
   api_searchProjects

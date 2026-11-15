@@ -7,7 +7,7 @@ const projectActions = require('./admin.projectActions');
 const damaged = require('./admin.damaged');
 const datasets = require('./admin.datasets');
 const microdrawWebsocketServer = require('../microdrawWebsocketServer/microdrawWebsocketServer');
-const { scriptJSON } = require('../escape');
+const { jsonForScript } = require('neuroweblab');
 
 // Follows BrainBox controller/admin/admin.controller.js (requireAdmin,
 // adminPage, the JSON handlers), so that the two can be merged later.
@@ -56,7 +56,7 @@ const adminPage = (req, res) => {
   }
   res.render('admin', {
     title: 'MicroDraw: Admin',
-    loggedUser: scriptJSON({ username })
+    loggedUser: jsonForScript({ username })
   });
 };
 

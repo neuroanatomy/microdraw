@@ -14,7 +14,7 @@
  */
 const _ = require('lodash');
 const logger = require('../../log');
-const { toId } = require('../toId');
+const { toId } = require('neuroweblab');
 const { saveProjectVersion } = require('./currentProject');
 
 const deleteKeys = ['deleteProject', 'adminDeleteProject'];

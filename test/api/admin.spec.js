@@ -10,7 +10,6 @@ const U = require('../mocha.test.util');
 const { ObjectId } = require('neuroweblab');
 const admins = require('../../app/controller/admin/admins');
 const adminAnnotations = require('../../app/controller/admin/admin.annotations');
-const { toId } = require('../../app/controller/toId');
 
 // A1: the admin page and its orphan-annotation tools (decisions D26).
 // Orphans = current (non-backup) annotation documents whose project is empty,
@@ -422,16 +421,6 @@ describe('Admin: orphan annotations (A1)', function () {
       assert.deepEqual(await annotationDocs(), before);
       assert.lengthOf(await logEntries('adminRestoreOrphans'), 0);
     }).timeout(U.shortTimeout);
-
-    it('toId takes a 24-digit hex string, in either case, and nothing else', function () {
-      const hex = '0123456789abcdef01234567';
-      assert.instanceOf(toId(hex), ObjectId);
-      assert.equal(String(toId(hex)), hex);
-      assert.equal(String(toId(hex.toUpperCase())), hex);
-      for (const bad of ['', 'not-an-id', '0123456789ab', 'z'.repeat(24), `${hex}0`, ` ${hex.slice(1)}`, `${hex}\n`, null, undefined, 5, {}, [hex]]) { // eslint-disable-line no-undefined
-        assert.isNull(toId(bad), JSON.stringify(bad));
-      }
-    });
 
     it('restore takes a log id in capitals', async function () {
       const removal = await post('/admin/json/orphans/remove', aliceEmpty);

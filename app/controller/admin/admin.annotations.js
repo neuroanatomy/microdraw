@@ -19,7 +19,7 @@
 const _ = require('lodash');
 const logger = require('../../log');
 const { withProjectLock } = require('../projectLock');
-const { toId } = require('../toId');
+const { escapeRegex, toId } = require('neuroweblab');
 
 const isProjectName = (name) => typeof name === 'string' && name !== '';
 
@@ -55,8 +55,6 @@ const splitFileID = (fileID) => {
   return { source: fileID.slice(0, at), slice: fileID.slice(at + '&slice='.length) };
 };
 
-const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
 const dateOf = (id) => {
   try {
     return id.getTimestamp().toJSON();
@@ -81,7 +79,7 @@ const findOrphanAnnotations = async (db, { skip = 0, limit = 50, source } = {}) 
   // $nin also matches documents where project is null or missing
   const match = { ...current, project: { $nin: live } };
   if (typeof source === 'string' && source !== '') {
-    match.fileID = new RegExp(`^${escapeRegExp(source)}&slice=`);
+    match.fileID = new RegExp(`^${escapeRegex(source)}&slice=`);
   }
   const cursor = db.collection('annotations').aggregate([
     { $match: match },

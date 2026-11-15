@@ -24,7 +24,7 @@
 const _ = require('lodash');
 const logger = require('../../log');
 const { withProjectLock } = require('../projectLock');
-const { toId } = require('../toId');
+const { toId } = require('neuroweblab');
 const { checkProject, duplicateLayerNames, plainText } = require('../project/project.validation');
 const {
   blankRows, checkStoredProjects, isUnnamedLayer, projectVersion

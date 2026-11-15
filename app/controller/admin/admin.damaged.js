@@ -29,7 +29,7 @@
 const _ = require('lodash');
 const logger = require('../../log');
 const { withProjectLock } = require('../projectLock');
-const { toId } = require('../toId');
+const { toId } = require('neuroweblab');
 const { fileRows } = require('../datasets');
 const { projectVersion } = require('../project/project.check');
 const { CURRENT: current, findCurrentProject, saveProjectVersion } = require('../project/currentProject');

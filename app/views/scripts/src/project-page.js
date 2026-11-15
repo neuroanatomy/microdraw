@@ -9,7 +9,7 @@
     (project.mustache); Vue only renders the two tables, from templates in this
     file, so no server-rendered text is ever compiled as a Vue template.
   - `projectInfo` holds only what the visitor may see (M3c, visibleProjectParts),
-    serialised with scriptJSON (H2b). Every user-set name is written as text
+    serialised with jsonForScript (H2b). Every user-set name is written as text
     ({{ }} interpolation, textContent): there is no v-html.
   - The name, file and layer cells are read only. The old page had editable
     inputs that were never saved; the project's files and layers are edited in

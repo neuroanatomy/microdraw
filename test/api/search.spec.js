@@ -5,7 +5,6 @@ const chaiHttp = require('chai-http');
 chai.use(chaiHttp);
 const { assert } = chai;
 const U = require('../mocha.test.util');
-const { escapeRegex } = require('../../app/controller/search/search.controller');
 
 // M3: /search/json/* match the search text literally (it went into a MongoDB
 // $regex as it was: ReDoS, and an invalid pattern made the query fail and the
@@ -29,12 +28,6 @@ describe('Search and user routes (M3)', function () {
   after(async function () {
     await U.removeProject(project.shortname);
     await U.removeLocalUser(user.username);
-  });
-
-  it('escapeRegex escapes every regular expression character', function () {
-    const special = '.*+?^${}()|[]\\';
-    assert.equal(escapeRegex(special), '\\.\\*\\+\\?\\^\\$\\{\\}\\(\\)\\|\\[\\]\\\\');
-    assert.isTrue(new RegExp(escapeRegex(special)).test(`x${special}y`));
   });
 
   // "(" and "m3d.*" taken literally: the shared suite, slice 3 (3.8)

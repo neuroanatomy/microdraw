@@ -18,7 +18,7 @@
 const WebSocket = require('ws');
 const { AccessControlService } = require('neuroweblab');
 const { findCurrentProject } = require('../project/currentProject');
-const { usernameFromCookie } = require('./sessionUser');
+const { usernameFromCookie } = require('neuroweblab');
 const log = require('../../log').child({ module: 'websocket' });
 
 // Types only the server handles or sends: never relayed to other clients.
