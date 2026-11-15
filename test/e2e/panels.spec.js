@@ -12,6 +12,10 @@
   and a drag still follows the pointer: centred by a transform at rest, it is
   pinned by its top-left corner at the first press (nwl-components floatingPanel).
   (Before, centred by translate(-50%, -50%), it grew in every direction.)
+  The labels and layers panels are resized by nwl-components' resize handle
+  (3.3.0), with a finger on a tablet as with the mouse, and their native
+  `resize` is off. (Before, `resize: both`: iOS and iPadOS draw no resize
+  corner, so a finger couldn't resize them.)
 */
 const { assert } = require('chai');
 const U = require('../mocha.test.util');
@@ -20,6 +24,8 @@ const H = require('./helpers');
 const DATA_URL = '/data?source=/test_data/cat.json&slice=0';
 const DELTA = { x: 60, y: 40 };
 const GROW = { width: 50, height: 30 };
+const TABLET = { width: 1180, height: 820, deviceScaleFactor: 1, isMobile: true, hasTouch: true };
+const HANDLE = ':scope > .nwl-panel-resize-handle';
 
 const PANELS = {
   labels: { panel: '#labelset-panel', header: '#labelset-header', close: '#labels-close', open: () => window.ToolColor.color.click('select'), drag: true },
@@ -41,6 +47,7 @@ const scrolledToBottom = (p, height) => page.evaluate(({ panel: sel, header: hea
   const [pr, hr, br] = [panel, panel.querySelector(headerSel), body].map((el) => el.getBoundingClientRect());
   const result = {
     ...(({ display, resize }) => ({ display, resize }))(getComputedStyle(panel)),
+    handle: panel.querySelectorAll(':scope > .nwl-panel-resize-handle').length,
     overflows,
     scrolled: body.scrollTop > 0,
     panelScroll: panel.scrollTop,
@@ -88,10 +95,20 @@ const sizeOf = (sel) => page.evaluate((s) => {
 
 const round = (r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, Math.round(v)]));
 
-// the panel's resize corner (bottom-right, inside its border), pulled with the mouse by `delta`
+// the centre of the panel's resize handle (bottom-right), and whether nothing covers it
+const handleCentre = (sel) => page.evaluate((s, h) => {
+  const handle = Microdraw.dom.querySelector(s).querySelector(h);
+  const r = handle.getBoundingClientRect();
+  const [x, y] = [r.left + r.width / 2, r.top + r.height / 2];
+
+  return { x, y, isHandle: Microdraw.dom.elementFromPoint(x, y) === handle };
+}, sel, HANDLE);
+
+// the panel's resize handle, pulled with the mouse by `delta`
 const pullCorner = async (sel, delta) => {
-  const r = await sizeOf(sel);
-  await mouseDrag({ x: r.left + r.width - 4, y: r.top + r.height - 4 }, { x: delta.width, y: delta.height });
+  const from = await handleCentre(sel);
+  assert.isTrue(from.isHandle, 'nothing covers the resize handle');
+  await mouseDrag(from, { x: delta.width, y: delta.height });
 };
 
 const displayOf = (sel) => page.evaluate((s) => getComputedStyle(Microdraw.dom.querySelector(s)).display, sel);
@@ -129,7 +146,9 @@ describe('The viewer\'s floating panels keep their header while they scroll (nwl
       assert.equal(r.panelScroll, 0, 'the panel itself does not scroll');
       assert.equal(r.headerTop, 1, 'the header at the top, inside the panel\'s 1px border');
       assert.isFalse(r.headerBelowBody, 'the body starts below the header');
-      assert.equal(r.resize, p.drag ? 'both' : 'none');
+      // the labels and layers panels have nwl-components' resize handle, and no native resize
+      assert.equal(r.resize, 'none');
+      assert.equal(r.handle, p.drag ? 1 : 0);
     }).timeout(U.longTimeout);
 
     it(`${name}: closes with its close button and opens again`, async () => {
@@ -153,7 +172,7 @@ describe('The viewer\'s floating panels keep their header while they scroll (nwl
         assert.deepEqual({ x: Math.round(after.left - before.left), y: Math.round(after.top - before.top) }, DELTA);
       }).timeout(U.longTimeout);
 
-      it(`${name}: resized by its bottom-right corner, its top-left corner stays; then dragged, it follows the pointer`, async () => {
+      it(`${name}: resized by its handle with the mouse, its top-left corner stays; then dragged, it follows the pointer`, async () => {
         await page.evaluate(p.open);
         const before = round(await sizeOf(p.panel));
         await pullCorner(p.panel, GROW);
@@ -170,5 +189,52 @@ describe('The viewer\'s floating panels keep their header while they scroll (nwl
 
   it('no page errors', () => {
     assert.deepEqual(errors, []);
+  });
+});
+
+// a finger's drag from `from` by `delta`, in steps
+const touchDrag = async (from, delta) => {
+  await page.touchscreen.touchStart(from.x, from.y);
+  for (let i = 1; i <= 8; i++) {
+    // eslint-disable-next-line no-await-in-loop
+    await page.touchscreen.touchMove(from.x + delta.width * i / 8, from.y + delta.height * i / 8);
+  }
+  await page.touchscreen.touchEnd();
+};
+
+describe('On a tablet, a finger resizes the floating panels by their handle (nwl-components 3.3.0)', () => {
+  const tabletErrors = [];
+
+  before(async () => {
+    context = await H.newContext();
+    page = await context.newPage();
+    page.on('pageerror', (err) => tabletErrors.push(err.message));
+    await page.setViewport(TABLET);
+    await H.openData(page, U.url(DATA_URL));
+    await page.waitForFunction(() => Microdraw.ontology && Microdraw.ontology.labels, { polling: 50, timeout: U.shortTimeout });
+  });
+
+  after(async () => {
+    await H.closeContext(context);
+  });
+
+  Object.entries(PANELS).filter(([, p]) => p.drag)
+    .forEach(([name, p]) => {
+      it(`${name}: a finger's drag on its handle resizes it, its top-left corner stays; no native resize`, async () => {
+        await page.evaluate(p.open);
+        const before = round(await sizeOf(p.panel));
+        const from = await handleCentre(p.panel);
+        assert.isTrue(from.isHandle, 'nothing covers the resize handle');
+        await touchDrag(from, GROW);
+        const resized = round(await sizeOf(p.panel));
+        assert.deepEqual({ left: resized.left, top: resized.top }, { left: before.left, top: before.top }, 'the top-left corner stays');
+        assert.deepEqual({ width: resized.width - before.width, height: resized.height - before.height }, GROW, 'it grows by the drag');
+        assert.equal(await page.evaluate((s) => getComputedStyle(Microdraw.dom.querySelector(s)).resize, p.panel), 'none');
+        await page.evaluate((s) => { Microdraw.dom.querySelector(s).style.display = 'none'; }, p.panel);
+      }).timeout(U.longTimeout);
+    });
+
+  it('no page errors', () => {
+    assert.deepEqual(tabletErrors, []);
   });
 });
