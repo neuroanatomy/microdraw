@@ -11,7 +11,8 @@
   toolbar always floats over the image, so it is draggable all the time, kept
   inside the viewer area (#microdrawView) while dragging, on window resize and
   on entering or leaving full screen. M4g (D37): its position is not
-  remembered; every page load and every new image starts it at the top left
+  remembered; every page load starts it at the top left (another slice keeps it
+  where it is, maintainer 2026-11-15)
   (docked left).
 
   Each test has its own browser context (its own localStorage) and its page is
@@ -180,7 +181,7 @@ describe('Dragging the viewer\'s toolbar (M4e, M4f)', () => {
     }).timeout(U.longTimeout);
 
     // eslint-disable-next-line max-statements
-    it('starts at the top left after a reload and on the next image, even after being dragged', async () => {
+    it('starts at the top left after a reload; the next slice keeps it where it is', async () => {
       await openViewer(VIEWPORTS.desktop);
       const start = await panelRect(page);
       const view = await viewRect(page);
@@ -191,11 +192,12 @@ describe('Dragging the viewer\'s toolbar (M4e, M4f)', () => {
       assert.equal(await toolbarDisplay(page), 'free');
       assert.isNull(await stored(page), 'nothing remembered');
 
-      // next image
+      // next slice: the toolbar stays where it was put (maintainer, 2026-11-15)
+      const moved = await panelRect(page);
       await press(page, '#next');
       await H.waitForMicrodraw(page, 1);
-      assert.equal(await toolbarDisplay(page), 'left');
-      assert.deepEqual(await panelRect(page), start);
+      assert.equal(await toolbarDisplay(page), 'free');
+      assert.deepEqual(await panelRect(page), moved);
 
       // reload
       await mouseDrag(page, await handleCentre(page), { x: FAR, y: FAR });
@@ -203,11 +205,13 @@ describe('Dragging the viewer\'s toolbar (M4e, M4f)', () => {
       assert.equal(await toolbarDisplay(page), 'left');
       assert.deepEqual(await panelRect(page), start);
 
-      // docked right, then a new image: back to the top left too
+      // docked right, then another slice: still docked right
       await press(page, '#display-right');
+      const right = await panelRect(page);
       await press(page, '#next');
       await H.waitForMicrodraw(page, 1);
-      assert.deepEqual(await panelRect(page), start);
+      assert.equal(await toolbarDisplay(page), 'right');
+      assert.deepEqual(await panelRect(page), right);
     }).timeout(U.longTimeout);
 
     it('forgets a position M4f left in the browser', async () => {
@@ -246,15 +250,18 @@ describe('Dragging the viewer\'s toolbar (M4e, M4f)', () => {
   });
 
   describe('in full screen', () => {
-    it('moves the toolbar by the mouse drag, and starts the next image at the top left', async () => {
+    // eslint-disable-next-line max-statements -- one drag, then the next slice checked
+    it('moves the toolbar by the mouse drag, and the next slice keeps it there', async () => {
       await openViewer(VIEWPORTS.desktop, { fullscreen: true });
       const before = await panelRect(page);
       await mouseDrag(page, await handleCentre(page));
-      assertMovedByDelta(before, await panelRect(page));
+      const moved = await panelRect(page);
+      assertMovedByDelta(before, moved);
       assert.equal(await toolbarDisplay(page), 'free');
       await press(page, '#next');
       await H.waitForMicrodraw(page, 1);
-      assert.deepEqual(await panelRect(page), before);
+      assert.equal(await toolbarDisplay(page), 'free');
+      assert.deepEqual(await panelRect(page), moved);
       assert.deepEqual(pageErrors, []);
     }).timeout(U.longTimeout);
 

@@ -1425,8 +1425,7 @@ const Microdraw = (function () {
       // display slice number
       me.dom.querySelector("#slice-number").innerHTML = `Slice ${imageNumber}`;
 
-      // every image starts with the toolbar at the viewer's top left (M4g, D37)
-      me.resetToolbarPosition();
+      // the toolbar stays where it is: a page starts docked top left (M4g), a slice keeps it (2026-11-15)
 
       // open the image in the viewer
       me.viewerOpenImage(me.ImageInfo[me.currentImage]);
@@ -2432,7 +2431,7 @@ const Microdraw = (function () {
 
     /**
      * @desc Puts the toolbar back at the viewer's top left corner, docked left (as on page
-     * load); called for every new image (M4g, D37)
+     * load; M4g, D37). No longer called on a slice change (maintainer, 2026-11-15)
      * @returns {void}
      */
     resetToolbarPosition: () => {
