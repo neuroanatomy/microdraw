@@ -162,9 +162,15 @@
             oninput="Microdraw.dom.querySelector('#paperjs-container').style.opacity=this.value"/>
     </li>
     <li>
-        <b>Regions</b><br/>
+        <b id="regions-heading">Regions</b><br/>
+        <!-- the regions of the slice, top-most first (T002 3.5): regions-list.js -->
         <div id="regions-list">
+            <table id="regions-table" aria-labelledby="regions-heading" aria-describedby="regions-help">
+                <tbody></tbody>
+            </table>
+            <p id="regions-empty" hidden>No regions on this slice</p>
         </div>
+        <small id="regions-help">Top-most first. Drag a row by its handle, or use Alt+Up and Alt+Down, to change the order.</small>
     </li>
   </ul>
 </div>

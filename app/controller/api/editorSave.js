@@ -12,6 +12,18 @@
  *   it is: another user saved it after this client loaded the slice.
  * Nothing is deleted: replaced and removed regions become backups.
  *
+ * The paint order (T002 3.5): the viewer sends each region with `order`, its
+ * index in the slice's paint order (0 is painted first, at the bottom). It is
+ * stored on the region's current document, beside `annotation`:
+ * - a region inserted (new, or with another path or name) is stored with it;
+ * - a region sent unchanged whose `order` differs gets it set in place: same
+ *   document, _id and user, no backup;
+ * - a region not sent keeps its `order`, or has none.
+ * A region sent without a numeric `order` (an older client) leaves the order
+ * as it is. The viewer loads documents without `order` first, newest first
+ * (as before T002 3.5), then the others by `order` (microdraw.js
+ * sortByOrder).
+ *
  * The API upload (POST /api/upload) uses storeUpload in index.js.
  */
 const { ObjectId } = require('neuroweblab');
@@ -44,6 +56,23 @@ const canonical = (value) => {
 const sameRegion = (stored, sent) => Boolean(stored)
   && stored.name === sent.name
   && canonical(stored.path) === canonical(sent.path);
+
+// A region's `order` as sent: a finite number, or undefined
+const orderOf = (region) => (typeof region.order === 'number' && Number.isFinite(region.order) ? region.order : undefined); // eslint-disable-line no-undefined
+
+// The region as stored in `annotation`: what the viewer sends, without `order`
+const withoutOrder = (region) => {
+  const { order, ...annotation } = region; // eslint-disable-line no-unused-vars
+
+  return annotation;
+};
+
+// Set the order of an unchanged region's current document, in place
+const setOrder = (db, doc, order) => db.updateAnnotations({
+  query: { _id: doc._id, ...current },
+  update: { $set: { order } },
+  options: { multi: false }
+});
 
 // Back up the current documents of one region. With `olderThan`, only those
 // inserted before it: the version just inserted stays current, and of two
@@ -94,7 +123,8 @@ const backUpByIds = (db, docs) => {
  * Apply an editor save.
  * @param {object} req The request (req.app.db is the database)
  * @param {object} save {fileID, user, project, Hash, annotationString}
- * @returns {Promise<object>} {inserted, unchanged, removed}: uids
+ * @returns {Promise<object>} {inserted, unchanged, reordered, removed}: uids
+ * (reordered: unchanged regions whose order was set)
  */
 // eslint-disable-next-line max-statements
 const saveEditorChanges = async (req, { fileID, user, project, Hash, annotationString }) => {
@@ -113,19 +143,29 @@ const saveEditorChanges = async (req, { fileID, user, project, Hash, annotationS
     }
   }
 
-  const result = { inserted: [], unchanged: [], removed: [] };
+  const result = { inserted: [], unchanged: [], reordered: [], removed: [] };
   const sent = new Set();
   for (const region of regions) {
     // a region without uid can't be matched: ignored. The viewer gives a uid to every region.
     if (region && typeof region.uid !== 'undefined' && !sent.has(region.uid)) {
       sent.add(region.uid);
       const docs = stored.get(region.uid) || [];
+      const order = orderOf(region);
       if (docs.length === 1 && sameRegion(docs[0].annotation, region)) {
         result.unchanged.push(region.uid);
+        if (typeof order !== 'undefined' && docs[0].order !== order) {
+          // eslint-disable-next-line no-await-in-loop
+          await setOrder(db, docs[0], order);
+          result.reordered.push(region.uid);
+        }
       } else {
         const _id = new ObjectId();
+        const doc = { _id, fileID, user, project, Hash, annotation: withoutOrder(region) };
+        if (typeof order !== 'undefined') {
+          doc.order = order;
+        }
         // eslint-disable-next-line no-await-in-loop
-        await db.insertAnnotations([{ _id, fileID, user, project, Hash, annotation: region }]);
+        await db.insertAnnotations([doc]);
         // eslint-disable-next-line no-await-in-loop
         await backUpRegion(db, slice, region.uid, _id);
         // eslint-disable-next-line no-await-in-loop

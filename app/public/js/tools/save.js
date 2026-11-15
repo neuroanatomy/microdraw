@@ -56,7 +56,7 @@ window.ToolSave = { save: (function() {
     section.RegionsToRemove = section.RegionsToRemove.filter((uid) => !removed.has(uid));
     section.Hash = Microdraw.valueHash({ Regions: value.Regions, RegionsToRemove: [] });
     // what the server has now, unless another user saved too (step 3b)
-    section.serverSignature = Microdraw.regionsSignature(value.Regions);
+    section.serverSignature = Microdraw.regionsSignature(Microdraw.withOrder(value.Regions));
     UnsavedStash.snapshot(Microdraw, sl);
   };
 
@@ -203,7 +203,8 @@ window.ToolSave = { save: (function() {
       slice: sl,
       project: Microdraw.project,
       Hash: h,
-      annotation: JSON.stringify(value)
+      // each region with its paint order (T002 3.5)
+      annotation: JSON.stringify({...value, Regions: Microdraw.withOrder(value.Regions)})
     }, value).catch((err) => {
       const refused = new Error('save refused');
       refused.cause = err;

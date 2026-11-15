@@ -1,4 +1,5 @@
 /* global Microdraw */
+/* eslint-disable max-lines */
 'use strict';
 
 /*
@@ -10,9 +11,12 @@
   that is not one of them ('Set 1', from the old stub) is shown and saved as
   stored.
 
-  app/public/labels/ only holds 10regions.json: the second label set is a
-  test fixture (fixtures/e2e3regions.json), served by request interception
-  along with a /api/getLabelsets answer that lists it.
+  T002 3.5: app/public/labels/ holds 10regions.json and 20regions.json, 10
+  regions first. The viewer tests also use a test fixture
+  (fixtures/e2e3regions.json), served by request interception along with a
+  /api/getLabelsets answer that lists it; 20regions.json is the real file.
+  The stored values of the old settings stub ('Set I', 'set1.json', empty)
+  load 10 regions; a new vectorial layer gets 10 regions in the settings.
 */
 const fs = require('fs');
 const path = require('path');
@@ -22,7 +26,11 @@ const H = require('./helpers');
 
 const SOURCE = '/test_data/cat.json';
 const E2E_SET = fs.readFileSync(path.join(__dirname, 'fixtures/e2e3regions.json'), 'utf8');
-const LISTED = [{ name: '10 regions', source: '10regions.json' }, { name: 'E2E 3 regions', source: 'e2e3regions.json' }];
+const LISTED = [
+  { name: '10 regions', source: '10regions.json' },
+  { name: '20 regions', source: '20regions.json' },
+  { name: 'E2E 3 regions', source: 'e2e3regions.json' }
+];
 
 const owner = { username: 'e2e-labelsets-owner', password: 'e2e-labelsets-owner-password' };
 const vectorial = (values, name = 'regions') => ({ type: 'vectorial', name, values, display: true });
@@ -40,6 +48,10 @@ const projects = {
   second: withLayers('e2elabelssecond', [text, vectorial('e2e3regions.json'), vectorial('10regions.json', 'other')]),
   byName: withLayers('e2elabelsbyname', [vectorial('E2E 3 regions')]),
   unknown: withLayers('e2elabelsunknown', [vectorial('Set 1')]),
+  twenty: withLayers('e2elabelstwenty', [text, vectorial('20regions.json')]),
+  stubSetI: withLayers('e2elabelsseti', [vectorial('Set I')]),
+  stubFile: withLayers('e2elabelsset1', [vectorial('set1.json')]),
+  stubEmpty: withLayers('e2elabelsempty', [vectorial('')]),
   noVectorial: withLayers('e2elabelsnovect', [text]),
   settings: withLayers('e2elabelssettings', [vectorial('10regions.json'), vectorial('Set 1', 'legacy')])
 };
@@ -150,6 +162,59 @@ describe('Label sets in the viewer and the settings (T002 3.2)', () => {
       assert.deepEqual(errors, []);
     }).timeout(U.longTimeout);
 
+    it('a project whose first vectorial layer is 20regions.json shows 20 regions in the panel (T002 3.5)', async () => {
+      assert.deepEqual(await openAndWaitFor(projects.twenty.shortname, '20 regions'), { title: '20 regions', labels: 20 });
+      assert.include(asked, '/labels/20regions.json');
+      const panel = await page.evaluate(() => {
+        window.ToolColor.color.click('select');
+        const rows = [...Microdraw.dom.querySelectorAll('#labelset-panel #label-list > div')];
+        const names = rows.map((r) => r.querySelector('.label-name').textContent);
+        const colors = rows.map((r) => r.querySelector('.label-color').style.backgroundColor);
+        // choosing the 15th label: the next region is a Region 15
+        rows[14].querySelector('.label-color').click();
+
+        return { names, colors, index: Microdraw.currentLabelIndex, next: Microdraw.ontology.labels[Microdraw.currentLabelIndex].name };
+      });
+      assert.deepEqual(panel.names, Array.from({ length: 20 }, (_, i) => `Region ${i + 1}`));
+      assert.lengthOf(new Set(panel.colors), 20);
+      assert.deepInclude(panel, { index: 14, next: 'Region 15' });
+      assert.equal(await page.evaluate(() => Microdraw.dom.querySelector('#color').style.backgroundColor), panel.colors[14]);
+      assert.deepEqual(warnings, []);
+      assert.deepEqual(errors, []);
+    }).timeout(U.longTimeout);
+
+    it('with 20 regions, a hidden label hides its regions, and the opacity slider works', async () => {
+      // eslint-disable-next-line max-statements -- one step after the other in the page
+      const result = await page.evaluate(() => {
+        const reg = Microdraw.newRegion({ name: 'Region 15', path: new window.paper.Path.Circle([200, 200], 20) });
+        window.ToolColor.color.click('select');
+        const panel = Microdraw.dom.querySelector('#labelset-panel');
+        const display = panel.querySelectorAll('#label-list > div')[14].querySelector('.label-display');
+        display.click();
+        const hidden = { opacity: reg.path.opacity, visible: Microdraw.ontology.labels[14].visible };
+        display.click();
+        const shown = reg.path.opacity;
+        const slider = panel.querySelector('#labels-opacity');
+        slider.value = '0.4';
+        slider.dispatchEvent(new Event('input'));
+        const { opacity } = Microdraw.dom.querySelector('#paperjs-container').style;
+        slider.value = '1';
+        slider.dispatchEvent(new Event('input'));
+        panel.querySelector('#labels-close').click();
+
+        return { hidden, shown, opacity };
+      });
+      assert.deepEqual(result, { hidden: { opacity: 0, visible: false }, shown: 1, opacity: '0.4' });
+      assert.deepEqual(errors, []);
+    }).timeout(U.longTimeout);
+
+    for (const [key, values] of [['stubSetI', 'Set I'], ['stubFile', 'set1.json'], ['stubEmpty', '']]) {
+      it(`a stored '${values}' (the old settings stub) shows 10 regions`, async () => {
+        assert.deepEqual(await openAndWaitFor(projects[key].shortname, '10 regions'), { title: '10 regions', labels: 10 });
+        assert.deepEqual(errors, []);
+      }).timeout(U.longTimeout);
+    }
+
     it('a project without a vectorial layer loads 10 regions, without a warning', async () => {
       assert.deepEqual(await openAndWaitFor(projects.noVectorial.shortname, '10 regions'), { title: '10 regions', labels: 10 });
       assert.notInclude(asked, '/api/getLabelsets');
@@ -202,7 +267,11 @@ describe('Label sets in the viewer and the settings (T002 3.2)', () => {
       }, { polling: 50, timeout: U.shortTimeout });
       const rows = await layerRows();
       // the real list first (app/public/labels/), then the stored value that is not in it
-      assert.deepEqual(rows[0].options, [{ name: '10 regions', source: '10regions.json' }, { name: 'Set 1', source: 'Set 1' }]);
+      assert.deepEqual(rows[0].options, [
+        { name: '10 regions', source: '10regions.json' },
+        { name: '20 regions', source: '20regions.json' },
+        { name: 'Set 1', source: 'Set 1' }
+      ]);
       assert.deepInclude(rows[0], { value: '10regions.json', shown: '10 regions' });
       assert.deepInclude(rows[1], { value: 'Set 1', shown: 'Set 1' });
     }).timeout(U.longTimeout);
@@ -215,6 +284,28 @@ describe('Label sets in the viewer and the settings (T002 3.2)', () => {
       assert.equal(res.status(), 200, JSON.stringify(await res.json()));
       const stored = await U.queryProject(projects.settings.shortname);
       assert.deepEqual(stored.annotations.list.map((a) => a.values), ['10regions.json', 'Set 1']);
+    }).timeout(U.longTimeout);
+
+    // eslint-disable-next-line max-statements -- one test, step by step
+    it('a new vectorial layer gets 10 regions, stored (T002 3.5)', async () => {
+      const [add] = await page.$$('xpath///button[@title="Add annotation"]');
+      await add.click();
+      await page.waitForFunction(() => document.querySelectorAll('#annotations tbody tr').length === 3, { polling: 50, timeout: U.shortTimeout });
+      await page.type('#annotations tbody tr:nth-child(3) td:nth-child(1) input', 'new layer');
+      await page.select('#annotations tbody tr:nth-child(3) td:nth-child(2) select', 'vectorial');
+      await page.waitForFunction(() => Boolean(document.querySelector('#annotations tbody tr:nth-child(3) td:nth-child(3) select')), { polling: 50, timeout: U.shortTimeout });
+      assert.deepInclude((await layerRows())[2], { value: '10regions.json', shown: '10 regions' });
+
+      const answer = page.waitForResponse((r) => r.request().method() === 'POST' && r.url().includes(`/project/json/${projects.settings.shortname}`), { timeout: U.shortTimeout });
+      const [save] = await page.$$('xpath///button[contains(normalize-space(.), "Save Changes")]');
+      await save.click();
+      assert.equal((await answer).status(), 200);
+      const stored = await U.queryProject(projects.settings.shortname);
+      assert.deepEqual(stored.annotations.list.map((a) => [a.type, a.values]), [
+        ['vectorial', '10regions.json'],
+        ['vectorial', 'Set 1'],
+        ['vectorial', '10regions.json']
+      ]);
     }).timeout(U.longTimeout);
   });
 });

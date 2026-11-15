@@ -10,8 +10,15 @@ const log = require('../../log');
 
 const LABELS_DIR = path.join(__dirname, '../../public/labels');
 
+// The default label set (the viewer's fallback, and the one a new vectorial
+// layer gets in the settings: nwl-components takes the first of the list)
+// comes first, whatever the other file names (T002 3.5).
+const DEFAULT_SOURCE = '10regions.json';
+const defaultFirst = (a, b) => Number(b === DEFAULT_SOURCE) - Number(a === DEFAULT_SOURCE) || (a < b ? -1 : Number(a > b));
+
 /**
- * The label sets of a folder: its `*.json` files, by file name. A file that
+ * The label sets of a folder: its `*.json` files, 10regions.json first, then
+ * by file name. A file that
  * is not valid JSON, or has no `name`, is skipped and logged.
  * @param {string} dir The folder
  * @returns {Promise<Array<{name: string, source: string}>>} The label sets
@@ -20,7 +27,7 @@ const listLabelSets = async (dir = LABELS_DIR) => {
   const files = (await fs.promises.readdir(dir, { withFileTypes: true }))
     .filter((f) => f.isFile() && f.name.endsWith('.json'))
     .map((f) => f.name)
-    .sort();
+    .sort(defaultFirst);
   const sets = await Promise.all(files.map(async (file) => {
     try {
       const json = JSON.parse(await fs.promises.readFile(path.join(dir, file), 'utf8'));
@@ -43,4 +50,4 @@ const getLabelsets = async (req, res) => {
   res.json(await listLabelSets());
 };
 
-module.exports = { LABELS_DIR, listLabelSets, getLabelsets };
+module.exports = { LABELS_DIR, DEFAULT_SOURCE, listLabelSets, getLabelsets };

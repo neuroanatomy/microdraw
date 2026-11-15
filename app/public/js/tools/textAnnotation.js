@@ -54,6 +54,8 @@ window.ToolTextAnnotation = {textAnnotation: (function() {
       tool.item.content = content;
       tool.item.fillColor = fillColor;
       tool.item.fontSize = fontSize;
+      // the Regions list shows the new text
+      Microdraw.regionsChanged();
 
       const obj = dom.querySelector("#text-annotation-panel");
       obj.style.display = "none";

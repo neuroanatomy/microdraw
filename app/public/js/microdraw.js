@@ -388,29 +388,69 @@ const Microdraw = (function () {
       return text;
     },
 
-    _selectRegionInList: function (reg) {
-      // Select region name in list
-      [].forEach.call(me.dom.querySelectorAll("#regionList > .region-tag"), function(r) {
-        r.classList.add("deselected");
-        r.classList.remove("selected");
-      });
-
-      if (reg) {
-        // Need to use unicode character for ID since CSS3 doesn't support ID selectors that start with a digit:
-        // If reg.uid starts with a number, the first number has to be converted to unicode
-        // for example, 10a to #\\31 0a
-        // var tag = me.dom.querySelector("#regionList > .region-tag#\\3" + (reg.uid.toString().length > 1 ? reg.uid.toString()[0] + ' ' + reg.uid.toString().slice(1) : reg.uid.toString()) );
-        let uid = reg.uid.toString();
-        if(isNaN(parseInt(uid[0], 10)) === false) {
-          uid = "\\3" + (uid.length > 1 ? uid[0] + ' ' + uid.slice(1) : uid);
-        }
-
-        const tag = me.dom.querySelector(`#regionList > .region-tag#${uid}`);
-        if(tag) {
-          tag.classList.remove("deselected");
-          tag.classList.add("selected");
-        }
+    /**
+       * @desc The regions of the current slice, their order, names or
+       * selection changed: the Regions list of the labels panel shows them
+       * again (T002 3.5). Cheap: the list is rebuilt once per frame, and only
+       * while the panel is open. Replaces _selectRegionInList, which updated
+       * a #regionList that no page has had for years.
+       * @returns {void}
+       */
+    regionsChanged: function () {
+      if (window.RegionsList) {
+        window.RegionsList.schedule();
       }
+    },
+
+    /**
+       * Regions are stored in two places: Microdraw.ImageInfo[].Regions, and
+       * paper.project, which paper.js draws. Their order should always be the
+       * same (the first region is painted first, at the bottom).
+       * @returns {boolean} true if the order is the same
+       */
+    _isPaperRegionsOrderOk: function () {
+      const {Regions: regions} = me.ImageInfo[me.currentImage];
+      const {children} = paper.project.activeLayer;
+
+      return regions.every((reg, i) => reg.path === children[i]);
+    },
+
+    /**
+       * @desc Move a region of the current slice to another place in the
+       * paint order: index 0 is painted first (at the bottom), the last index
+       * is the top-most. Regions and the paper.js layer change together, with
+       * one undo step. Used by the toolbar's back, backward, foreward and
+       * front tools and by the Regions list (T002 3.5).
+       * @param {object} reg A region of the current slice
+       * @param {number} newIndex Its new index, clamped to the list
+       * @returns {boolean} true if the region moved
+       */
+    moveRegion: function (reg, newIndex) {
+      const {Regions: regions} = me.ImageInfo[me.currentImage];
+      const index = regions.indexOf(reg);
+      if (index < 0) {
+        console.log("ERROR: cannot find the region to move");
+
+        return false;
+      }
+      const to = Math.max(0, Math.min(newIndex, regions.length - 1));
+      if (to === index) {
+        return false;
+      }
+      if (!me._isPaperRegionsOrderOk()) {
+        console.log("ERROR: region order is incorrect");
+
+        return false;
+      }
+      me.saveUndo(me.getUndo());
+      regions.splice(index, 1);
+      regions.splice(to, 0, reg);
+      reg.path.remove();
+      paper.project.activeLayer.insertChild(to, reg.path);
+      paper.view.draw();
+      me.regionsChanged();
+
+      return true;
     },
 
     /**
@@ -434,7 +474,7 @@ const Microdraw = (function () {
       }
       paper.view.draw();
 
-      me._selectRegionInList(reg);
+      me.regionsChanged();
 
       if(me.debug>1) { console.log("< selectRegion"); }
     },
@@ -455,10 +495,7 @@ const Microdraw = (function () {
       reg.path.fillColor = 'rgba(' + color.red + ',' + color.green + ',' + color.blue + ',0.5)';
       reg.path.opacity = me._isRegionVisible(name) ? 1 : 0;
       paper.view.draw();
-
-      // Update region tag
-      // me.dom.querySelector(".region-tag#" + reg.uid + ">.region-name").textContent = name;
-      // me.dom.querySelector(".region-tag#" + reg.uid + ">.region-color").style['background-color'] = 'rgba(' + color.red + ',' + color.green + ',' + color.blue + ',0.67)';
+      me.regionsChanged();
     },
 
     /**
@@ -614,31 +651,9 @@ const Microdraw = (function () {
       if( typeof imageNumber === "undefined" ) {
         imageNumber = me.currentImage;
       }
-      // if( imageNumber === me.currentImage ) {
-      //     // append region tag to regionList
-      //     const regionTag = me.regionTag(reg.name, reg.uid);
-      //     var el = me.dom.querySelector(regionTag);
-      //     me.dom.querySelector("#regionList").appendChild(el);
-
-      //     // handle single click on computers
-      //     el.click(me.singlePressOnRegion);
-
-      //     // handle double click on computers
-      //     el.dblclick(me.doublePressOnRegion);
-
-      //     // handle single and double tap on touch devices
-      //     /**
-      //      * @todo it seems that a click event is also fired on touch devices, making this one redundant
-      //      */
-
-      //     el.on("touchstart", me.handleRegionTap);
-      // }
-
       // push the new region to the Regions array
       me.ImageInfo[imageNumber].Regions.push(reg);
-
-      // Select region name in list
-      // me.selectRegion(reg);
+      me.regionsChanged();
 
       return reg;
     },
@@ -663,7 +678,7 @@ const Microdraw = (function () {
       me.ImageInfo[imageNumber].Regions.splice(me.ImageInfo[imageNumber].Regions.indexOf(reg), 1);
       // remove from paths
       reg.path.remove();
-
+      me.regionsChanged();
     },
 
     /**
@@ -824,6 +839,8 @@ const Microdraw = (function () {
       if(me.tools[me.selectedTool] && me.tools[me.selectedTool].mouseUp) {
         me.tools[me.selectedTool].mouseUp();
       }
+      // a region drawn, selected or deselected on the canvas
+      me.regionsChanged();
     },
 
     /**
@@ -1449,9 +1466,11 @@ const Microdraw = (function () {
 
     /**
        * @desc A string that is the same for two lists of regions with the same
-       * uids, names and paths, whatever their order and the key order of their
-       * paths (as the server compares regions, editorSave.js `canonical`).
-       * @param {Array} regions Items {uid, name, path}, path as stored (parsed JSON)
+       * uids, names, paths and stored paint orders, whatever their order in
+       * the list and the key order of their paths (as the server compares
+       * regions, editorSave.js `canonical`). With the order (T002 3.5),
+       * another user's reorder makes a live update.
+       * @param {Array} regions Items {uid, name, path, order}, path as stored (parsed JSON)
        * @returns {string} The signature
        */
     regionsSignature: (regions) => {
@@ -1468,15 +1487,43 @@ const Microdraw = (function () {
         return JSON.stringify(value);
       };
 
-      return JSON.stringify(regions.map(({uid, name, path}) => canonical([uid, name, path])).sort());
+      return JSON.stringify(regions.map(({uid, name, path, order}) => canonical([uid, name, path, order])).sort());
     },
 
     // the signature of the regions of a GET /api answer
     _dbSignature: (data) => me.regionsSignature(data.map((doc) => ({
       uid: me._dbRegionUid(doc),
       name: doc.annotation.name,
-      path: doc.annotation.path
+      path: doc.annotation.path,
+      order: doc.order
     }))),
+
+    /**
+       * @desc The regions to save, each with `order`, its index in the paint
+       * order (T002 3.5): the server stores it on the region's document.
+       * @param {Array} regions Items {uid, name, path}, in paint order
+       * @returns {Array} Items {uid, name, path, order}
+       */
+    withOrder: (regions) => regions.map((region, order) => ({...region, order})),
+
+    /**
+       * @desc The documents of a GET /api answer in paint order (T002 3.5):
+       * first those without `order` (all of them before T002 3.5), newest
+       * first, as the server's {project: 1, _id: -1} index gave them; then
+       * the others by `order`, the older first for an equal order.
+       * @param {Array} data The documents
+       * @returns {Array} A sorted copy
+       */
+    sortByOrder: (data) => {
+      const ordered = (doc) => typeof doc.order === "number" && Number.isFinite(doc.order);
+      const id = (doc) => String(doc._id || "");
+      const byId = (a, b) => (id(a) < id(b) ? -1 : Number(id(a) > id(b)));
+
+      return [
+        ...data.filter((doc) => !ordered(doc)).sort((a, b) => byId(b, a)),
+        ...data.filter(ordered).sort((a, b) => (a.order - b.order) || byId(a, b))
+      ];
+    },
 
     _convertDBAnnotationsToRegions: (data) => {
       const regions = [];
@@ -1520,7 +1567,7 @@ const Microdraw = (function () {
 
     _addRegions: function (data) {
       let slice;
-      const regions = me._convertDBAnnotationsToRegions(data);
+      const regions = me._convertDBAnnotationsToRegions(me.sortByOrder(data));
 
       if (data.length) {
 
@@ -1590,6 +1637,7 @@ const Microdraw = (function () {
       me._resizePaperViewToMatchContainer();
       me.transform();
       paper.view.draw();
+      me.regionsChanged();
     },
 
     _resizePaperViewToMatchContainer: () => {
@@ -1812,6 +1860,7 @@ const Microdraw = (function () {
       }
       section.Regions = [];
       section.RegionsToRemove = [];
+      me.regionsChanged();
 
       const otherSlice = (undo) => undo.imageNumber !== slice;
       me.UndoStack = me.UndoStack.filter(otherSlice);
@@ -2158,7 +2207,8 @@ const Microdraw = (function () {
         me.loadScript("/lib/openseadragon/openseadragon.js"),
         me.loadScript("/lib/hippy-hippo/hippy-hippo-umd.js"), // vendored: hippy-hippo@0.0.1
         me.loadScript("/js/microdraw-ws.js"),
-        me.loadScript("/js/unsaved-stash.js")
+        me.loadScript("/js/unsaved-stash.js"),
+        me.loadScript("/js/regions-list.js")
       ]);
 
       await me.loadScript("/lib/openseadragon-viewerinputhook.min.js");

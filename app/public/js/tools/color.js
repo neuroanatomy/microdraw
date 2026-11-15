@@ -76,6 +76,16 @@ window.ToolColor = { color : (function() {
       obj.style.display = "none";
     },
 
+    // the panel is dragged by its header: listen once, not at every opening
+    // (each opening added three more listeners until T002 3.5)
+    _listenToHeader: (obj) => {
+      if (tool._headerReady) { return; }
+      tool._headerReady = true;
+      tool._handleStart(obj);
+      tool._handleMove(obj);
+      tool._handleEnd(obj);
+    },
+
     _attachLabelsetContainer: () => {
       const obj = dom.querySelector("#labelset-panel");
       dom.querySelector("body").appendChild(obj);
@@ -85,9 +95,10 @@ window.ToolColor = { color : (function() {
       obj.querySelector("#labels-close").onclick = tool._detachLabelsetContainer;
       obj.querySelector("#label-list").innerHTML = "";
 
-      tool._handleStart(obj);
-      tool._handleMove(obj);
-      tool._handleEnd(obj);
+      tool._listenToHeader(obj);
+
+      // the regions of the slice (T002 3.5)
+      window.RegionsList.attach();
     },
 
     // eslint-disable-next-line max-statements
