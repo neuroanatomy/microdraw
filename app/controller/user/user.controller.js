@@ -8,8 +8,8 @@ const { scriptJSON } = require('../escape');
 const { visibleProjectParts } = require('../project/visibleProject');
 const { findUserProjects } = require('../project/currentProject');
 const { lastModified, newestAnnotations } = require('./lastModified');
+const { pageOf, userAnnotations, userDatasets } = require('./userTabs');
 //const checkAccess = require('../checkAccess/checkAccess.js');
-//const dataSlices = require('../dataSlices/dataSlices.js');
 
 const validator = function (req, res, next) {
   // UserName can be an ip address (for anonymous users)
@@ -129,61 +129,49 @@ const api_userAll = async function (req, res) {
 };
 
 
-/**
- * @todo Check access rights for this route
- */
+// Whether a user exists (the user page routes answer 404 for an unknown one)
+const userExists = async (db, username) => Boolean(await db.collection('users')
+  .findOne({ username, backup: { $exists: false } }, { projection: { _id: 1 } }));
 
 /**
- * @param {object} req Request object
- * @param {object} res Response object
- * @returns {void}
+ * One page of a user page tab (T002 3.4, userTabs.js): every row the visitor
+ * may see, then `length` of them (at most 100, 100 by default) from `start`
+ * (0 by default). 404 for an unknown user.
+ * @param {Function} rowsOf (db, username, visitor) → all the visible rows
+ * @param {string} key The answer's success key: `success` for the datasets,
+ *   `successful` for the annotations (as before, and as BrainBox's routes)
+ * @returns {Function} The route
  */
-const api_userFiles = function (req, res) {
-  // Not implemented yet (T002 stage 3.3, 3.4): an empty list, not fake rows.
-  res.send({
-    success: true,
-    list: []
-  });
-
-  /*
-    dataSlices.getUserFilesSlice(req, userName, start, length)
-    .then(result => {
-        res.send(result);
-    })
-    .catch(err => {
-        console.log('ERROR:', err);
-        res.send({success: false, list: []});
-    });
-    */
+const tabRoute = (rowsOf, key) => async function (req, res) {
+  const username = req.params.userName;
+  const { start, length } = pageOf(req.query);
+  try {
+    const db = req.appConfig.db.nativeMongoDB();
+    if (await userExists(db, username)) {
+      const rows = await rowsOf(db, username, req.user ? req.user.username : 'anyone');
+      res.send({ [key]: true, list: rows.slice(start, start + length) });
+    } else {
+      res.status(404).json({ error: 'User not found' });
+    }
+  } catch (err) {
+    log.error({ err, profile: username }, 'user request failed');
+    res.status(500).send({ [key]: false, list: [] });
+  }
 };
 
 /**
- * @todo Check access rights for this route
+ * GET /user/json/:userName/files?start&length: the Datasets tab, the
+ * datasets the user owns that the visitor may see, newest first
+ * ({url, name, included, projects})
  */
+const api_userFiles = tabRoute(userDatasets, 'success');
 
 /**
- * @param {object} req Request object
- * @param {object} res Response object
- * @returns {void}
+ * GET /user/json/:userName/atlas?start&length: the Annotations tab, one row
+ * per dataset and project the user annotated, that the visitor may see,
+ * newest first ({url, name, project, slices, modified})
  */
-const api_userAtlas = function (req, res) {
-  // Not implemented yet (T002 stage 3.4): an empty list, not fake rows.
-  res.send({
-    successful: true,
-    list: []
-  });
-
-  /*
-    dataSlices.getUserAtlasSlice(req, userName, start, length)
-    .then(result => {
-        res.send(result);
-    })
-    .catch(err => {
-        console.log('ERROR:', err);
-        res.send({success: false, list: []});
-    });
-    */
-};
+const api_userAtlas = tabRoute(userAnnotations, 'successful');
 
 /**
  * A non-negative integer query parameter, or `fallback` when it is missing or not one.

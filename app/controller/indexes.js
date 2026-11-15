@@ -24,9 +24,16 @@ const PROJECTS_SHORTNAME_INDEX = 'shortname_1';
 // simultaneous saves adding the same dataset create one document
 const DATASETS_SOURCE_INDEX = 'source_1';
 
+// The user page's Annotations tab (T002 3.4, user/userTabs.js
+// userAnnotationsPipeline): one aggregation that starts with $match on the
+// user's current annotations. Without it, every load of the tab scans the
+// whole collection.
+const ANNOTATIONS_USER_INDEX = 'user_1_project_1';
+
 // [collection, keys, name, options]
 const INDEXES = [
   ['annotations', { project: 1, _id: -1 }, ANNOTATIONS_PROJECT_INDEX],
+  ['annotations', { user: 1, project: 1 }, ANNOTATIONS_USER_INDEX],
   ['textAnnotations', { project: 1, source: 1, layer: 1, _id: -1 }, TEXT_ANNOTATIONS_INDEX],
   ['projects', { shortname: 1 }, PROJECTS_SHORTNAME_INDEX],
   ['datasets', { source: 1 }, DATASETS_SOURCE_INDEX, { unique: true }]
@@ -49,5 +56,5 @@ const ensureIndexes = async (db) => {
 };
 
 module.exports = {
-  ensureIndexes, ANNOTATIONS_PROJECT_INDEX, TEXT_ANNOTATIONS_INDEX, PROJECTS_SHORTNAME_INDEX, DATASETS_SOURCE_INDEX
+  ensureIndexes, ANNOTATIONS_PROJECT_INDEX, ANNOTATIONS_USER_INDEX, TEXT_ANNOTATIONS_INDEX, PROJECTS_SHORTNAME_INDEX, DATASETS_SOURCE_INDEX
 };

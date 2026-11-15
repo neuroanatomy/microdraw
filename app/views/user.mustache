@@ -19,8 +19,6 @@
     </template>
     <template v-slot:content>
         <Tabs>
-            {{! The Datasets and Atlas Files tabs come back when stage 3 (T002 3.3, 3.4)
-                gives them real data; until then their routes answer empty lists. }}
             <Tab title="Projects">
                 <Table id="projects">
                     <thead>
@@ -54,16 +52,68 @@
                     </tbody>
                 </Table>
             </Tab>
+            <Tab title="Datasets">
+                <Table id="datasets" v-if="datasets.length > 0">
+                    <thead>
+                        <tr>
+                            <sortable-th :sort="datasetSort" column="Name">Name</sortable-th>
+                            <sortable-th :sort="datasetSort" column="Projects">Projects</sortable-th>
+                            <sortable-th :sort="datasetSort" column="Included">Included</sortable-th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <tr v-for="dataset in sortedDatasets">
+                        <td class="nwl-break-anywhere" :title="dataset.url">
+                            <a :href="datasetURL(dataset)">[[dataset.name]]</a>
+                        </td>
+                        <td class="nwl-break-anywhere">
+                            <template v-for="(shortname, i) in dataset.projects"><template v-if="i > 0">, </template><a :href="`/project/${shortname}`">[[shortname]]</a></template>
+                        </td>
+                        <td :title="localDate(dataset.included, true) || null">[[localDate(dataset.included)]]</td>
+                    </tr>
+                    </tbody>
+                </Table>
+                <p id="noDatasets" class="emptyState" v-if="datasetsLoaded && datasets.length === 0">No datasets yet.</p>
+            </Tab>
+            <Tab title="Annotations">
+                <Table id="annotations" v-if="annotations.length > 0">
+                    <thead>
+                        <tr>
+                            <sortable-th :sort="annotationSort" column="Dataset">Dataset</sortable-th>
+                            <sortable-th :sort="annotationSort" column="Project">Project</sortable-th>
+                            <sortable-th :sort="annotationSort" column="Slices">Slices</sortable-th>
+                            <sortable-th :sort="annotationSort" column="Last modified">Last modified</sortable-th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <tr v-for="row in sortedAnnotations">
+                        <td class="nwl-break-anywhere" :title="row.url">
+                            <a :href="viewerURL(row.url, row.project)">[[row.name]]</a>
+                        </td>
+                        <td class="nwl-break-anywhere">
+                            <a :href="`/project/${row.project}`">[[row.project]]</a>
+                        </td>
+                        <td>[[row.slices]]</td>
+                        <td :title="localDate(row.modified, true) || null">[[localDate(row.modified)]]</td>
+                    </tr>
+                    </tbody>
+                </Table>
+                <p id="noAnnotations" class="emptyState" v-if="annotationsLoaded && annotations.length === 0">No annotations yet.</p>
+            </Tab>
        </Tabs>
     </template>
 </UserPage>
 </script>
 <style>
-#projects {
+#projects, #datasets, #annotations {
     table-layout: auto;
 }
-#projects a {
+#projects a, #datasets a, #annotations a {
     text-decoration: none;
+}
+.emptyState {
+    margin: 10px;
+    opacity: 0.7;
 }
 .settings {
     opacity: 0.5;
