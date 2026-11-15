@@ -755,15 +755,15 @@ const Microdraw = (function () {
     },
 
     /**
+       * Place: OSD's event.position in whole px as layerX/Y was (offset in iPad full screen, 2026-11-15)
        * @param {object} event Event
        * @returns {void}
        */
     pressHandler: function (event) {
       if( me.debug>1 ) { console.log("> pressHandler"); }
-
       if( !me.navEnabled ) {
         event.stopHandlers = true;
-        me.mouseDown(event.originalEvent.layerX, event.originalEvent.layerY);
+        me.mouseDown(Math.floor(event.position.x), Math.floor(event.position.y));
       }
     },
 
@@ -790,8 +790,8 @@ const Microdraw = (function () {
       if( !me.navEnabled ) {
         event.stopHandlers = true;
         me.mouseDrag(
-          event.originalEvent.layerX,
-          event.originalEvent.layerY,
+          Math.floor(event.position.x),
+          Math.floor(event.position.y),
           event.delta.x,
           event.delta.y);
       }
