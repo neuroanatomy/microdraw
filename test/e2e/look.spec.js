@@ -135,9 +135,11 @@ const templatesWithoutFonts = async () => {
 // font family differs from their parent's, after the panels holding them are shown
 const controlFontsOf = (host) => {
   const root = document.querySelector(host).shadowRoot;
-  for (const id of ['#layers-panel', '#text-annotation-panel', '#labelset-panel', '#add-layer-panel']) {
-    root.querySelector(id).style.display = 'block';
+  // the floating panels show as flex boxes (nwl-components 3.2.0 .nwl-panel)
+  for (const id of ['#layers-panel', '#text-annotation-panel', '#labelset-panel']) {
+    root.querySelector(id).style.display = 'flex';
   }
+  root.querySelector('#add-layer-panel').style.display = 'block';
   const family = (el) => getComputedStyle(el).fontFamily;
   const controls = [...root.querySelectorAll('button, input, select, textarea')]
     .filter((el) => !el.closest('.codeflask') && el.getClientRects().length > 0);

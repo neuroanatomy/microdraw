@@ -388,32 +388,27 @@ body[data-toolbarDisplay=right] #tools-minimized div {
 
 /*-------------------*/
 /* Label set display */
+/* The floating panels (labels, layers, text annotation) are nwl-components' .nwl-panel
+   (3.2.0): the header stays, the body scrolls. Shown with style.display = "flex". */
 #labelset-panel {
   display: none;
   position: fixed;
   width: 50%;
   height: 50%;
-  overflow: scroll;
   top: 50%;
   left: 50%;
   transform: translate( -50%, -50%);
   background-color: var(--nwl-black-80);
   border: thin solid var(--nwl-border);
-  padding: 10px;
   text-align: left;
   z-index: 21;
   font-size: 0.8rem;
   resize: both;
 }
 #labelset-header {
-    /* stays at the top while the panel scrolls (2026-11-15): -10px, the panel's padding */
-    position: sticky;
-    top: -10px;
-    z-index: 1;
     height: 36px;
     background-color: var(--nwl-grey-66);
     padding: 0 5px 0 10px;
-    margin: -10px -10px 5px -10px;
     cursor:  pointer;
     /* pointer-events: none; */
 }
@@ -465,7 +460,9 @@ body[data-toolbarDisplay=right] #tools-minimized div {
 #labelset-panel li {
   margin-bottom: 1rem;
 }
-/* The Regions list (T002 3.5): it scrolls inside the panel */
+/* The Regions list (T002 3.5): it keeps its own scroll inside the panel's body, so that a
+   long label set above it doesn't push most regions out of reach, and a re-render keeps
+   the list's scroll position */
 #regions-list {
   max-height: 40vh;
   overflow-y: auto;
@@ -563,14 +560,11 @@ body[data-toolbarDisplay=right] #tools-minimized div {
     position: fixed;
     width: 400px;
     height: 300px;
-    /* max-height: 300px; */
-    overflow: scroll;
     top: 50%;
     left: 50%;
     transform: translate( -50%, -50%);
     background-color: var(--nwl-black-80);
     border: thin solid var(--nwl-border);
-    padding: 10px;
     z-index: 100;
     font-size: 0.8rem;
     resize: both;
@@ -579,19 +573,27 @@ body[data-toolbarDisplay=right] #tools-minimized div {
     height: 36px;
     background-color: var(--nwl-grey-66);
     padding: 0 5px 0 10px;
-    margin: -10px -10px 5px -10px;
     cursor:  pointer;
     /* pointer-events: none; */
 }
+/* the list of layers takes the body's height that the add-layer form and button leave, and
+   scrolls; in a panel too small even for them, the body scrolls */
+#layers-panel > .nwl-panel-body {
+    display: flex;
+    flex-direction: column;
+}
 #layers-list {
-    height: 220px;
-    max-height: 220px;
+    flex: 1 0 60px;
+    min-height: 60px;
     overflow: auto;
     margin: 0 0 10px 0;
 }
-#layers-list.small {
-    height: 120px;
-    max-height: 120px;
+#add-layer-panel,
+#add-layer-button {
+    flex: none;
+}
+#add-layer-button {
+    align-self: flex-start;
 }
 #layers-list > div.layer {
     display: block;
@@ -648,7 +650,6 @@ b.layer-item {
     max-height: 300px;
     transform: translate( -50%, -50%);
     background-color: var(--nwl-black-80);
-    padding: 10px;
     z-index: 100;
     font-size: 0.8rem;
 }
@@ -656,7 +657,6 @@ b.layer-item {
     height: 36px;
     background-color: var(--nwl-grey-66);
     padding: 0 5px 0 10px;
-    margin: -10px -10px 5px -10px;
     pointer-events: none;
 }
 #add-text-annotation > b {

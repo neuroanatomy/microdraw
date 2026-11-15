@@ -281,17 +281,19 @@ describe('The Regions list of the labels panel (T002 3.5)', () => {
     // eslint-disable-next-line max-statements -- measures, then puts the scroll back
     const r = await page.evaluate((sel) => {
       const panel = Microdraw.dom.querySelector('#labelset-panel');
+      // the panel's body scrolls, under its header (nwl-components 3.2.0 .nwl-panel)
+      const body = panel.querySelector('.nwl-panel-body');
       const td = Microdraw.dom.querySelector(`${sel} .region-swatch-cell`);
       const sw = td.querySelector('.region-swatch');
       const [c, s] = [td.getBoundingClientRect(), sw.getBoundingClientRect()];
       const border = getComputedStyle(td).borderTopWidth;
-      const { scrollTop } = panel;
+      const { scrollTop } = body;
       // a short panel, so that it scrolls
       panel.style.height = '150px';
-      panel.scrollTop = panel.scrollHeight;
-      const scrolled = panel.scrollTop > 0;
+      body.scrollTop = body.scrollHeight;
+      const scrolled = body.scrollTop > 0;
       const header = panel.querySelector('#labelset-header').getBoundingClientRect().top - panel.getBoundingClientRect().top;
-      panel.scrollTop = scrollTop;
+      body.scrollTop = scrollTop;
       panel.style.height = '';
 
       return { inside: s.left >= c.left && s.right <= c.right && s.top >= c.top && s.bottom <= c.bottom, border, scrolled, header };

@@ -72,7 +72,7 @@ window.ToolTextAnnotation = {textAnnotation: (function() {
       tool.item = item;
       tool.point = [x, y];
 
-      dom.querySelector("#text-annotation-panel").style.display = "block";
+      dom.querySelector("#text-annotation-panel").style.display = "flex";
       dom.querySelector("#add-text-annotation > div > button:nth-child(1)").style.display = "none";
       dom.querySelector("#add-text-annotation > div > button:nth-child(2)").style.display = "inline-block";
 
@@ -100,7 +100,7 @@ window.ToolTextAnnotation = {textAnnotation: (function() {
       //   textAnnotationFlag = currentFlag;
       // })(textAnnotationFlag);
       tool.point = point;
-      dom.querySelector("#text-annotation-panel").style.display = "block";
+      dom.querySelector("#text-annotation-panel").style.display = "flex";
       dom.querySelector("#add-text-annotation > div > button:nth-child(1)").style.display = "inline-block";
       dom.querySelector("#add-text-annotation > div > button:nth-child(2)").style.display = "none";
     },

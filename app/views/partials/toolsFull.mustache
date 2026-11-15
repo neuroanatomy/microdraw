@@ -126,15 +126,16 @@
 </div>
 
 <!-- Labels -->
-<div id="labelset-panel">
-    <div id="labelset-header">
+<!-- the header stays while the body scrolls (nwl-components 3.2.0 .nwl-panel) -->
+<div id="labelset-panel" class="nwl-panel">
+    <div id="labelset-header" class="nwl-panel-header">
         <img
             id="labels-close" class="button" alt="close" src="/lib/nwl-components/icons/times-circle.svg"
             style="float:right;pointer-events:auto;"/><br />
         <b>Labels</b>
     </div>
 
-
+  <div class="nwl-panel-body">
   <ul>
       <li>
           <b>Label Set</b><br/>
@@ -173,12 +174,13 @@
         <small id="regions-help">Top-most first. Drag a row to change the order (on a touch screen, press and hold it first; with the keyboard, Alt+Up and Alt+Down).</small>
     </li>
   </ul>
+  </div>
 </div>
 <!-- End Labels -->
 
 <!-- Layers -->
-<div id="layers-panel">
-    <div id="layers-header">
+<div id="layers-panel" class="nwl-panel">
+    <div id="layers-header" class="nwl-panel-header">
         <img
         id="layers-close" class="button" alt="close" src="/lib/nwl-components/icons/times-circle.svg"
         onclick="Microdraw.tools.layers._detachLayersContainer()"
@@ -186,6 +188,7 @@
         <b>Layers</b>
     </div>
 
+    <div class="nwl-panel-body">
     <div id="layers-list">
     </div>
 
@@ -196,12 +199,13 @@
         <button onclick="Microdraw.tools.layers.cancelAddLayerUI(event)">Cancel</button>
     </div>
     <button id="add-layer-button" onclick="Microdraw.tools.layers.addRow(event)">Add layer</button>
+    </div>
 </div>
 <!-- End Layers -->
 
 <!-- Text Annotation -->
-<div id="text-annotation-panel">
-    <div id="header">
+<div id="text-annotation-panel" class="nwl-panel">
+    <div id="header" class="nwl-panel-header">
         <img
         id="text-annotation-close" class="button" alt="close" src="/lib/nwl-components/icons/times-circle.svg"
         onclick="Microdraw.tools.textAnnotation.cancelTextAnnotation()"
@@ -209,6 +213,7 @@
         <b>Text Annotation</b>
     </div>
 
+    <div class="nwl-panel-body">
     <div id="add-text-annotation">
         <b>Text</b> <input type="text" placeholder="Enter annotation text" ></input> <br />
         <b>Color</b> <input type="color" ></input> <br />
@@ -219,5 +224,6 @@
             <button onclick="Microdraw.tools.textAnnotation.updateTextAnnotation(event)">Update</button>
             <button onclick="Microdraw.tools.textAnnotation.cancelTextAnnotation(event)">Cancel</button>
         </div>
+    </div>
     </div>
 </div>

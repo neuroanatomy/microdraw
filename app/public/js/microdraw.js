@@ -2262,7 +2262,9 @@ const Microdraw = (function () {
         me.loadScript("/lib/hippy-hippo/hippy-hippo-umd.js"), // vendored: hippy-hippo@0.0.1
         me.loadScript("/js/microdraw-ws.js"),
         me.loadScript("/js/unsaved-stash.js"),
-        me.loadScript("/js/regions-list.js")
+        me.loadScript("/js/regions-list.js"),
+        // floatingPanel() for the labels and layers panels (nwl-components 3.2.0)
+        me.loadScript("/lib/nwl-components/panel/nwl-components-panel.umd.js")
       ]);
 
       await me.loadScript("/lib/openseadragon-viewerinputhook.min.js");

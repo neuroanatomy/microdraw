@@ -363,15 +363,17 @@ window.ToolLayers = { layers : (function() {
         e.stopPropagation();
 
         tool._isDragging = true;
-        const {top, left, width, height} = obj.getBoundingClientRect();
+        const {top, left} = obj.getBoundingClientRect();
 
         if (e.type === "touchstart") {
           // eslint-disable-next-line prefer-destructuring -- array destructuring would iterate the TouchList; keep index access; 2026-10-11
           e = e.touches[0];
         }
 
-        tool._offsetX = e.clientX - left - width/2;
-        tool._offsetY = e.clientY - top - (height)/2;
+        // the panel is pinned by its top-left corner (floatingPanel, at the pointerdown before
+        // this mousedown): the pointer keeps its offset from that corner
+        tool._offsetX = e.clientX - left;
+        tool._offsetY = e.clientY - top;
         obj.classList.add('dragging');
       };
 
@@ -403,7 +405,10 @@ window.ToolLayers = { layers : (function() {
     },
     _attachLayersContainer: () => {
       const obj = dom.querySelector("#layers-panel");
-      obj.style.display = "block";
+      obj.style.display = "flex";
+      // centred until first pressed, then pinned by its top-left corner, so that a resize grows
+      // it towards the corner pulled only (once per panel)
+      window.nwlComponentsPanel.floatingPanel(obj);
 
       tool._handleStart(obj);
       tool._handleMove(obj);
@@ -412,7 +417,7 @@ window.ToolLayers = { layers : (function() {
 
     _attachLayer: () => {
       const obj = dom.querySelector("#layers-panel");
-      obj.style.display = "block";
+      obj.style.display = "flex";
     },
 
     /**

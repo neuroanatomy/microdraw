@@ -30,15 +30,17 @@ window.ToolColor = { color : (function() {
         e.stopPropagation();
 
         tool._isDragging = true;
-        const {top, left, width, height} = obj.getBoundingClientRect();
+        const {top, left} = obj.getBoundingClientRect();
 
         if (e.type === "touchstart") {
           // eslint-disable-next-line prefer-destructuring -- array destructuring would iterate the TouchList; keep index access; 2026-10-11
           e = e.touches[0];
         }
 
-        tool._offsetX = e.clientX - left - width/2;
-        tool._offsetY = e.clientY - top - (height)/2;
+        // the panel is pinned by its top-left corner (floatingPanel, at the pointerdown before
+        // this mousedown): the pointer keeps its offset from that corner
+        tool._offsetX = e.clientX - left;
+        tool._offsetY = e.clientY - top;
         obj.classList.add('dragging');
       };
 
@@ -81,6 +83,9 @@ window.ToolColor = { color : (function() {
     _listenToHeader: (obj) => {
       if (tool._headerReady) { return; }
       tool._headerReady = true;
+      // centred until first pressed, then pinned by its top-left corner, so that a resize grows
+      // it towards the corner pulled only
+      window.nwlComponentsPanel.floatingPanel(obj);
       tool._handleStart(obj);
       tool._handleMove(obj);
       tool._handleEnd(obj);
@@ -89,7 +94,7 @@ window.ToolColor = { color : (function() {
     _attachLabelsetContainer: () => {
       const obj = dom.querySelector("#labelset-panel");
       dom.querySelector("body").appendChild(obj);
-      obj.style.display = "block";
+      obj.style.display = "flex";
 
       obj.querySelector("span#labels-name").textContent = Microdraw.ontology.name;
       obj.querySelector("#labels-close").onclick = tool._detachLabelsetContainer;

@@ -29,7 +29,7 @@ window.RegionsList = (function () {
     rendered: null, // what the rows show, to skip a rebuild that changes nothing
 
     panel: () => Microdraw.dom && Microdraw.dom.querySelector("#labelset-panel"),
-    isOpen: () => Boolean(L.panel()) && L.panel().style.display === "block",
+    isOpen: () => Boolean(L.panel()) && L.panel().style.display === "flex",
     regions: () => {
       const section = Microdraw.ImageInfo[Microdraw.currentImage];
 
