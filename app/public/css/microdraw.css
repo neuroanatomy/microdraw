@@ -208,13 +208,6 @@ html, body {
 .region-tag {
     position: relative;
 }
-.region-color {
-    width:1.5rem;
-    height:1.5rem;
-    border:thin solid var(--nwl-grey-80);
-    display:inline-block;
-    vertical-align:middle;
-}
 .eye {
     display:inline-block;
     vertical-align:middle;
@@ -413,6 +406,10 @@ body[data-toolbarDisplay=right] #tools-minimized div {
   resize: both;
 }
 #labelset-header {
+    /* stays at the top while the panel scrolls (2026-11-15): -10px, the panel's padding */
+    position: sticky;
+    top: -10px;
+    z-index: 1;
     height: 36px;
     background-color: var(--nwl-grey-66);
     padding: 0 5px 0 10px;
@@ -522,6 +519,24 @@ body[data-toolbarDisplay=right] #tools-minimized div {
   margin-right: 0.4em;
   padding: 0 0.3em;
   border: thin solid var(--nwl-white);
+}
+#regions-table .region-visibility button {
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+}
+#regions-table .region-visibility img {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+}
+#regions-table .region-swatch-cell {
+  width: 24px;
+}
+#regions-table tr.region-hidden .region-swatch,
+#regions-table tr.region-hidden .region-name {
+  opacity: 0.4;
 }
 #regions-table .region-actions {
   white-space: nowrap;

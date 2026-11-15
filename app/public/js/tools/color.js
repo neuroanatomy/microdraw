@@ -124,7 +124,8 @@ window.ToolColor = { color : (function() {
       const regions = Microdraw.ImageInfo[Microdraw.currentImage].Regions;
       for(let j=0; j<regions.length; j+=1) {
         if(regions[j].name === targetName) {
-          regions[j].path.opacity = invisible ? 0 : 1;
+          // a region hidden with its own eye stays hidden (2026-11-15)
+          regions[j].path.opacity = Microdraw.isRegionShown(regions[j]) ? 1 : 0;
         }
       }
     },

@@ -128,4 +128,16 @@ describe('Region order in the editor save (T002 3.5)', function () {
     const docs = await byUid();
     assert.deepEqual([docs.a1.order, docs.a2.order], [0, 1]);
   }).timeout(U.shortTimeout);
+
+  // 2026-11-15: how a region is displayed (opacity, visible) is not saved and is no change
+  it('a region sent without the opacity stored by an older save is unchanged', async function () {
+    const hidden = { ...a1, path: ['Path', { ...a1.path[1], opacity: 0, visible: true }] };
+    await save(agentA, ordered([hidden]));
+    const before = await byUid();
+    await save(agentB, ordered([a1]));
+    const after = await byUid();
+    assert.equal(String(after.a1._id), String(before.a1._id));
+    assert.equal(after.a1.user, userA.username);
+    assert.isEmpty((await load(true)).filter((d) => d.backup), 'no backup');
+  }).timeout(U.shortTimeout);
 });

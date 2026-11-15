@@ -199,6 +199,23 @@ const Microdraw = (function () {
       return result;
     },
 
+    /**
+       * @desc A path without how it is displayed: `opacity` and `visible` say
+       * whether its label or the region itself is hidden in this browser, which
+       * is never saved and is no change (2026-11-15). The server compares
+       * regions the same way (editorSave.js `withoutDisplay`).
+       * @param {Array|string} path A path as exported (['Path', {...}]) or stored
+       * @returns {Array|string} The path without `opacity` and `visible`
+       */
+    withoutDisplay: (path) => {
+      if (!Array.isArray(path) || !path[1] || typeof path[1] !== 'object') {
+        return path;
+      }
+      const [type, {opacity, visible, ...props}, ...rest] = path; // eslint-disable-line no-unused-vars
+
+      return [type, props, ...rest];
+    },
+
     sectionValueForHashing: function (section) {
       const value = {
         Regions: [],
@@ -207,7 +224,7 @@ const Microdraw = (function () {
 
       for(const reg of section.Regions) {
         value.Regions.push({
-          path: JSON.parse(reg.path.exportJSON()),
+          path: me.withoutDisplay(JSON.parse(reg.path.exportJSON())),
           name: reg.name,
           uid: reg.uid
         });
@@ -493,7 +510,7 @@ const Microdraw = (function () {
       // (a region loaded hidden stayed invisible after a new label, 2026-11-11)
       reg.name = name;
       reg.path.fillColor = 'rgba(' + color.red + ',' + color.green + ',' + color.blue + ',0.5)';
-      reg.path.opacity = me._isRegionVisible(name) ? 1 : 0;
+      reg.path.opacity = me.isRegionShown(reg) ? 1 : 0;
       paper.view.draw();
       me.regionsChanged();
     },
@@ -579,6 +596,35 @@ const Microdraw = (function () {
       }
     },
 
+    // uids of the regions hidden with their eye in the Regions list: for this
+    // page only, never saved (maintainer, 2026-11-15)
+    hiddenRegions: new Set(),
+
+    /**
+       * @param {object} reg A region
+       * @returns {boolean} true if it is drawn: its label is shown, and it is
+       * not hidden by its own eye
+       */
+    isRegionShown: (reg) => !me.hiddenRegions.has(reg.uid) && Boolean(me._isRegionVisible(reg.name)),
+
+    /**
+       * @desc Hide or show one region (the eye of the Regions list). Not an
+       * edit: no undo step, and the slice stays unchanged.
+       * @param {object} reg A region
+       * @param {boolean} hidden true to hide it
+       * @returns {void}
+       */
+    setRegionHidden: (reg, hidden) => {
+      if (hidden) {
+        me.hiddenRegions.add(reg.uid);
+      } else {
+        me.hiddenRegions.delete(reg.uid);
+      }
+      reg.path.opacity = me.isRegionShown(reg) ? 1 : 0;
+      paper.view.draw();
+      me.regionsChanged();
+    },
+
     _isRegionVisible: function (name) {
       if( me.debug>1 ) { console.log("> isRegionVisible"); }
 
@@ -629,8 +675,7 @@ const Microdraw = (function () {
       const color = me.regionColor(reg.name);
 
       if( arg.path ) {
-        const {name} = reg;
-        const visible = me._isRegionVisible(name);
+        const visible = me.isRegionShown(reg);
         reg.path = arg.path;
         reg.path.fillColor = arg.path.fillColor ?
           arg.path.fillColor
@@ -643,7 +688,7 @@ const Microdraw = (function () {
           reg.path.strokeScaling = false;
         } else {
           console.log("Text annotation", arg);
-          reg.path.opacity = 1;
+          reg.path.opacity = me.hiddenRegions.has(reg.uid) ? 0 : 1;
           reg.path.fillColor = arg.path.fillColor;
         }
       }
@@ -1487,7 +1532,15 @@ const Microdraw = (function () {
         return JSON.stringify(value);
       };
 
-      return JSON.stringify(regions.map(({uid, name, path, order}) => canonical([uid, name, path, order])).sort());
+      const parsed = (path) => {
+        try {
+          return typeof path === 'string' ? JSON.parse(path) : path;
+        } catch (err) {
+          return path;
+        }
+      };
+
+      return JSON.stringify(regions.map(({uid, name, path, order}) => canonical([uid, name, me.withoutDisplay(parsed(path)), order])).sort());
     },
 
     // the signature of the regions of a GET /api answer
@@ -1630,7 +1683,7 @@ const Microdraw = (function () {
           region.path.fillColor = `rgba(${color.red},${color.green},${color.blue},${me.config.defaultFillAlpha})`;
           visible = me._isRegionVisible(name);
         }
-        region.path.opacity = visible ? 1 : 0;
+        region.path.opacity = (visible && !me.hiddenRegions.has(region.uid)) ? 1 : 0;
 
         paper.project.activeLayer.addChild(region.path);
       }

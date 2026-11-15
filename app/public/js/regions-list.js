@@ -8,8 +8,9 @@
   Objects" panel. A row selects its region; it is moved by dragging the row
   (mouse or pen at once, touch after a long press so that a swipe still
   scrolls the list; pointer events), or with Alt+Up and Alt+Down; it is
-  deleted with its delete button, its only button (maintainer, 2026-11-15),
-  or the Delete key. Moves go through Microdraw.moveRegion and deletions through
+  deleted with its delete button or the Delete key. Its eye button hides or
+  shows the region on this page only: not saved, not an edit
+  (Microdraw.setRegionHidden; maintainer, 2026-11-15). Moves go through Microdraw.moveRegion and deletions through
   Microdraw.cmdDeleteSelected: one undo step each, and the slice is saved as
   after any other edit.
 
@@ -55,7 +56,7 @@ window.RegionsList = (function () {
 
     signature: (regions) => JSON.stringify([
       Microdraw.currentImage,
-      regions.map((reg) => [reg.uid, reg.name, L.isText(reg) ? reg.path.content : "", reg === Microdraw.region])
+      regions.map((reg) => [reg.uid, reg.name, L.isText(reg) ? reg.path.content : "", reg === Microdraw.region, Microdraw.hiddenRegions.has(reg.uid)])
     ]),
 
     cell: (className, ...children) => {
@@ -73,6 +74,14 @@ window.RegionsList = (function () {
       const img = document.createElement("img");
       Object.assign(img, {src: `/lib/nwl-components/icons/${icon}.svg`, alt: ""});
       b.appendChild(img);
+
+      return b;
+    },
+
+    // hides or shows the region on this page only
+    eye: (hidden) => {
+      const b = L.button("eye", hidden ? "Show" : "Hide", hidden ? "eyeClosed" : "eyeOpened", false);
+      b.setAttribute("aria-pressed", String(hidden));
 
       return b;
     },
@@ -107,8 +116,10 @@ window.RegionsList = (function () {
       tr.classList.toggle("selected", selected);
       tr.setAttribute("aria-selected", String(selected));
       tr.title = "Drag to move";
+      tr.classList.toggle("region-hidden", Microdraw.hiddenRegions.has(reg.uid));
       tr.append(
-        L.cell("region-color", L.swatch(reg)),
+        L.cell("region-visibility", L.eye(Microdraw.hiddenRegions.has(reg.uid))),
+        L.cell("region-swatch-cell", L.swatch(reg)),
         L.nameCell(reg),
         L.cell("region-actions", L.button("delete", "Delete", "delete", false))
       );
@@ -199,6 +210,8 @@ window.RegionsList = (function () {
       const b = e.target.closest("button");
       if (b && b.className === "region-delete") {
         L.remove(reg);
+      } else if (b && b.className === "region-eye") {
+        Microdraw.setRegionHidden(reg, !Microdraw.hiddenRegions.has(reg.uid));
       } else {
         L.selectRow(tr);
       }

@@ -132,11 +132,11 @@ describe('The Regions list of the labels panel (T002 3.5)', () => {
     assert.deepEqual(s.names, [BOLD, 'Region 2', 'Region 1']);
     assert.isFalse(await page.evaluate((sel) => Boolean(Microdraw.dom.querySelector(sel)), `${rowSel('c')} .region-name b`), 'no <b> element');
     assert.deepEqual(s.selected, []);
-    // accessible: a labelled table, named buttons; delete is the only one (maintainer, 2026-11-15)
+    // accessible: a labelled table, named buttons: the eye and delete (maintainer, 2026-11-15)
     assert.equal(await page.evaluate(() => Microdraw.dom.querySelector('#regions-table').getAttribute('aria-labelledby')), 'regions-heading');
     assert.deepEqual(
       await page.evaluate((sel) => [...Microdraw.dom.querySelectorAll(`${sel} button`)].map((b) => b.getAttribute('aria-label')), rowSel('b')),
-      ['Delete']
+      ['Hide', 'Delete']
     );
   }).timeout(U.longTimeout);
 
@@ -234,6 +234,72 @@ describe('The Regions list of the labels panel (T002 3.5)', () => {
     await undo();
     s = await state();
     assert.deepEqual(s.regions, ['a', 'b', 'c']);
+  }).timeout(U.longTimeout);
+
+  // eslint-disable-next-line max-statements -- one test, step by step
+  it('the eye hides and shows a region on this page only: no edit, no undo step (2026-11-15)', async () => {
+    const start = await state();
+    const shown = (uid) => page.evaluate((u) => Microdraw.ImageInfo[Microdraw.currentImage].Regions.find((r) => r.uid === u).path.opacity, uid);
+    const eye = (uid) => page.evaluate((sel) => {
+      const b = Microdraw.dom.querySelector(`${sel} .region-eye`);
+
+      return { label: b.getAttribute('aria-label'), pressed: b.getAttribute('aria-pressed') };
+    }, rowSel(uid));
+    // what a save would send: the same before and after (a selection from an
+    // earlier test may already count as a change, so compare, don't expect none)
+    const hash = () => page.evaluate(() => Microdraw.sectionHash(Microdraw.ImageInfo[Microdraw.currentImage]));
+    const before = await hash();
+    assert.deepEqual(await eye('b'), { label: 'Hide', pressed: 'false' });
+
+    await clickIn('b', '.region-eye');
+    await state();
+    assert.equal(await shown('b'), 0);
+    assert.equal(await shown('a'), 1);
+    assert.deepEqual(await eye('b'), { label: 'Show', pressed: 'true' });
+    assert.equal(await hash(), before, 'hiding is no edit');
+    assert.equal((await state()).undo, start.undo, 'no undo step');
+
+    // its label hidden then shown again: the region stays hidden by its eye
+    await page.evaluate(() => {
+      const panel = Microdraw.dom.querySelector('#labelset-panel');
+      const b = Microdraw.ImageInfo[Microdraw.currentImage].Regions.find((r) => r.uid === 'b');
+      const i = Microdraw.ontology.labels.findIndex((l) => l.name === b.name);
+      const display = panel.querySelectorAll('#label-list .label-display')[i];
+      display.click();
+      display.click();
+    });
+    assert.equal(await shown('b'), 0);
+
+    await clickIn('b', '.region-eye');
+    await state();
+    assert.equal(await shown('b'), 1);
+    assert.deepEqual(await eye('b'), { label: 'Hide', pressed: 'false' });
+    assert.equal(await hash(), before);
+  }).timeout(U.longTimeout);
+
+  it('the swatch sits inside its cell, and the panel header stays while the panel scrolls (2026-11-15)', async () => {
+    // eslint-disable-next-line max-statements -- measures, then puts the scroll back
+    const r = await page.evaluate((sel) => {
+      const panel = Microdraw.dom.querySelector('#labelset-panel');
+      const td = Microdraw.dom.querySelector(`${sel} .region-swatch-cell`);
+      const sw = td.querySelector('.region-swatch');
+      const [c, s] = [td.getBoundingClientRect(), sw.getBoundingClientRect()];
+      const border = getComputedStyle(td).borderTopWidth;
+      const { scrollTop } = panel;
+      // a short panel, so that it scrolls
+      panel.style.height = '150px';
+      panel.scrollTop = panel.scrollHeight;
+      const scrolled = panel.scrollTop > 0;
+      const header = panel.querySelector('#labelset-header').getBoundingClientRect().top - panel.getBoundingClientRect().top;
+      panel.scrollTop = scrollTop;
+      panel.style.height = '';
+
+      return { inside: s.left >= c.left && s.right <= c.right && s.top >= c.top && s.bottom <= c.bottom, border, scrolled, header };
+    }, rowSel('a'));
+    assert.isTrue(r.inside, 'swatch inside its cell');
+    assert.equal(r.border, '0px', 'no border of the old .region-color');
+    assert.isTrue(r.scrolled, 'the short panel scrolls');
+    assert.isAtMost(Math.abs(r.header), 2, 'header at the top of the scrolled panel');
   }).timeout(U.longTimeout);
 
   it('delete removes the region, and undo brings it back', async () => {

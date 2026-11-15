@@ -53,9 +53,29 @@ const canonical = (value) => {
   return JSON.stringify(value);
 };
 
+// A path without how it is displayed (`opacity`, `visible`): hiding a label or
+// a region in the viewer is no change (2026-11-15; microdraw.js withoutDisplay).
+// Older saves stored `opacity: 0` for regions of a hidden label.
+const withoutDisplay = (path) => {
+  let value = path;
+  if (typeof value === 'string') {
+    try {
+      value = JSON.parse(value);
+    } catch (err) {
+      return path;
+    }
+  }
+  if (!Array.isArray(value) || !value[1] || typeof value[1] !== 'object') {
+    return value;
+  }
+  const [type, { opacity, visible, ...props }, ...rest] = value; // eslint-disable-line no-unused-vars
+
+  return [type, props, ...rest];
+};
+
 const sameRegion = (stored, sent) => Boolean(stored)
   && stored.name === sent.name
-  && canonical(stored.path) === canonical(sent.path);
+  && canonical(withoutDisplay(stored.path)) === canonical(withoutDisplay(sent.path));
 
 // A region's `order` as sent: a finite number, or undefined
 const orderOf = (region) => (typeof region.order === 'number' && Number.isFinite(region.order) ? region.order : undefined); // eslint-disable-line no-undefined
