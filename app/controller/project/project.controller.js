@@ -447,7 +447,58 @@ const droppedMessage = (dropped) => {
 const filesListIncomplete = (newProject, oldProject) => typeof newProject.filesLoaded !== 'undefined' &&
   !(_.isPlainObject(newProject.filesLoaded) && newProject.filesLoaded.count === listOf(oldProject, 'files').length);
 
-const sendError = (res, status, message) => res.status(status).json({ success: false, error: 'error', message });
+/**
+ * Whether a user may save an existing project (2026-11-15): `edit` on at
+ * least one of its lists. What each list's changes need is then checked list
+ * by list (preventUnauthorizedUpdates, keepListsWithoutEditRights), and the
+ * project's own fields need `files: edit` (keepFieldsWithoutFilesEdit).
+ * @param {object} oldProject The stored project
+ * @param {string} loggedUser The user saving
+ * @returns {boolean} true if the save may go on
+ */
+const canSaveProject = (oldProject, loggedUser) => listTypes.some((type) => AccessControlService.hasAccess(type, AccessLevel.EDIT, oldProject, loggedUser));
+
+// The fields that are neither the lists nor the project's own fields: set by
+// the server (owner, modified, modifiedBy, _id, backup), checked against the
+// URL (shortname), or never stored (filesLoaded)
+const notOwnFields = [...listTypes, 'owner', 'shortname', '_id', 'backup', 'modified', 'modifiedBy', 'filesLoaded'];
+
+// A field the client sends empty ('' for a name the settings page fills in)
+// is the same as one the stored project lacks
+const isEmptyField = (v) => _.isNil(v) || v === '';
+const sameField = (a, b) => _.isEqual(a, b) || (isEmptyField(a) && isEmptyField(b));
+
+/**
+ * Keep the stored value of each of the project's own fields (name,
+ * description, url, created and any other field that is not one of the three
+ * lists) if the user may not edit the files (2026-11-15: they need `files:
+ * edit`, as every save did before). A field the stored project lacks is
+ * removed.
+ * @param {object} newProject The project sent (changed in place)
+ * @param {object} oldProject The stored project
+ * @param {string} loggedUser The user saving
+ * @returns {Array<string>} The fields whose changes were ignored
+ */
+const keepFieldsWithoutFilesEdit = (newProject, oldProject, loggedUser) => {
+  if (AccessControlService.hasFilesAccess(AccessLevel.EDIT, oldProject, loggedUser)) {
+    return [];
+  }
+  const changed = Object.keys(newProject)
+    .filter((key) => !notOwnFields.includes(key) && !sameField(newProject[key], oldProject[key]));
+  for (const key of changed) {
+    if (_.has(oldProject, key)) {
+      newProject[key] = oldProject[key];
+    } else {
+      delete newProject[key];
+    }
+  }
+
+  return changed;
+};
+
+// The reason goes in `error`, which the settings page shows (nwl-components
+// ProjectInfo.vue), and in `message`, for the clients that read it
+const sendError = (res, status, message) => res.status(status).json({ success: false, error: message, message });
 
 /**
  * Validate and store a project. Runs holding the project's lock: the stored
@@ -461,8 +512,8 @@ const sendError = (res, status, message) => res.status(status).json({ success: f
 const saveProject = async function (req, res, loggedUser) {
   const shortname = req.params.projectName;
   const oldProject = await findCurrentProject(req.appConfig.db.nativeMongoDB(), shortname);
-  if (!_.isNil(oldProject) && !AccessControlService.hasFilesAccess(AccessLevel.EDIT, oldProject, loggedUser)) {
-    sendError(res, 403, 'User does not have edit rights');
+  if (!_.isNil(oldProject) && !canSaveProject(oldProject, loggedUser)) {
+    sendError(res, 403, 'You may not change this project: saving it needs edit rights on its files, annotations or collaborators');
 
     return;
   }
@@ -494,6 +545,7 @@ const saveProject = async function (req, res, loggedUser) {
   if (!_.isNil(oldProject)) {
     ignoredChanges = AccessControlService.preventUnauthorizedUpdates(newProject, oldProject, loggedUser);
     ignoredChanges = _.union(ignoredChanges, keepListsWithoutEditRights(newProject, oldProject, loggedUser));
+    ignoredChanges = _.union(ignoredChanges, keepFieldsWithoutFilesEdit(newProject, oldProject, loggedUser));
   }
 
   // a list put back as stored (no rights to change it) is written with both
