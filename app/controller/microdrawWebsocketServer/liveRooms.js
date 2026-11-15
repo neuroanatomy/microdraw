@@ -21,7 +21,7 @@ const { usernameFromCookie } = require('./sessionUser');
 const log = require('../../log').child({ module: 'websocket' });
 
 // Types only the server handles or sends: never relayed to other clients.
-const SERVER_TYPES = new Set(['join', 'joined', 'join-refused', 'saved']);
+const SERVER_TYPES = new Set(['join', 'joined', 'join-refused', 'saved', 'notice']);
 // longer join fields make the message invalid, and it is ignored
 const MAX_FIELD_LENGTH = 2048;
 
@@ -198,6 +198,29 @@ const roomSize = (target) => {
   return room ? room.size : 0;
 };
 
+/**
+ * How many connections have an image open: those in a room of one of its
+ * slices, in any project (admin, T002 3.6). A viewer joins the room of the
+ * slice it shows when it has a project (microdraw-ws.js joinSlice), so a
+ * viewer without a project, or whose join was refused, is not counted.
+ * @param {string} source The image source
+ * @returns {number} The number of open connections
+ */
+const viewersOfSource = (source) => {
+  let count = 0;
+  rooms.forEach((room, key) => {
+    if (JSON.parse(key)[1] === source) {
+      room.forEach((ws) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          count += 1;
+        }
+      });
+    }
+  });
+
+  return count;
+};
+
 const isServerType = (type) => SERVER_TYPES.has(type);
 
 /**
@@ -213,4 +236,4 @@ const sessionUsername = (ws, sessionParser) => {
   return usernameFromCookie(sessionParser, state ? state.cookie : null);
 };
 
-module.exports = { connect, disconnect, join, notifySaved, roomSize, isServerType, sessionUsername };
+module.exports = { connect, disconnect, join, notifySaved, roomSize, viewersOfSource, isServerType, sessionUsername };

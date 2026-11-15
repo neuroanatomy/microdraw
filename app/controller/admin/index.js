@@ -20,5 +20,14 @@ router.get('/json/projects/search', authTokenMiddleware, controller.requireAdmin
 router.post('/json/projects/delete', authTokenMiddleware, controller.requireAdmin, controller.deleteProject);
 router.post('/json/projects/restore-deleted', authTokenMiddleware, controller.requireAdmin, controller.restoreDeletedProject);
 router.post('/json/projects/transfer', authTokenMiddleware, controller.requireAdmin, controller.transferProject);
+// T002 3.6: damaged projects (A), one dataset (B), a message to every viewer (C)
+router.get('/json/projects/damaged', authTokenMiddleware, controller.requireAdmin, controller.getDamagedProjects);
+router.post('/json/projects/restore-files', authTokenMiddleware, controller.requireAdmin, controller.restoreProjectFiles);
+router.post('/json/projects/fix-current', authTokenMiddleware, controller.requireAdmin, controller.fixProjectCurrentVersions);
+router.get('/json/dataset', authTokenMiddleware, controller.requireAdmin, controller.getDataset);
+router.post('/json/dataset/update', authTokenMiddleware, controller.requireAdmin, controller.updateDataset);
+router.post('/json/dataset/remove-annotations', authTokenMiddleware, controller.requireAdmin, controller.removeDatasetAnnotations);
+router.post('/json/dataset/restore-annotations', authTokenMiddleware, controller.requireAdmin, controller.restoreDatasetAnnotations);
+router.post('/json/broadcast', authTokenMiddleware, controller.requireAdmin, controller.broadcastMessage);
 
 module.exports = router;

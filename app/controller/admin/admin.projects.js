@@ -32,7 +32,8 @@ const {
 
 const current = { backup: { $exists: false } };
 const { NEWEST_FIRST: newestFirst, findCurrentProject, saveProjectVersion } = require('../project/currentProject');
-const fixKeys = ['adminRemoveBlankRows', 'adminNameLayers', 'adminTransferOwner'];
+// adminRestoreProjectFiles: damaged projects' restore-files (admin.damaged.js)
+const fixKeys = ['adminRemoveBlankRows', 'adminNameLayers', 'adminTransferOwner', 'adminRestoreProjectFiles'];
 
 const log = async (db, key, value) => {
   logger.info({ event: key, ..._.omit(value, ['project']) }, `admin: ${key}`);

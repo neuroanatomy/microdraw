@@ -32,7 +32,15 @@ const admin = {
     { method: 'GET', path: '/admin/json/projects/search?q=conformance' },
     { method: 'POST', path: '/admin/json/projects/delete' },
     { method: 'POST', path: '/admin/json/projects/restore-deleted' },
-    { method: 'POST', path: '/admin/json/projects/transfer' }
+    { method: 'POST', path: '/admin/json/projects/transfer' },
+    { method: 'GET', path: '/admin/json/projects/damaged' },
+    { method: 'POST', path: '/admin/json/projects/restore-files' },
+    { method: 'POST', path: '/admin/json/projects/fix-current' },
+    { method: 'GET', path: '/admin/json/dataset?source=conformance' },
+    { method: 'POST', path: '/admin/json/dataset/update' },
+    { method: 'POST', path: '/admin/json/dataset/remove-annotations' },
+    { method: 'POST', path: '/admin/json/dataset/restore-annotations' },
+    { method: 'POST', path: '/admin/json/broadcast' }
   ],
   user: async () => {
     const user = await signUp(U.serverURL, `cfadmin${Date.now().toString(36)}`);

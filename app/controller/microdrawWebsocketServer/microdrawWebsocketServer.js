@@ -30,6 +30,48 @@ const microdrawWebsocketServer = (function () {
     // Joins and live-update notices: liveRooms.js
     notifySaved: (target) => liveRooms.notifySaved(target),
     _roomSize: (target) => liveRooms.roomSize(target),
+    // connections with an image open, in any project (admin, T002 3.6)
+    viewersOfSource: (source) => liveRooms.viewersOfSource(source),
+
+    // open connections (admin, T002 3.6)
+    connectedViewers: () => {
+      let count = 0;
+      if (websocketserver) {
+        websocketserver.clients.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            count += 1;
+          }
+        });
+      }
+
+      return count;
+    },
+
+    /**
+     * Send an admin's message to every open connection, as {type: 'notice',
+     * msg} (admin, T002 3.6). The viewer shows it as text. Never throws.
+     * @param {string} msg The message
+     * @returns {number} How many connections it was sent to
+     */
+    broadcastNotice: (msg) => {
+      let count = 0;
+      if (!websocketserver) {
+        return count;
+      }
+      const text = JSON.stringify({ type: 'notice', msg });
+      websocketserver.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          try {
+            client.send(text);
+            count += 1;
+          } catch (err) {
+            log.error({ err }, 'cannot send the notice');
+          }
+        }
+      });
+
+      return count;
+    },
 
     _handleUserWebSocketMessage: ({data, ws}) => {
       switch(data.type) {

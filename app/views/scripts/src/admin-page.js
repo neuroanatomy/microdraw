@@ -1,10 +1,12 @@
 /* global loggedUser */
-// Admin page (A1, A2, A3). Same structure as BrainBox view/brainbox/src/pages/admin-page.js.
+// Admin page (A1, A2, A3; T002 3.6: damaged projects, datasets, message). Same structure as BrainBox view/brainbox/src/pages/admin-page.js.
 import 'nwl-components/dist/style.css';
 import { Button, Footer, Header, Table, Wrapper } from 'nwl-components';
 import { ProjectActions, useProjectActions } from './admin-project-actions';
 import { createApp, provide, ref } from 'vue';
+import { useBroadcast, useDataset } from './admin-datasets';
 import config from './nwl-components-config';
+import { useDamagedProjects } from './admin-damaged';
 import { useInvalidProjects } from './admin-projects';
 
 const PAGE_SIZE = 50;
@@ -205,7 +207,10 @@ const AdminPage = {
       formatDate,
       targetOf,
       ...invalidProjects,
-      ...projectActions
+      ...projectActions,
+      ...useDamagedProjects({ fetchJSON, postJSON }),
+      ...useDataset({ fetchJSON, postJSON }),
+      ...useBroadcast({ postJSON })
     };
   },
   compilerOptions: {

@@ -4,6 +4,9 @@ const { isAdmin, requestUsername } = require('./admins');
 const annotations = require('./admin.annotations');
 const projects = require('./admin.projects');
 const projectActions = require('./admin.projectActions');
+const damaged = require('./admin.damaged');
+const datasets = require('./admin.datasets');
+const microdrawWebsocketServer = require('../microdrawWebsocketServer/microdrawWebsocketServer');
 const { scriptJSON } = require('../escape');
 
 // Follows BrainBox controller/admin/admin.controller.js (requireAdmin,
@@ -312,6 +315,167 @@ const transferProject = (req, res) => {
   sendResult(res, projectActions.transferProject(req.app.db, { shortname, version, owner: body.owner, username: requestUsername(req) }));
 };
 
+/**
+ * List the damaged projects (T002 3.6 A): files removed by a save that are
+ * still missing, several current versions
+ * @param {object} req Request object
+ * @param {object} res Response object
+ * @returns {void}
+ */
+const getDamagedProjects = (req, res) => {
+  sendResult(res, damaged.findDamagedProjects(nativeDb(req)));
+};
+
+/**
+ * Add back the files a save removed that are still missing, as a new
+ * version. Body: { project, version, save } (save: the id of the version the
+ * save stored, as listed). Undone by restoreProject.
+ * @param {object} req Request object
+ * @param {object} res Response object
+ * @returns {void}
+ */
+const restoreProjectFiles = (req, res) => {
+  const body = req.body || {};
+  const { shortname, version, error } = projectFromBody(body);
+  if (error) {
+    return res.status(400).json({ success: false, error });
+  }
+  if (typeof body.save !== 'string' || body.save === '') {
+    return res.status(400).json({ success: false, error: 'Provide the save: the id of the version it stored, as listed' });
+  }
+  sendResult(res, damaged.restoreFiles(req.app.db, { shortname, version, save: body.save, username: requestUsername(req) }));
+};
+
+/**
+ * Keep the newest of several current versions of a project, mark the others
+ * backup. Body: { project, version }
+ * @param {object} req Request object
+ * @param {object} res Response object
+ * @returns {void}
+ */
+const fixProjectCurrentVersions = (req, res) => {
+  const { shortname, version, error } = projectFromBody(req.body || {});
+  if (error) {
+    return res.status(400).json({ success: false, error });
+  }
+  sendResult(res, damaged.fixCurrentVersions(req.app.db, { shortname, version, username: requestUsername(req) }));
+};
+
+const sourceError = (source) => (typeof source !== 'string' || source === '' || source.length > 2048 ? 'Provide the source: the URL of the dataset' : null);
+
+/**
+ * One dataset (T002 3.6 B): its document, the projects that list it, its
+ * annotations per project and user, and how many viewers have it open.
+ * Query: source
+ * @param {object} req Request object
+ * @param {object} res Response object
+ * @returns {void}
+ */
+const getDataset = (req, res) => {
+  const { source } = req.query;
+  const error = sourceError(source);
+  if (error) {
+    return res.status(400).json({ success: false, error });
+  }
+  sendResult(res, datasets.findDataset(nativeDb(req), source)
+    .then((found) => ({ ...found, viewers: microdrawWebsocketServer.viewersOfSource(source) })));
+};
+
+/**
+ * Set the owner and/or the name of a dataset's document (created if there is
+ * none). Body: { source, owner?, name? }
+ * @param {object} req Request object
+ * @param {object} res Response object
+ * @returns {void}
+ */
+const updateDataset = (req, res) => {
+  const { source, owner, name, error } = datasets.checkUpdate(req.body || {});
+  if (error) {
+    return res.status(400).json({ success: false, error });
+  }
+  sendResult(res, datasets.updateDataset(nativeDb(req), { source, owner, name, username: requestUsername(req) }));
+};
+
+const openError = (source) => {
+  const viewers = microdrawWebsocketServer.viewersOfSource(source);
+
+  return viewers > 0 ? `${viewers} viewer(s) have this dataset open: try again when nobody is using it` : null;
+};
+
+/**
+ * Remove the current annotations of a dataset in a project, by a user or
+ * all; refused while someone has the dataset open. Body: { source, project, user? }
+ * @param {object} req Request object
+ * @param {object} res Response object
+ * @returns {void}
+ */
+const removeDatasetAnnotations = (req, res) => {
+  const { source, project, user } = req.body || {};
+  const error = sourceError(source) ||
+    (typeof project !== 'string' || project === '' ? 'Provide the project' : null) ||
+    (typeof user !== 'undefined' && typeof user !== 'string' ? 'The user must be a username, or left out for all' : null);
+  if (error) {
+    return res.status(400).json({ success: false, error });
+  }
+  const open = openError(source);
+  if (open) {
+    return res.status(409).json({ success: false, error: open });
+  }
+  sendResult(res, datasets.removeAnnotations(nativeDb(req), { source, project, user, username: requestUsername(req) }));
+};
+
+/**
+ * Undo a removal of dataset annotations; refused while the dataset is open.
+ * Body: { log }
+ * @param {object} req Request object
+ * @param {object} res Response object
+ * @returns {void}
+ */
+const restoreDatasetAnnotations = async (req, res) => {
+  const { log } = req.body || {};
+  if (typeof log !== 'string' || log === '') {
+    return res.status(400).json({ success: false, error: 'Provide the log id of the removal' });
+  }
+  try {
+    const source = await datasets.removalSource(nativeDb(req), log);
+    const open = source && openError(source);
+    if (open) {
+      return res.status(409).json({ success: false, error: open });
+    }
+  } catch (err) {
+    return serverError(res, err);
+  }
+  sendResult(res, datasets.restoreAnnotations(nativeDb(req), { logId: log, username: requestUsername(req) }));
+};
+
+const MAX_MESSAGE_LENGTH = 500;
+
+/**
+ * Send a message to every viewer connected to the live-update server
+ * (T002 3.6 C). Body: { message }, at most 500 characters. Logged.
+ * @param {object} req Request object
+ * @param {object} res Response object
+ * @returns {void}
+ */
+// eslint-disable-next-line max-statements
+const broadcastMessage = async (req, res) => {
+  const { message } = req.body || {};
+  if (typeof message !== 'string' || message.trim() === '' || message.length > MAX_MESSAGE_LENGTH) {
+    return res.status(400).json({ success: false, error: `Provide the message: 1 to ${MAX_MESSAGE_LENGTH} characters` });
+  }
+  const msg = message.trim();
+  const username = requestUsername(req);
+  try {
+    const viewers = microdrawWebsocketServer.broadcastNotice(msg);
+    logger.info({ event: 'adminBroadcast', username, viewers }, 'admin: adminBroadcast');
+    await nativeDb(req).collection('log')
+      .insertOne({ key: 'adminBroadcast', value: { username, message: msg, viewers }, date: (new Date()).toJSON() });
+    res.json({ success: true, viewers });
+  } catch (err) {
+    serverError(res, err);
+  }
+};
+
 module.exports = {
   requireAdmin,
   adminPage,
@@ -327,5 +491,13 @@ module.exports = {
   searchProjects,
   deleteProject,
   restoreDeletedProject,
-  transferProject
+  transferProject,
+  getDamagedProjects,
+  restoreProjectFiles,
+  fixProjectCurrentVersions,
+  getDataset,
+  updateDataset,
+  removeDatasetAnnotations,
+  restoreDatasetAnnotations,
+  broadcastMessage
 };

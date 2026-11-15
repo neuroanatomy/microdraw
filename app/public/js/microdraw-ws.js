@@ -152,8 +152,21 @@ const receiveJoinRefused = (data) => {
   }
 };
 
+// A message from an admin to every viewer (T002 3.6): shown as text, never
+// as HTML, until dismissed; a new message replaces the one shown
+const receiveNotice = (data) => {
+  const el = Microdraw.dom && Microdraw.dom.querySelector("#adminNotice");
+  if (!isString(data.msg) || !el) {
+    return;
+  }
+  el.querySelector(".text").textContent = data.msg;
+  el.querySelector("button.close").onclick = () => el.classList.remove("shown");
+  el.classList.add("shown");
+};
+
 const receiveFunctions = {
   "chat": receiveChatMessage,
+  "notice": receiveNotice,
   "saved": receiveSaved,
   "join-refused": receiveJoinRefused
 };

@@ -100,6 +100,38 @@ html, body {
 #liveStatus.shown {
     opacity: 1;
 }
+/* a message from an admin (T002 3.6): #liveStatus's look, at the top, until dismissed */
+#adminNotice {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 60%;
+    display: none;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 4px 8px;
+    background-color: rgba(51, 51, 51, 0.9);
+    color: var(--nwl-text);
+    font-size: var(--nwl-text-sm);
+    line-height: 18px;
+    border-radius: var(--nwl-radius-sm);
+    z-index: 30;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+#adminNotice.shown {
+    display: flex;
+}
+#adminNotice button.close {
+    background: none;
+    border: none;
+    color: var(--nwl-text);
+    cursor: pointer;
+    font-size: var(--nwl-text-md);
+    line-height: 18px;
+    padding: 0 2px;
+}
 /* links are the text colour (U8), and keep their underline */
 #saveDialog a, #importDialog a {
     color: var(--nwl-link);
