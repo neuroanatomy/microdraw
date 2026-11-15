@@ -78,10 +78,16 @@ window.RegionsList = (function () {
       return b;
     },
 
-    // hides or shows the region on this page only
+    // hides or shows the region on this page only: a disc in a circle, as the
+    // labels' visibility above it (filled: shown; empty: hidden; 2026-11-15)
     eye: (hidden) => {
-      const b = L.button("eye", hidden ? "Show" : "Hide", hidden ? "eyeClosed" : "eyeOpened", false);
+      const b = document.createElement("button");
+      Object.assign(b, {type: "button", className: "region-eye", title: hidden ? "Show" : "Hide"});
+      b.setAttribute("aria-label", hidden ? "Show" : "Hide");
       b.setAttribute("aria-pressed", String(hidden));
+      const disc = document.createElement("span");
+      disc.className = hidden ? "label-display off" : "label-display";
+      b.appendChild(disc);
 
       return b;
     },

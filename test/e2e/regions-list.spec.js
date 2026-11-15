@@ -28,12 +28,11 @@ const triangle = (uid, name, x, y) => ({
   name,
   path: ['Path', { applyMatrix: true, segments: [[x, y], [x + 60, y], [x + 30, y + 60]], closed: true }]
 });
-// fillColor with its alpha: one stored without it ([1, 0, 0]) is read back
-// as [1, 0, 0, 1], and its slice counts as changed as soon as it is loaded
+// as the text tool stores it: its colour without alpha
 const pointText = (uid, content) => ({
   uid,
   name: 'textAnnotation',
-  path: ['PointText', { applyMatrix: false, matrix: [1, 0, 0, 1, 100, 100], content, fillColor: [1, 0, 0, 1], fontSize: 20 }]
+  path: ['PointText', { applyMatrix: false, matrix: [1, 0, 0, 1, 100, 100], content, fillColor: [1, 0, 0], fontSize: 20 }]
 });
 const doc = (slice, annotation, order) => ({
   fileID: fileID(slice),
@@ -243,19 +242,20 @@ describe('The Regions list of the labels panel (T002 3.5)', () => {
     const eye = (uid) => page.evaluate((sel) => {
       const b = Microdraw.dom.querySelector(`${sel} .region-eye`);
 
-      return { label: b.getAttribute('aria-label'), pressed: b.getAttribute('aria-pressed') };
+      // the disc in a circle of the labels: filled when shown, empty when hidden
+      return { label: b.getAttribute('aria-label'), pressed: b.getAttribute('aria-pressed'), off: b.querySelector('.label-display').classList.contains('off') };
     }, rowSel(uid));
     // what a save would send: the same before and after (a selection from an
     // earlier test may already count as a change, so compare, don't expect none)
     const hash = () => page.evaluate(() => Microdraw.sectionHash(Microdraw.ImageInfo[Microdraw.currentImage]));
     const before = await hash();
-    assert.deepEqual(await eye('b'), { label: 'Hide', pressed: 'false' });
+    assert.deepEqual(await eye('b'), { label: 'Hide', pressed: 'false', off: false });
 
     await clickIn('b', '.region-eye');
     await state();
     assert.equal(await shown('b'), 0);
     assert.equal(await shown('a'), 1);
-    assert.deepEqual(await eye('b'), { label: 'Show', pressed: 'true' });
+    assert.deepEqual(await eye('b'), { label: 'Show', pressed: 'true', off: true });
     assert.equal(await hash(), before, 'hiding is no edit');
     assert.equal((await state()).undo, start.undo, 'no undo step');
 
@@ -273,7 +273,7 @@ describe('The Regions list of the labels panel (T002 3.5)', () => {
     await clickIn('b', '.region-eye');
     await state();
     assert.equal(await shown('b'), 1);
-    assert.deepEqual(await eye('b'), { label: 'Hide', pressed: 'false' });
+    assert.deepEqual(await eye('b'), { label: 'Hide', pressed: 'false', off: false });
     assert.equal(await hash(), before);
   }).timeout(U.longTimeout);
 

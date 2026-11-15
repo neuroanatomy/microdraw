@@ -1646,9 +1646,7 @@ const Microdraw = (function () {
         slice = Microdraw.currentImage;
       }
 
-      // if image has no hash, save one
-      me.ImageInfo[slice].Hash = regions.Hash ? regions.Hash : me.sectionHash(me.ImageInfo[slice]);
-
+      // its Hash is set once drawn (_fetchSlice)
       return {regions, slice};
     },
 
@@ -1812,8 +1810,11 @@ const Microdraw = (function () {
           me._dropSliceRegions(slice);
         }
 
-        const {regions} = me._addRegions(data);
+        const {regions, slice: added} = me._addRegions(data);
         me._drawRegionsInPaper(regions);
+        // the baseline, as drawn: drawing sets the fill colours (a text's
+        // [r, g, b] gets its alpha), so it is no change (2026-11-15)
+        me.ImageInfo[added].Hash = me.sectionHash(me.ImageInfo[added]);
         section.serverSignature = signature;
 
         // the regions as on the server; annotations kept in this browser (H3a)

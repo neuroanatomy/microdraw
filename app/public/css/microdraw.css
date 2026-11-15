@@ -526,10 +526,12 @@ body[data-toolbarDisplay=right] #tools-minimized div {
   padding: 2px;
   cursor: pointer;
 }
-#regions-table .region-visibility img {
-  width: 16px;
-  height: 16px;
-  vertical-align: middle;
+#regions-table .region-visibility .label-display {
+  pointer-events: none;
+}
+#regions-table .region-visibility button:hover .label-display,
+#regions-table .region-visibility button:focus-visible .label-display {
+  outline: 2px solid var(--nwl-white);
 }
 #regions-table .region-swatch-cell {
   width: 24px;
