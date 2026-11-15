@@ -4,7 +4,8 @@
  * A WebSocket connection joins the room of one image slice of a project,
  * {type: 'join', project, source, slice}, if its session user (or 'anyone'
  * when logged out) may view the project's annotations, as GET /api?project
- * checks. The answer is {type: 'joined', project, source, slice} or
+ * checks (an embed-only connection: as its ticket says, embedConnections.js).
+ * The answer is {type: 'joined', project, source, slice} or
  * {type: 'join-refused', project, source, slice, reason}. One room per
  * connection: a new join leaves the previous room, and so does closing.
  *
@@ -114,10 +115,13 @@ const disconnect = (ws) => {
  * @param {object} params.ws The connection
  * @param {function} params.sessionParser The app's session middleware
  * @param {object} params.db The app's native Db
+ * @param {Promise<object|null>} [params.embedScope] For an embed-only
+ *   connection, the scope of its ticket (embedConnections.scopeOf): the join
+ *   is refused ('out-of-scope') outside it, and checked as its user
  * @returns {Promise<void>}
  */
-// eslint-disable-next-line max-statements
-const join = async ({ data, ws, sessionParser, db }) => {
+// eslint-disable-next-line max-statements, complexity
+const join = async ({ data, ws, sessionParser, db, embedScope = null }) => {
   const state = connections.get(ws);
   const target = joinTarget(data);
   if (!state || !target) {
@@ -137,7 +141,22 @@ const join = async ({ data, ws, sessionParser, db }) => {
   }
   let project, username;
   try {
-    username = await usernameFromCookie(sessionParser, state.cookie);
+    if (embedScope) {
+      // an embed-only connection (embedConnections.js): only its ticket's
+      // dataset and project, as the user the page was rendered for
+      const scope = await embedScope;
+      if (!current()) {
+        return;
+      }
+      if (!scope || scope.project !== target.project || scope.source !== target.source) {
+        refuse('out-of-scope');
+
+        return;
+      }
+      ({ username } = scope);
+    } else {
+      username = await usernameFromCookie(sessionParser, state.cookie);
+    }
     project = await findCurrentProject(db, target.project);
   } catch (err) {
     log.error({ err }, 'join check failed');

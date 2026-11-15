@@ -13,6 +13,7 @@ const WebSocket = require('ws');
 const log = require('../../log').child({ module: 'websocket' });
 const WebSocketServer = WebSocket.Server;
 const liveRooms = require('./liveRooms');
+const embedConnections = require('./embedConnections');
 var websocketserver;
 
 // longer chat messages are dropped
@@ -76,12 +77,46 @@ const microdrawWebsocketServer = (function () {
     _handleUserWebSocketMessage: ({data, ws}) => {
       switch(data.type) {
       case 'join':
-        liveRooms.join({ data, ws, sessionParser: me.sessionParser, db: me.db })
+        liveRooms.join({
+          data,
+          ws,
+          sessionParser: me.sessionParser,
+          db: me.db,
+          embedScope: embedConnections.isEmbed(ws) ? embedConnections.scopeOf(ws) : null
+        })
           .catch((err) => log.error({ err }, 'join failed'));
         break;
       default:
         break;
       }
+    },
+
+    /**
+     * An embed-only connection (T002 3.7, embedConnections.js) may only join
+     * the rooms of its ticket: any other message (a chat, or anything a
+     * future version would write with) is refused, whatever it claims. The
+     * first refusal is answered {type: 'write-refused', write, reason}, as
+     * BrainBox's.
+     * @param {object} params Parameters
+     * @param {object} params.data The message
+     * @param {object} params.ws The connection
+     * @returns {boolean} True if the message was refused
+     */
+    _refuseEmbedMessage: ({data, ws}) => {
+      if (!embedConnections.isEmbed(ws) || data.type === 'join') {
+        return false;
+      }
+      const write = typeof data.type === 'string' ? data.type.slice(0, 64) : null;
+      log.warn({ write }, 'message from an embedded viewer refused');
+      if (embedConnections.firstRefusal(ws) && ws.readyState === WebSocket.OPEN) {
+        try {
+          ws.send(JSON.stringify({ type: 'write-refused', write, reason: 'an embedded viewer cannot edit' }));
+        } catch (err) {
+          log.error({ err }, 'cannot send the refusal');
+        }
+      }
+
+      return true;
     },
 
     /**
@@ -104,9 +139,10 @@ const microdrawWebsocketServer = (function () {
       return chat;
     },
 
+    // the chat goes to every connection but the sender's and the embeds'
     _broadcast: (text, ws) => {
       websocketserver.clients.forEach((client) => {
-        if (client !== ws && client.readyState === WebSocket.OPEN) {
+        if (client !== ws && client.readyState === WebSocket.OPEN && !embedConnections.isEmbed(client)) {
           try {
             client.send(text);
           } catch (err) {
@@ -133,6 +169,7 @@ const microdrawWebsocketServer = (function () {
       chatQueues.set(ws, next);
     },
 
+    // eslint-disable-next-line max-statements
     _handleWebSocketMessage: ({msg, ws}) => {
       let data;
       try {
@@ -146,6 +183,11 @@ const microdrawWebsocketServer = (function () {
         return;
       }
 
+      // an embedded viewer is read-only (T002 3.7)
+      if (me._refuseEmbedMessage({data, ws})) {
+        return;
+      }
+
       // handle single user messages
       me._handleUserWebSocketMessage({data, ws});
 
@@ -155,6 +197,8 @@ const microdrawWebsocketServer = (function () {
 
     _handleWebSocketConnection: (ws, req) => {
       liveRooms.connect(ws, req);
+      // embed-only if it presents a ticket (T002 3.7)
+      embedConnections.tag(ws, req, me.db);
       ws.on('message', function (msg) {
         try {
           me._handleWebSocketMessage({msg, ws});

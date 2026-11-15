@@ -30,13 +30,21 @@ const DATASETS_SOURCE_INDEX = 'source_1';
 // whole collection.
 const ANNOTATIONS_USER_INDEX = 'user_1_project_1';
 
+// The embed's WebSocket tickets (T002 3.7, embed/EmbedAccessService.js): looked
+// up by token; MongoDB removes them once expired (findWsTicket refuses them
+// before that)
+const EMBED_TICKET_TOKEN_INDEX = 'token_1';
+const EMBED_TICKET_EXPIRY_INDEX = 'expiryDate_1';
+
 // [collection, keys, name, options]
 const INDEXES = [
   ['annotations', { project: 1, _id: -1 }, ANNOTATIONS_PROJECT_INDEX],
   ['annotations', { user: 1, project: 1 }, ANNOTATIONS_USER_INDEX],
   ['textAnnotations', { project: 1, source: 1, layer: 1, _id: -1 }, TEXT_ANNOTATIONS_INDEX],
   ['projects', { shortname: 1 }, PROJECTS_SHORTNAME_INDEX],
-  ['datasets', { source: 1 }, DATASETS_SOURCE_INDEX, { unique: true }]
+  ['datasets', { source: 1 }, DATASETS_SOURCE_INDEX, { unique: true }],
+  ['embedWsTicket', { token: 1 }, EMBED_TICKET_TOKEN_INDEX],
+  ['embedWsTicket', { expiryDate: 1 }, EMBED_TICKET_EXPIRY_INDEX, { expireAfterSeconds: 0 }]
 ];
 
 /**

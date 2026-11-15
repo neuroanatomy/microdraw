@@ -7,6 +7,7 @@ const nwl = require('neuroweblab');
 const {authTokenMiddleware} = nwl;
 const {getHttpImg} = require('../serveHttpImages/serveHttpImages');
 const log = require('../log');
+const {refuseEmbedWrites} = require('../controller/embed/embed-access');
 
 module.exports = (app) => {
   log.debug('configuring routes');
@@ -26,6 +27,9 @@ module.exports = (app) => {
   };
 
   app.use(configSetup);
+
+  // no write from the embeddable viewer (T002 3.7, embed-access.js)
+  app.use(refuseEmbedWrites);
 
   app.get('/', function (req, res) { // /auth/github
 

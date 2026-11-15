@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+    <title>{{title}}</title>
+    <!-- The embeddable, read-only viewer (T002 3.7), as BrainBox's mriEmbed:
+         no site header, menu, login, chat, script console or drawing tools -->
+    <link rel="stylesheet" href="/lib/nwl-components/tokens.css">
+    <link rel="stylesheet" href="/lib/nwl-components/widgets.css">
+    <link rel="stylesheet" href="/lib/nwl-components/fonts.css">
+    <link rel="stylesheet" href="/css/embed.css">
+</head>
+<body>
+
+<div id="embed" class="embed-layout" data-state="loading">
+    <div id="viewer-area">
+        <div id="openseadragon"></div>
+        <div id="paperjs-container"></div>
+        <div id="embedStatus" role="status">Loading…</div>
+        <div id="labelsPanel" hidden>
+            <p class="labelsTitle">Labels</p>
+            <ul id="labelsList"></ul>
+        </div>
+    </div>
+    <div id="tools">
+        <button type="button" id="previous" title="Previous slice" class="nwl-tool-button" disabled><img class="nwl-icon" alt="previous" src="/lib/nwl-components/icons/caret-square-o-left.svg" /></button>
+        <span id="slice-number" aria-live="polite"></span>
+        <button type="button" id="next" title="Next slice" class="nwl-tool-button" disabled><img class="nwl-icon" alt="next" src="/lib/nwl-components/icons/caret-square-o-right.svg" /></button>
+        <button type="button" id="zoomIn" title="Zoom in" class="nwl-tool-button" disabled><img class="nwl-icon" alt="zoom in" src="/lib/nwl-components/icons/zoomIn.svg" /></button>
+        <button type="button" id="zoomOut" title="Zoom out" class="nwl-tool-button" disabled><img class="nwl-icon" alt="zoom out" src="/lib/nwl-components/icons/zoomOut.svg" /></button>
+        <button type="button" id="home" title="Fit the image" class="nwl-tool-button" disabled><img class="nwl-icon" alt="home" src="/lib/nwl-components/icons/home.svg" /></button>
+        <button type="button" id="labels" title="Labels" class="nwl-tool-button" aria-pressed="false" disabled><img class="nwl-icon" alt="labels" src="/lib/nwl-components/icons/eye.svg" /></button>
+        <button type="button" id="fullscreen" title="Full screen" class="nwl-tool-button" aria-pressed="false"><img class="nwl-icon" alt="full screen" src="/lib/nwl-components/icons/fullscreen.svg" /></button>
+        <a id="microdrawLink" class="nwl-tool-button" title="Open in MicroDraw" target="_blank" rel="noopener" href="/">MicroDraw</a>
+    </div>
+</div>
+
+<script>
+// the websocket server's port, as in data.mustache
+window.MICRODRAW_WS_PORT = {{ wsPort }};
+var params = {{{params}}};
+var embedWsTicket = {{{embedWsTicket}}};
+</script>
+<script src="/lib/paper-full-0.12.15.min.js"></script>
+<script src="/lib/openseadragon/openseadragon.js"></script>
+<script src="/js/embed-sizing.js"></script>
+<script src="/js/embed-page.js"></script>
+
+</body>
+</html>

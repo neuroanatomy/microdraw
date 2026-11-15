@@ -10,7 +10,8 @@ export default {
   fetchLabelSets: async () => (await fetch('/api/getLabelsets')).json(),
   annotationTypes: ["text", "vectorial"],
   usernameField: 'username',
-  // nwl-components >= 1.4.0: no "Embed Project" button (microdraw has no
-  // /project/:p/embed route until T002 stage 3.7)
-  showEmbedButton: false
+  // The "Embed Project" button (nwl-components ProjectInfo.vue) shows an
+  // iframe snippet framing /project/:p/embed, which opens the embed of the
+  // project's first dataset (T002 3.7)
+  showEmbedButton: true
 };

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroDraw embed demo</title>
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+    <!-- A host page, as another site would write it (T002 3.7): it uses
+         nothing of MicroDraw's but /embed.js and /data/embed -->
+    <style>
+        body {
+            max-width: 760px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            font: 15px/1.5 Georgia, serif;
+            color: #222;
+            background: #fafaf7;
+        }
+        code, pre {
+            font: 13px/1.4 ui-monospace, Menlo, Consolas, monospace;
+        }
+        pre {
+            overflow: auto;
+            padding: 0.75rem;
+            background: #eee;
+        }
+        table {
+            border-collapse: collapse;
+        }
+        td, th {
+            padding: 0.2rem 0.6rem;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+            vertical-align: top;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Embedding a MicroDraw dataset</h1>
+
+<p>
+    This page embeds the test dataset <code>/test_data/cat.json</code> with the
+    regions of the project <code>embeddemo</code>. To see it on a local server,
+    create that project (<a href="/project/new">/project/new</a>), add the file
+    <code>/test_data/cat.json</code>, and let <em>anyone</em> view its files and
+    annotations. An embed only shows what an anonymous visitor may see: a
+    framing site sends no session cookie.
+</p>
+
+<h2>The short way: one script tag</h2>
+
+<pre>&lt;script src="https://microdraw.pasteur.fr/embed.js"
+        data-source="/test_data/cat.json"
+        data-project="embeddemo"&gt;&lt;/script&gt;</pre>
+
+<script src="/embed.js"
+        data-source="/test_data/cat.json"
+        data-project="embeddemo"
+        data-max-height="600"></script>
+
+<p>
+    The script inserts an iframe where the tag sits, and keeps it at the height
+    the viewer asks for. Its options are <code>data-*</code> attributes:
+</p>
+
+<table>
+    <tr><th>Attribute</th><th>Meaning</th></tr>
+    <tr><td><code>data-source</code></td><td><strong>Required.</strong> Source URL of the dataset</td></tr>
+    <tr><td><code>data-project</code></td><td>Project whose regions are shown; without it, the image alone, if a project listing it is public</td></tr>
+    <tr><td><code>data-slice</code></td><td>Initial slice number (the middle slice by default)</td></tr>
+    <tr><td><code>data-max-height</code></td><td>Cap, in px, on the height the viewer asks for</td></tr>
+    <tr><td><code>data-microdraw-link</code></td><td><code>0</code> hides the MicroDraw link</td></tr>
+    <tr><td><code>data-width</code>, <code>data-max-width</code>, <code>data-height</code></td><td>The box: 100%, 560px and 420px by default (the height is a starting guess)</td></tr>
+    <tr><td><code>data-target</code></td><td>CSS selector of the element to render into</td></tr>
+</table>
+
+<h2>The explicit way: an iframe</h2>
+
+<pre>&lt;iframe src="https://microdraw.pasteur.fr/data/embed?source=%2Ftest_data%2Fcat.json&amp;project=embeddemo&amp;slice=0"
+        style="width:100%; max-width:560px; height:420px; border:0"
+        allow="fullscreen" allowfullscreen&gt;&lt;/iframe&gt;</pre>
+
+<iframe id="explicit" src="/data/embed?source=%2Ftest_data%2Fcat.json&amp;project=embeddemo&amp;slice=0"
+        style="display:block; width:100%; max-width:560px; height:420px; border:0; background:#222"
+        allow="fullscreen" allowfullscreen title="MicroDraw viewer"></iframe>
+
+<p>
+    The query parameters are <code>source</code>, <code>project</code>,
+    <code>slice</code>, <code>maxHeight</code> and <code>microdrawLink</code>;
+    any other is ignored. The viewer is always read-only.
+    <code>allow="fullscreen"</code> lets its full-screen button work.
+</p>
+
+<h2>Auto-sizing</h2>
+
+<p>
+    The viewer posts <code>{type: 'microdraw:embed-resize', height, width, aspect, slice}</code>
+    to its parent on load, on each slice change, and when its width or its
+    toolbar changes. <code>height</code> is computed from the image's aspect
+    ratio and the toolbar. A host page that writes the iframe itself listens
+    for it (this one does, for the iframe above):
+</p>
+
+<pre>window.addEventListener('message', function (event) {
+    if (event.source !== iframe.contentWindow) { return; }
+    if (!event.data || event.data.type !== 'microdraw:embed-resize') { return; }
+    if (typeof event.data.height !== 'number' || event.data.height &lt;= 0) { return; }
+    iframe.style.height = event.data.height + 'px';
+});</pre>
+
+<h2>Which projects can be shown</h2>
+
+<p>
+    <code>GET /data/layers?source=…</code> answers
+    <code>{layers: [{project, name, access}]}</code>: the projects listing the
+    dataset whose annotations the visitor may view. For this dataset:
+</p>
+
+<pre id="layers">…</pre>
+
+<script>
+(function () {
+    'use strict';
+    var iframe = document.getElementById('explicit');
+    window.addEventListener('message', function (event) {
+        if (event.source !== iframe.contentWindow) { return; }
+        if (!event.data || event.data.type !== 'microdraw:embed-resize') { return; }
+        if (typeof event.data.height !== 'number' || event.data.height <= 0) { return; }
+        iframe.style.height = event.data.height + 'px';
+    });
+    fetch('/data/layers?source=' + encodeURIComponent('/test_data/cat.json'))
+        .then(function (res) { return res.json(); })
+        .then(function (json) { document.getElementById('layers').textContent = JSON.stringify(json, null, 2); })
+        .catch(function (err) { document.getElementById('layers').textContent = String(err); });
+}());
+</script>
+
+</body>
+</html>

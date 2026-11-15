@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+    <title>MicroDraw</title>
+    <!-- the embed's error page (T002 3.7), as BrainBox's embedError: rendered
+         inside someone else's page, in a box that may be a few hundred pixels
+         wide, so no site header, menu or login -->
+    <link rel="stylesheet" href="/lib/nwl-components/tokens.css">
+    <link rel="stylesheet" href="/lib/nwl-components/fonts.css">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            background-color: var(--nwl-bg);
+            color: var(--nwl-text);
+            font: var(--nwl-text-md)/1.5 var(--nwl-font-body);
+            -webkit-font-smoothing: antialiased;
+        }
+        main {
+            box-sizing: border-box;
+            height: 100%;
+            padding: var(--nwl-space-6);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        p {
+            margin: 0;
+            max-width: 34ch;
+        }
+    </style>
+</head>
+<body class="embed-error">
+<main>
+    <p id="embedErrorMessage">{{message}}</p>
+</main>
+</body>
+</html>

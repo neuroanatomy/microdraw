@@ -1,6 +1,7 @@
 const express = require('express');
 const { authTokenMiddleware } = require('neuroweblab');
 const controller = require('./project.controller');
+const embed = require('../embed/embed.controller');
 
 const router = new express.Router();
 
@@ -14,6 +15,8 @@ router.get('/json/:projectName/text-annotations', controller.validator, authToke
 
 router.get('/:projectName', controller.validator, controller.project);
 router.get('/:projectName/settings', controller.validator, controller.settings);
+// what the settings' "Embed Project" button frames (T002 3.7)
+router.get('/:projectName/embed', controller.validator, embed.projectEmbed);
 
 router.post('/json/:projectName', controller.validator, authTokenMiddleware, controller.postProject);
 router.delete('/json/:projectName', controller.validator, authTokenMiddleware, controller.deleteProject);

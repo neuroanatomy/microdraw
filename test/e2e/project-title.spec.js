@@ -132,18 +132,18 @@ describe('Project title and settings pages (M7)', () => {
     assert.equal(await titleOf(page), 'Initial Name');
   }).timeout(U.mediumTimeout);
 
-  // nwl-components 1.3.19 added an "Embed Project" button; microdraw has no
-  // embed route. From 1.4.0 the config's showEmbedButton: false leaves it out
-  // (before, a CSS rule hid it). Neither the button nor its dialog is rendered.
-  it('the settings page does not show the Embed Project button', async () => {
+  // nwl-components 1.3.19 added an "Embed Project" button; microdraw hid it
+  // (showEmbedButton: false) until its embed route, T002 3.7. Its dialog's
+  // snippet frames /project/:p/embed, which opens the embed of the project's
+  // first dataset.
+  it('the settings page shows the Embed Project button, framing /project/:p/embed', async () => {
     await openSettings(EXISTING);
     const buttons = await page.$$eval('.description .actions button', (bs) => bs
       .filter((b) => b.offsetParent !== null)
       .map((b) => b.textContent.trim()));
-    assert.deepEqual(buttons, ['Save Changes', 'Delete Project', 'Go to Project']);
-    // not rendered at all (1.4.0), rather than hidden
-    const embed = await page.$$eval('button', (bs) => bs.filter((b) => (/embed/i).test(b.textContent)).length);
-    assert.equal(embed, 0);
+    assert.deepEqual(buttons, ['Save Changes', 'Delete Project', 'Go to Project', 'Embed Project']);
+    const code = await page.$eval('.embedDialog textarea', (t) => t.value);
+    assert.include(code, `/project/${EXISTING}/embed`);
   }).timeout(U.mediumTimeout);
 
   it('typing in an empty title writes left to right', async () => {
