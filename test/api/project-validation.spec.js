@@ -7,7 +7,6 @@ chai.use(chaiHttp);
 const { assert } = chai;
 const _ = require('lodash');
 const U = require('../mocha.test.util');
-const { plainText } = require('../../app/controller/project/project.validation');
 const { projectProblems } = require('../../app/controller/project/project.check');
 
 // M3 (T002 step 1.4): POST /project/json/:projectName validates and sanitises
@@ -118,24 +117,7 @@ describe('Validation of POST /project/json/:projectName (M3)', function () {
   });
 
   describe('sanitising', function () {
-    it('plainText removes markup and keeps text, "&" and "a < b"', function () {
-      assert.equal(plainText('<img src=x onerror=alert(1)>Name'), 'Name');
-      assert.equal(plainText('<script>alert(1)</script>ok'), 'ok');
-      assert.equal(plainText('<b>bold</b>'), 'bold');
-      assert.equal(plainText('a < b'), 'a < b');
-      assert.equal(plainText('x?a=1&b=2'), 'x?a=1&b=2');
-    });
-
-    // M5b (dompurify 2 → 3): entities, comments, javascript: links and two
-    // mutation-XSS payloads; recorded on dompurify 2.5.9.
-    it('plainText decodes entities and drops comments, links and mXSS payloads', function () {
-      assert.equal(plainText('<b>x</b>&amp;y'), 'x&y');
-      assert.equal(plainText('<!-- c -->k'), 'k');
-      assert.equal(plainText('<a href="javascript:alert(1)">l</a>'), 'l');
-      assert.equal(plainText('<noscript><p title="</noscript><img src=x onerror=alert(1)>">'), '');
-      assert.equal(plainText('<math><mi><mglyph><style><img src=x onerror=alert(1)>'), '');
-    });
-
+    // plainText's own cases are NeuroWebLab's (1.10.0, project/rules.spec.js)
     // eslint-disable-next-line max-statements
     it('stores names without markup, and ignores _id and backup', async function () {
       const shortname = 'm3asanitise';
@@ -342,6 +324,21 @@ describe('Validation of POST /project/json/:projectName (M3)', function () {
       assert.lengthOf(stored.annotations.list, 2);
       assert.lengthOf(stored.files.list, 3);
       assert.lengthOf(stored.collaborators.list, 2);
+    }).timeout(U.shortTimeout);
+
+    // microdraw names a collaborator by username or userID only: a new row
+    // with a nickname alone is blank, dropped (NeuroWebLab's isBlankRow, which
+    // reads nickname, would have it checked and refused; M3b keeps microdraw's)
+    it('a new collaborator row with a nickname only is dropped as blank, not refused', async function () {
+      const project = legacy();
+      project.collaborators.list.push({ nickname: 'm3b-nickname', name: '', access: none });
+      const res = await save(project);
+      assert.equal(res.status, 200, res.text);
+      assert.deepEqual(res.body.dropped, { files: 0, collaborators: 1, annotations: 0 });
+      assert.match(res.body.message, /Empty rows were not saved \(1 collaborators\)/);
+      const stored = await U.queryProject(shortname);
+      assert.lengthOf(stored.collaborators.list, 2);
+      assert.isFalse(stored.collaborators.list.some((c) => c.nickname === 'm3b-nickname'));
     }).timeout(U.shortTimeout);
 
     it('a new annotation without a name is still refused', async function () {

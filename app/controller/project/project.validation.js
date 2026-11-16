@@ -19,60 +19,18 @@
  *   new-project page asks (shared suite 2.6, 2026-11-11: hyphens allowed);
  * - every string is sanitised with DOMPurify: strings are plain text, so
  *   markup is removed and only the text is kept.
+ *
+ * plainText, sanitize, isBlank, text, listOf, sortRows and shortnamePattern
+ * are NeuroWebLab's (1.10.0, project/rules.js).
  */
 const _ = require('lodash');
-const createDOMPurify = require('dompurify');
-const { JSDOM } = require('jsdom');
-const { AccessLevel } = require('neuroweblab');
-
-const { window } = new JSDOM('', {
-  features: {
-    FetchExternalResources: false, // disables resource loading over HTTP / filesystem
-    ProcessExternalResources: false // do not execute JS within script blocks
-  }
-});
-const DOMPurify = createDOMPurify(window);
+const { AccessLevel, isBlank, listOf, plainText, sanitize, shortnamePattern, sortRows, text } = require('neuroweblab');
 
 const annotationTypes = ['text', 'vectorial'];
 const listTypes = ['files', 'collaborators', 'annotations'];
-const shortnamePattern = /^[a-zA-Z0-9-]+$/;
 // Fields the client may not set: the database id, and the backup flag (a
 // project with `backup` is hidden from every read).
 const serverFields = ['_id', 'backup'];
-
-/**
- * Plain text of a string: markup removed by DOMPurify, text kept. A string
- * without "<" cannot hold markup and is kept as it is (DOMPurify would
- * otherwise turn "&" into "&amp;" in URLs).
- * @param {string} str A string
- * @returns {string} The string without markup
- */
-const plainText = (str) => {
-  if (!str.includes('<')) {
-    return str;
-  }
-
-  return DOMPurify.sanitize(str, { ALLOWED_TAGS: [], KEEP_CONTENT: true, RETURN_DOM_FRAGMENT: true }).textContent;
-};
-
-/**
- * A copy of a JSON value with every string sanitised (plainText)
- * @param {*} value A value parsed from JSON
- * @returns {*} The sanitised copy
- */
-const sanitize = (value) => {
-  if (typeof value === 'string') {
-    return plainText(value);
-  }
-  if (Array.isArray(value)) {
-    return value.map(sanitize);
-  }
-  if (_.isPlainObject(value)) {
-    return _.mapValues(value, sanitize);
-  }
-
-  return value;
-};
 
 /**
  * The project sent in the body (data, as an object or a JSON string)
@@ -250,12 +208,6 @@ const firstError = (list, check, skip = new Set()) => {
   return null;
 };
 
-const isBlank = (v) => v === null || typeof v === 'undefined' || (typeof v === 'string' && v.trim() === '');
-
-// null, undefined and '' are the same value for the comparison below: the
-// settings page may send back '' for a stored null
-const text = (v) => (isBlank(v) ? '' : v);
-
 // A file as the nwl-components settings page sends it back: a file stored as
 // a plain string s becomes {source: s, name: <text after the last '/'>}
 // (ProjectService.transformProjectFiles)
@@ -270,7 +222,9 @@ const asFileObject = (f) => {
 
 // What a row is compared on, to tell whether it is stored unchanged: the
 // fields the settings page shows (it adds a display name to collaborators),
-// normalised as the page normalises them, on both sides.
+// normalised as the page normalises them, on both sides. null, undefined and
+// '' are the same value (text): the settings page may send back '' for a
+// stored null.
 const rowKey = {
   files: (f) => {
     const o = asFileObject(f);
@@ -286,36 +240,13 @@ const rowKey = {
   annotations: (a) => (_.isPlainObject(a) ? { type: a.type, name: text(a.name), values: text(a.values) } : a)
 };
 
-// Rows left empty (e.g. by the settings page's "+" button)
+// Rows left empty (e.g. by the settings page's "+" button). Not NeuroWebLab's
+// isBlankRow: a collaborator row is blank without reading `nickname`, so a row
+// named by `nickname` alone is dropped, not refused.
 const isBlankRow = {
   files: (f) => _.isPlainObject(f) && isBlank(f.source) && isBlank(f.name),
   collaborators: (c) => _.isPlainObject(c) && isBlank(c.username) && isBlank(c.userID),
   annotations: (a) => _.isPlainObject(a) && isBlank(a.name) && isBlank(a.values)
-};
-
-const listOf = (project, type) => ((project && _.isPlainObject(project[type]) && Array.isArray(project[type].list)) ? project[type].list : []);
-
-// storedRows for one list
-// eslint-disable-next-line max-statements
-const sortRows = (type, rows, oldRows) => {
-  const available = oldRows.map((row) => rowKey[type](sanitize(row)));
-  const kept = [];
-  const stored = new Set();
-  let dropped = 0;
-  for (const row of rows) {
-    const at = available.findIndex((key) => _.isEqual(key, rowKey[type](row)));
-    if (at >= 0) {
-      available.splice(at, 1);
-      stored.add(kept.length);
-      kept.push(row);
-    } else if (isBlankRow[type](row)) {
-      dropped += 1;
-    } else {
-      kept.push(row);
-    }
-  }
-
-  return { kept, stored, dropped };
 };
 
 /**
@@ -334,7 +265,9 @@ const storedRows = (project, oldProject) => {
   const dropped = {};
   for (const type of listTypes) {
     if (_.isPlainObject(project[type]) && Array.isArray(project[type].list)) {
-      ({ kept: project[type].list, stored: stored[type], dropped: dropped[type] } = sortRows(type, project[type].list, listOf(oldProject, type)));
+      // NeuroWebLab's sortRows compares the stored rows as given: sanitised
+      // here, as the rows sent are
+      ({ kept: project[type].list, stored: stored[type], dropped: dropped[type] } = sortRows(type, project[type].list, listOf(oldProject, type).map(sanitize), { rowKey, isBlankRow }));
     }
   }
 

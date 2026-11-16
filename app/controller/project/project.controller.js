@@ -14,7 +14,7 @@ const { deleteStoredProject } = require('./project.delete');
 const { findCurrentProject, saveProjectVersion } = require('./currentProject');
 const { visibleProjectParts } = require('./visibleProject');
 const { currentTextValues } = require('../textAnnotations');
-const { canSaveProject, catchErrors, filesListIncomplete, ignoredChangesMessage, jsonForScript, keepFieldsWithoutFilesEdit, saveRefusal } = require('neuroweblab');
+const { canSaveProject, catchErrors, droppedMessage, filesListIncomplete, ignoredChangesMessage, jsonForScript, keepFieldsWithoutFilesEdit, saveRefusal } = require('neuroweblab');
 const { escapeHTML } = require('../escape');
 const validator = function (req, res, next) {
   next();
@@ -423,15 +423,6 @@ const keepListsWithoutEditRights = (newProject, oldProject, loggedUser) => {
   }
 
   return ignored;
-};
-
-// The blank new rows that checkProject left out (M3a2), for the message
-const droppedMessage = (dropped) => {
-  const parts = Object.entries(dropped)
-    .filter(([, n]) => n > 0)
-    .map(([type, n]) => `${n} ${type}`);
-
-  return parts.length > 0 ? ` Empty rows were not saved (${parts.join(', ')}).` : '';
 };
 
 // The reason goes in `error`, which the settings page shows (nwl-components
