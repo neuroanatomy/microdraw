@@ -4,6 +4,7 @@
  * is left as it is. Any error (e.g. the same keys under another name) is
  * logged and does not stop the app: the queries still work, only slower.
  */
+const { ensureTicketIndex } = require('neuroweblab');
 const log = require('../log');
 
 // The user page's "Last modified": the newest annotation of each listed
@@ -30,21 +31,13 @@ const DATASETS_SOURCE_INDEX = 'source_1';
 // whole collection.
 const ANNOTATIONS_USER_INDEX = 'user_1_project_1';
 
-// The embed's WebSocket tickets (T002 3.7, embed/EmbedAccessService.js): looked
-// up by token; MongoDB removes them once expired (findWsTicket refuses them
-// before that)
-const EMBED_TICKET_TOKEN_INDEX = 'token_1';
-const EMBED_TICKET_EXPIRY_INDEX = 'expiryDate_1';
-
 // [collection, keys, name, options]
 const INDEXES = [
   ['annotations', { project: 1, _id: -1 }, ANNOTATIONS_PROJECT_INDEX],
   ['annotations', { user: 1, project: 1 }, ANNOTATIONS_USER_INDEX],
   ['textAnnotations', { project: 1, source: 1, layer: 1, _id: -1 }, TEXT_ANNOTATIONS_INDEX],
   ['projects', { shortname: 1 }, PROJECTS_SHORTNAME_INDEX],
-  ['datasets', { source: 1 }, DATASETS_SOURCE_INDEX, { unique: true }],
-  ['embedWsTicket', { token: 1 }, EMBED_TICKET_TOKEN_INDEX],
-  ['embedWsTicket', { expiryDate: 1 }, EMBED_TICKET_EXPIRY_INDEX, { expireAfterSeconds: 0 }]
+  ['datasets', { source: 1 }, DATASETS_SOURCE_INDEX, { unique: true }]
 ];
 
 /**
@@ -61,6 +54,10 @@ const ensureIndexes = async (db) => {
       log.warn({ err, index: name }, `cannot create the ${collection} index`);
     }
   }
+  // The embed's WebSocket tickets (T002 3.7, NeuroWebLab's mintWsTicket):
+  // looked up by token (token_1); MongoDB removes them once expired
+  // (expiryDate_1, a TTL index; findWsTicket refuses them before that)
+  await ensureTicketIndex(db, { logger: log });
 };
 
 module.exports = {

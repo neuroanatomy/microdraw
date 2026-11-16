@@ -10,10 +10,9 @@
  *   button frames, the embed of the project's first dataset.
  */
 const _ = require('lodash');
-const { catchErrors, jsonForScript } = require('neuroweblab');
+const { catchErrors, jsonForScript, mintWsTicket, projectEmbedRoute } = require('neuroweblab');
 const { findCurrentProject } = require('../project/currentProject');
 const { mayEmbedData, embedLayers } = require('./embed-access');
-const EmbedAccessService = require('./EmbedAccessService');
 
 // The query parameters the embed reads, and the only ones reflected into the
 // page (as BrainBox's EMBED_QUERY_PARAMS)
@@ -68,7 +67,7 @@ const dataEmbedUnsafe = async function (req, res) {
     return;
   }
 
-  const embedWsTicket = await EmbedAccessService.mintWsTicket(db, {
+  const embedWsTicket = await mintWsTicket(db, {
     source,
     project: decision.project ? decision.project.shortname : null,
     username: username === 'anyone' ? null : username
@@ -112,37 +111,22 @@ const apiDataLayersUnsafe = async function (req, res) {
  *       (nwl-components' ProjectInfo.vue: /project/:shortname/embed): the
  *       embed of the project's first dataset. A project the visitor may not
  *       view, or without datasets, gets the embed error page, and no URL.
- * @param {Object} req Express request
- * @param {Object} res Express response
- * @returns {Promise<void>} Once answered
+ *       NeuroWebLab's projectEmbedRoute, with microdraw's lookups and messages.
  */
-// eslint-disable-next-line max-statements
-const projectEmbedUnsafe = async function (req, res) {
-  res.set('Content-Security-Policy', 'frame-ancestors *');
-  const db = req.app.db.nativeMongoDB();
-  const found = await findCurrentProject(db, req.params.projectName);
-  if (!found) {
-    embedError(res, 404, 'This project could not be found.');
-
-    return;
-  }
-  const list = (found.files && Array.isArray(found.files.list)) ? found.files.list : [];
-  const first = list.map((f) => (typeof f === 'string' ? f : f && f.source)).find((s) => typeof s === 'string' && s.length > 0);
-  const decision = first ?
-    await mayEmbedData(db, { source: first, project: found.shortname, username: usernameOf(req) }) :
-    { status: 404, message: 'This project has no dataset.' };
-  if (decision.status !== 200) {
-    embedError(res, decision.status, decision.message);
-
-    return;
-  }
-  const query = new URLSearchParams({ source: first, project: found.shortname });
-  res.redirect(302, `/data/embed?${query.toString()}`);
-};
+const projectEmbed = projectEmbedRoute({
+  findProject: (req, shortname) => findCurrentProject(req.app.db.nativeMongoDB(), shortname),
+  mayEmbed: (req, { source, project }) => mayEmbedData(req.app.db.nativeMongoDB(), {
+    source, project: project.shortname, username: usernameOf(req)
+  }),
+  embedURL: (source, project) => `/data/embed?${new URLSearchParams({ source, project }).toString()}`,
+  embedError,
+  noFilesMessage: 'This project has no dataset.',
+  serverErrorMessage: 'This dataset could not be loaded.'
+});
 
 module.exports = {
   EMBED_QUERY_PARAMS,
   dataEmbed: catchErrors(dataEmbedUnsafe, embedServerError),
   apiDataLayers: catchErrors(apiDataLayersUnsafe),
-  projectEmbed: catchErrors(projectEmbedUnsafe, embedServerError)
+  projectEmbed
 };

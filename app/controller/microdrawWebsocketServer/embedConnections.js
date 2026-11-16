@@ -3,7 +3,7 @@
  * atlasmakerServer tags them (`isEmbed`, `embedScope`).
  *
  * The embed page opens its WebSocket with ?embedTicket=<token>, minted when
- * the page was rendered (embed/EmbedAccessService.js). A connection that
+ * the page was rendered (NeuroWebLab's mintWsTicket). A connection that
  * presents the parameter, whatever its value, is embed-only: an unknown or
  * expired ticket still tags it, with no scope (fail closed: presenting the
  * parameter can only narrow a connection's rights, never widen them).
@@ -14,7 +14,7 @@
  * chat.
  */
 const url = require('url');
-const EmbedAccessService = require('../embed/EmbedAccessService');
+const { findWsTicket } = require('neuroweblab');
 const log = require('../../log').child({ module: 'websocket' });
 
 // connection -> {lookup: Promise<scope|null>, refusalSent}
@@ -50,7 +50,7 @@ const tag = (ws, req, db) => {
   if (ticket === null) {
     return false;
   }
-  const lookup = (db ? EmbedAccessService.findWsTicket(db, ticket) : Promise.resolve(null))
+  const lookup = (db ? findWsTicket(db, ticket) : Promise.resolve(null))
     .then((found) => (found ? { source: found.source, project: found.project, username: found.username || null } : null))
     .catch((err) => {
       log.error({ err }, 'embed ticket lookup failed');

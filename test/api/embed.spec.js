@@ -8,7 +8,7 @@ const { assert } = chai;
 const WebSocket = require('ws');
 const U = require('../mocha.test.util');
 const wsModule = require('../../app/controller/microdrawWebsocketServer/microdrawWebsocketServer');
-const { WS_TICKET_COLLECTION, WS_TICKET_DURATION } = require('../../app/controller/embed/EmbedAccessService');
+const { WS_TICKET_COLLECTION, WS_TICKET_DURATION } = require('neuroweblab');
 
 // The embeddable, read-only viewer (T002 3.7), as BrainBox's /mri/embed:
 // - GET /data/embed: access matrix, parameter whitelist, CSP on that route only;
