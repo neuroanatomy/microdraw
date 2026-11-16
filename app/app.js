@@ -11,6 +11,7 @@ const nwl = require('neuroweblab');
 const microdrawWebsocketServer = require('./controller/microdrawWebsocketServer/microdrawWebsocketServer.js');
 const routes = require('./routes/routes');
 const log = require('./log');
+const errors = require('./errors');
 const { ensureIndexes } = require('./controller/indexes');
 let port;
 let server;
@@ -63,32 +64,6 @@ const listen = (srv, wanted, which) => new Promise((resolve, reject) => {
 const onListening = function () {
   const addr = server.address();
   log.info({ address: typeof addr === 'string' ? addr : addr.port }, 'http server listening');
-};
-
-// What a request no route answered gets: 'json' when it accepts JSON first, or
-// has /json/ in its path, or is under /api/; 'page' for a GET or HEAD that
-// accepts HTML, on a path without a file extension other than .html; 'text'
-// for anything else, such as a missing script, image or font.
-const notFoundKind = function (req) {
-  const accepted = req.accepts(['html', 'json']);
-  if (accepted === 'json' || req.path.includes('/json/') || req.path.startsWith('/api/')) {
-    return 'json';
-  }
-  const extension = path.extname(req.path).toLowerCase();
-  const isPage = (req.method === 'GET' || req.method === 'HEAD') &&
-    accepted === 'html' &&
-    ['', '.html', '.htm'].includes(extension);
-
-  return isPage ? 'page' : 'text';
-};
-
-// The path as the visitor typed it, for the 404 page (the template escapes it)
-const shownPath = function (req) {
-  try {
-    return decodeURIComponent(req.path);
-  } catch (err) { // a malformed escape: show the path as sent
-    return req.path;
-  }
 };
 
 // eslint-disable-next-line max-statements
@@ -225,36 +200,13 @@ const start = async function () {
   routes(app);
 
 
-  // Nothing matched: answer 404 in the form the request expects (notFoundKind),
-  // never Express's bare "Cannot GET": the error page, {"error":"Not found"}, or
-  // plain text. The request log line records the 404; nothing more is logged
-  // (bots probe a lot of URLs).
-  app.use(function (req, res) {
-    res.status(404);
-    const kind = notFoundKind(req);
-    if (kind === 'json') {
-      res.json({ error: 'Not found' });
-    } else if (kind === 'page') {
-      res.render('error', { message: 'Page not found', path: shownPath(req) });
-    } else {
-      res.type('text/plain').send('Not found');
-    }
-  });
+  // Nothing matched: answer 404 in the form the request expects (app/errors.js).
+  // The request log line records the 404; nothing more is logged (bots probe a
+  // lot of URLs).
+  app.use(errors.notFound);
 
-  // error handler
-  // eslint-disable-next-line no-unused-vars
-  app.use(function (err, req, res, next) {
-    // set locals, only providing error in development
-    res.locals.message = err.message;
-    res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-    // logged with the request line (pino-http reads res.err)
-    res.err = err;
-
-    // render the error page
-    res.status(err.status || 500);
-    res.render('error');
-  });
+  // error handler: logged with the request line (pino-http reads res.err)
+  app.use(errors.errorHandler);
 
   return { app, server, wsServer, port, wsPort };
 };
