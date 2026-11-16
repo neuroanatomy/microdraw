@@ -19,7 +19,7 @@
 const _ = require('lodash');
 const logger = require('../../log');
 const { withProjectLock } = require('../projectLock');
-const { escapeRegex, toId } = require('neuroweblab');
+const { adminLog, escapeRegex, toId } = require('neuroweblab');
 
 const isProjectName = (name) => typeof name === 'string' && name !== '';
 
@@ -160,14 +160,8 @@ const orphanGroupIds = async (db, group) => {
   return { ids: docs.map((d) => d._id) };
 };
 
-const log = async (db, key, value) => {
-  const { ids, ...rest } = value;
-  logger.info({ event: key, ...(ids ? { ...rest, documents: ids.length } : rest) }, `admin: ${key}`);
-  const entry = { key, value, date: (new Date()).toJSON() };
-  await db.collection('log').insertOne(entry); // sets entry._id
-
-  return entry;
-};
+// The pino line and the `log` document of an admin action (NeuroWebLab adminLog)
+const log = (db, key, value) => adminLog(db, key, value, { logger, fields: ({ ids, ...rest }) => (ids ? { ...rest, documents: ids.length } : rest) });
 
 /**
  * Remove an orphan group: mark its documents backup: true, as a save does.

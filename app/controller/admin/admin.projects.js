@@ -24,7 +24,7 @@
 const _ = require('lodash');
 const logger = require('../../log');
 const { withProjectLock } = require('../projectLock');
-const { toId } = require('neuroweblab');
+const { adminLog, toId } = require('neuroweblab');
 const { checkProject, duplicateLayerNames, plainText } = require('../project/project.validation');
 const {
   blankRows, checkStoredProjects, isUnnamedLayer, projectVersion
@@ -35,13 +35,8 @@ const { NEWEST_FIRST: newestFirst, findCurrentProject, saveProjectVersion } = re
 // adminRestoreProjectFiles: damaged projects' restore-files (admin.damaged.js)
 const fixKeys = ['adminRemoveBlankRows', 'adminNameLayers', 'adminTransferOwner', 'adminRestoreProjectFiles'];
 
-const log = async (db, key, value) => {
-  logger.info({ event: key, ..._.omit(value, ['project']) }, `admin: ${key}`);
-  const entry = { key, value, date: (new Date()).toJSON() };
-  await db.collection('log').insertOne(entry); // sets entry._id
-
-  return entry;
-};
+// The pino line and the `log` document of an admin action (NeuroWebLab adminLog)
+const log = (db, key, value) => adminLog(db, key, value, { logger, fields: (v) => _.omit(v, ['project']) });
 
 /**
  * The stored projects that have problems, as scripts/check-projects.js lists

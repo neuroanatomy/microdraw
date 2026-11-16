@@ -29,7 +29,7 @@
 const _ = require('lodash');
 const logger = require('../../log');
 const { withProjectLock } = require('../projectLock');
-const { toId } = require('neuroweblab');
+const { adminLog, toId } = require('neuroweblab');
 const { fileRows } = require('../datasets');
 const { projectVersion } = require('../project/project.check');
 const { CURRENT: current, findCurrentProject, saveProjectVersion } = require('../project/currentProject');
@@ -205,13 +205,8 @@ const findDamagedProjects = async (db) => {
   return { list };
 };
 
-const log = async (db, key, value) => {
-  logger.info({ event: key, ..._.omit(value, ['project']) }, `admin: ${key}`);
-  const entry = { key, value, date: (new Date()).toJSON() };
-  await db.collection('log').insertOne(entry); // sets entry._id
-
-  return entry;
-};
+// The pino line and the `log` document of an admin action (NeuroWebLab adminLog)
+const log = (db, key, value) => adminLog(db, key, value, { logger, fields: (v) => _.omit(v, ['project']) });
 
 /**
  * The rows to add back for a save: those of the version before it whose

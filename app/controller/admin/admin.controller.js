@@ -1,87 +1,33 @@
 /* eslint-disable max-lines -- one handler per admin route; 2026-10-12 */
 const logger = require('../../log');
-const { isAdmin, requestUsername } = require('./admins');
+const admins = require('./admins');
 const annotations = require('./admin.annotations');
 const projects = require('./admin.projects');
 const projectActions = require('./admin.projectActions');
 const damaged = require('./admin.damaged');
 const datasets = require('./admin.datasets');
 const microdrawWebsocketServer = require('../microdrawWebsocketServer/microdrawWebsocketServer');
-const { jsonForScript } = require('neuroweblab');
+const nwl = require('neuroweblab');
 
 // Follows BrainBox controller/admin/admin.controller.js (requireAdmin,
 // adminPage, the JSON handlers), so that the two can be merged later.
 
-/**
- * Let through only admins (logged in, or authenticated by a token)
- * @param {object} req Request object
- * @param {object} res Response object
- * @param {function} next Next middleware
- * @returns {void}
- */
-const requireAdmin = (req, res, next) => {
-  const username = requestUsername(req);
-  if (!username) {
-    return res.status(401).json({ success: false, error: 'User not authenticated' });
-  }
-  if (!isAdmin(username)) {
-    return res.status(403).json({ success: false, error: 'Admins only' });
-  }
+// requireAdmin: admins only (logged in, or authenticated by a token), 401/403 JSON
+const { requireAdmin, requestUsername } = admins;
 
-  next();
-};
-
-/**
- * Render the admin page
- * @param {object} req Request object
- * @param {object} res Response object
- * @returns {void}
- */
-const adminPage = (req, res) => {
-  const username = requestUsername(req);
-  if (!username) {
-    req.session.returnTo = req.originalUrl;
-    res.status(401).render('askForLogin', {
-      title: 'MicroDraw: Admin',
-      functionality: 'use the admin tools',
-      login: '<a href=\'/auth/github\'>Log in with GitHub</a>'
-    });
-
-    return;
-  }
-  if (!isAdmin(username)) {
-    res.status(403).render('error', { message: 'Admins only' });
-
-    return;
-  }
-  res.render('admin', {
-    title: 'MicroDraw: Admin',
-    loggedUser: jsonForScript({ username })
-  });
-};
+// The admin page: 401 askForLogin when logged out, 403 to non-admins
+const adminPage = admins.adminPage({
+  title: 'MicroDraw: Admin',
+  loginPrompt: { login: '<a href=\'/auth/github\'>Log in with GitHub</a>' }
+});
 
 const serverError = (res, err) => {
   logger.error({ err }, 'admin request failed');
   res.status(500).json({ success: false, error: 'Server error' });
 };
 
-/**
- * Answer with the result of an action, or its error
- * @param {object} res Response object
- * @param {Promise<object>} action The action
- * @returns {Promise<void>} Resolves once answered
- */
-const sendResult = async (res, action) => {
-  try {
-    const { status, error, ...result } = await action;
-    if (error) {
-      return res.status(status).json({ success: false, error });
-    }
-    res.json({ success: true, ...result });
-  } catch (err) {
-    serverError(res, err);
-  }
-};
+// Answer with the result of an action, or its error (500 logged as serverError)
+const sendResult = (res, action) => nwl.sendResult(res, action, { logger });
 
 const nativeDb = (req) => req.app.db.nativeMongoDB();
 

@@ -14,7 +14,7 @@
  */
 const _ = require('lodash');
 const logger = require('../../log');
-const { escapeRegex, toId } = require('neuroweblab');
+const { adminLog, escapeRegex, toId } = require('neuroweblab');
 const { DATASETS, defaultName, fileRows, isDatasetSource } = require('../datasets');
 const { plainText } = require('../project/project.validation');
 const { CURRENT: current } = require('../project/currentProject');
@@ -34,14 +34,8 @@ const annotationsQuery = ({ source, project, user }) => {
   return query;
 };
 
-const log = async (db, key, value) => {
-  const { ids, ...rest } = value;
-  logger.info({ event: key, ...(ids ? { ...rest, documents: ids.length } : rest) }, `admin: ${key}`);
-  const entry = { key, value, date: (new Date()).toJSON() };
-  await db.collection('log').insertOne(entry); // sets entry._id
-
-  return entry;
-};
+// The pino line and the `log` document of an admin action (NeuroWebLab adminLog)
+const log = (db, key, value) => adminLog(db, key, value, { logger, fields: ({ ids, ...rest }) => (ids ? { ...rest, documents: ids.length } : rest) });
 
 /**
  * A dataset: its document, the current projects that list it (with their
