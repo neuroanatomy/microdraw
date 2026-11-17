@@ -13,7 +13,7 @@ const { withProjectLock } = require('../projectLock');
 const { deleteStoredProject } = require('./project.delete');
 const { findCurrentProject, saveProjectVersion } = require('./currentProject');
 const { currentTextValues } = require('../textAnnotations');
-const { canSaveProject, catchErrors, droppedMessage, filesListIncomplete, ignoredChangesMessage, jsonForScript, keepFieldsWithoutFilesEdit, saveRefusal } = require('neuroweblab');
+const { canSaveProject, catchErrors, droppedMessage, filesListIncomplete, ignoredChangesMessage, jsonForScript, keepFieldsWithoutFilesEdit, projectFilesRoute, projectListRoute, saveRefusal } = require('neuroweblab');
 const { escapeHTML } = require('../escape');
 const validator = function (req, res, next) {
   next();
@@ -285,40 +285,6 @@ const apiTextAnnotationsUnsafe = async function (req, res) {
 
 const apiTextAnnotations = catchErrors(apiTextAnnotationsUnsafe);
 
-// Shortnames of all the projects the requester may view.
-const viewableProjectNames = async (req) => {
-  const loggedUser = getLoggedUser(req);
-  const projects = await req.appConfig.db.nativeMongoDB().collection('projects')
-    .find({backup: {$exists: false}}, {projection: {_id: 0, shortname: 1, owner: 1, collaborators: 1}})
-    .toArray();
-
-  return projects
-    .filter((o) => AccessControlService.canViewFiles(o, loggedUser))
-    .map((o) => o.shortname);
-};
-
-// Lists the shortnames of the projects the requester may view, 20 per page.
-// As BrainBox's getProjectsSlice: fetch, filter for view access, then page,
-// so that a page never holds projects the requester may not see.
-const apiProjectAll = async function (req, res) {
-  if (!req.query.page) {
-    res.json({error: 'The \'pages\' parameter has to be specified'});
-
-    return;
-  }
-
-  const page = Math.max(0, parseInt(req.query.page) || 0);
-  const nItemsPerPage = 20;
-
-  try {
-    const names = await viewableProjectNames(req);
-    res.send(names.slice(page * nItemsPerPage, (page + 1) * nItemsPerPage));
-  } catch (err) {
-    logger.error({ err }, 'cannot list projects');
-    res.status(500).json({error: 'Server error'});
-  }
-};
-
 // The file entry the files route answers: `names=true`, only {source, name}
 // (a string entry, stored before files were objects, as the settings page
 // showed it when the files were in the page, nwl-components'
@@ -335,60 +301,39 @@ const fileEntry = (entry, onlyNames) => {
   return onlyNames ? { source: entry.source, name: typeof entry.name === 'string' ? entry.name : '' } : entry;
 };
 
-// The current version of the project, if the visitor may view its files;
-// otherwise null, answered: 404 {error} unknown, 401 or 403 {error} (1.5)
-const viewableProject = async (req, res) => {
-  const json = await findCurrentProject(req.appConfig.db.nativeMongoDB(), req.params.projectName);
-  if (_.isNil(json)) {
-    res.status(404).json({ error: `No project ${req.params.projectName}` });
-
-    return null;
-  }
-  const loggedUser = getLoggedUser(req);
-  if (!AccessControlService.canViewFiles(json, loggedUser)) {
-    res.status(noViewStatus(loggedUser)).json({ error: 'Not authorized to view project' });
-
-    return null;
-  }
-
-  return json;
-};
-
-// The files from `start`, at most `length`, cut to the list; a value that is
-// not a number, or negative, counts as 0
-const filesSlice = (json, start, length, onlyNames) => {
-  const list = (_.isPlainObject(json.files) && Array.isArray(json.files.list)) ? json.files.list : [];
-  const from = Math.min(Math.max(0, parseInt(start) || 0), list.length);
-  const count = Math.min(Math.max(0, parseInt(length) || 0), list.length - from);
-
-  return list.slice(from, from + count).map((entry) => fileEntry(entry, onlyNames));
+// What the NeuroWebLab routes ask of microdraw (1.17.0, M10b): the native
+// db, the view right (as on the other project routes) and its refusal status
+const routeAdapter = {
+  db: (req) => req.appConfig.db.nativeMongoDB(),
+  canView: (req, json) => AccessControlService.canViewFiles(json, getLoggedUser(req)),
+  noViewStatus: (req) => noViewStatus(getLoggedUser(req))
 };
 
 /**
+ * GET /project/json?page: the shortnames of the projects the requester may
+ * view, 20 per page (NeuroWebLab's projectListRoute: fetch, filter for view
+ * access, then page, so that a page never holds projects the requester may
+ * not see). A failing read goes to the app's errorHandler.
+ */
+const apiProjectAll = projectListRoute({
+  ...routeAdapter,
+  row: (req, json) => json.shortname,
+  projection: { _id: 0, shortname: 1, owner: 1, collaborators: 1 }
+});
+
+/**
  * GET /project/json/:projectName/files?start&length[&names=true]: a slice of
- * the current version's files, as BrainBox's apiProjectFiles: `start` and
+ * the current version's files (NeuroWebLab's projectFilesRoute): `start` and
  * `length` are required (200 {error} without them), the slice is cut to the
  * list (an empty list past its end), `names=true` sends {source, name} only.
  * Unknown project: 404 {error}; no view right: 401 logged out, 403 logged in
- * (shared suite 1.5, route:files).
- * @param {Object} req Req object from express
- * @param {Object} res Res object from express
- * @returns {void}
+ * (shared suite 1.5, route:files). A failing read goes to the app's
+ * errorHandler.
  */
-const apiProjectFilesUnsafe = async function (req, res) {
-  const missing = ['start', 'length'].find((key) => typeof req.query[key] === 'undefined');
-  if (missing) {
-    res.json({ error: `Provide '${missing}'` });
-
-    return;
-  }
-  const json = await viewableProject(req, res);
-  if (json) {
-    res.json(filesSlice(json, req.query.start, req.query.length, req.query.names === 'true'));
-  }
-};
-
-const apiProjectFiles = catchErrors(apiProjectFilesUnsafe);
+const apiProjectFiles = projectFilesRoute({
+  ...routeAdapter,
+  entries: (req, json, slice, { names }) => slice.map((entry) => fileEntry(entry, names))
+});
 
 const listTypes = [AccessType.COLLABORATORS, AccessType.FILES, AccessType.ANNOTATIONS];
 
