@@ -44,12 +44,16 @@ describe('Focus style and form colours (UI kit step 7)', () => {
     await H.openData(page, U.url('/data?source=/test_data/cat.json&slice=0'));
     const inViewer = (selector) => page.evaluateHandle((sel) => window.Microdraw.dom.querySelector(sel), selector);
     await (await inViewer('#layers.mui')).click(); // opens the layers panel
-    await (await inViewer('#add-layer-button')).click();
-    assert.deepEqual(await focusState(page), { tag: 'BUTTON', text: 'Add layer', outline: 'none' }, 'mouse focus');
+    await (await inViewer('#add-layer-button')).click(); // opens the add-layer form
+    // Not "Add layer" itself: it hides itself on click, and the browser takes
+    // its focus away a frame or two later. "Add" with an empty source leaves
+    // the form open (and its focus where it is).
+    await (await inViewer('#add-layer-panel button')).click();
+    await page.waitForFunction(() => (window.Microdraw.dom.activeElement || {}).textContent === 'Add');
+    assert.deepEqual(await focusState(page), { tag: 'BUTTON', text: 'Add', outline: 'none' }, 'mouse focus');
 
-    await page.keyboard.down('Shift');
     await page.keyboard.press('Tab');
-    await page.keyboard.up('Shift');
+    await page.waitForFunction(() => (window.Microdraw.dom.activeElement || {}).textContent === 'Cancel');
     // --nwl-focus (the text colour): #e8e8e8, nwl-components 3.0.0's default (#fff before it)
     assert.deepEqual(await focusState(page), { tag: 'BUTTON', text: 'Cancel', outline: 'solid 2px rgb(232, 232, 232)' }, 'keyboard focus');
   }).timeout(U.mediumTimeout);
