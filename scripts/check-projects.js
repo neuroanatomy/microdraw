@@ -16,12 +16,21 @@
 // There is no default database, so that it cannot run on one by accident.
 
 const nwlDb = require('neuroweblab/db/db');
+const Configuration = require('neuroweblab/Configuration');
 const { checkStoredProjects, formatProblem } = require('../app/controller/project/project.check');
 
 // NeuroWebLab's init prints to stdout, and logs a connection error there
 // instead of throwing: it stays out of the output of the script, and the
-// error is returned.
+// error is returned. The collections are set as app.js sets them (nwl.init):
+// NWL's project versions (findCurrentProject, saveProjectVersion) read
+// `projectsCollection`.
 const quietInit = async (dbURL) => {
+  Configuration.getInstance().setProperties({
+    usernameField: 'username',
+    usersCollection: 'users',
+    projectsCollection: 'projects',
+    annotationsCollection: 'annotations'
+  });
   const { log } = console;
   const said = [];
   console.log = (...args) => said.push(args);
