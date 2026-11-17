@@ -89,7 +89,7 @@ const newestPerKey = (docs, values) => {
  * Current values of a project's named text layers for its listed files, the
  * newest current document of each key
  * @param {object} db Native MongoDB Db (app.db.nativeMongoDB())
- * @param {object} project The project as the visitor may see it (visibleProjectParts)
+ * @param {object} project The project as the visitor may see it (NWL visibleProject)
  * @returns {Promise<object>} { <source>: { <layer>: { value, user, modified } } }
  */
 const currentTextValues = async (db, project) => {

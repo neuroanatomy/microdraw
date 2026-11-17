@@ -21,6 +21,7 @@ describe('Embeddable viewer (T002 3.7)', function () {
   const PRIVATE_SRC = 'https://embed.test/private.json';
   const OTHER_SRC = 'https://embed.test/other.json';
   const UNKNOWN_SRC = 'https://embed.test/unknown.json';
+  const ANYONE_EDIT_SRC = 'https://embed.test/anyone-edit.json';
   const editor = { username: 'embededitor', password: 'embed-editor-password' };
   const viewer = { username: 'embedviewer', password: 'embed-viewer-password' };
 
@@ -39,7 +40,9 @@ describe('Embeddable viewer (T002 3.7)', function () {
   const publicProject = project('embedpublic', access('view', 'view'), PUBLIC_SRC, [row(editor.username, access('view', 'edit'))]);
   const privateProject = project('embedprivate', access('none', 'none'), PRIVATE_SRC, [row(viewer.username, access('view', 'view'))]);
   const otherProject = project('embedother', access('view', 'view'), OTHER_SRC);
-  const PROJECTS = [publicProject, privateProject, otherProject];
+  // `anyone` may edit the annotations; the viewer's own row says only view (M7b)
+  const anyoneEditProject = project('embedanyoneedit', access('view', 'edit'), ANYONE_EDIT_SRC, [row(viewer.username, access('view', 'view'))]);
+  const PROJECTS = [publicProject, privateProject, otherProject, anyoneEditProject];
 
   let editorAgent, port, viewerAgent;
   const sockets = [];
@@ -103,7 +106,7 @@ describe('Embeddable viewer (T002 3.7)', function () {
   after(async function () {
     sockets.forEach((ws) => ws.terminate());
     await Promise.all(PROJECTS.map((p) => U.removeProject(p.shortname)));
-    await Promise.all([PUBLIC_SRC, PRIVATE_SRC, OTHER_SRC].map((s) => U.removeAnnotations(s)));
+    await Promise.all([PUBLIC_SRC, PRIVATE_SRC, OTHER_SRC, ANYONE_EDIT_SRC].map((s) => U.removeAnnotations(s)));
     await U.getDB().collection(WS_TICKET_COLLECTION)
       .deleteMany({ source: { $in: [PUBLIC_SRC, PRIVATE_SRC, OTHER_SRC] } });
     await U.removeLocalUser(editor.username);
@@ -196,6 +199,27 @@ describe('Embeddable viewer (T002 3.7)', function () {
       assert.equal(res.status, 200);
       assert.deepEqual(res.body.layers.map((l) => l.project), ['embedprivate']);
     }).timeout(U.shortTimeout);
+
+    // the effective access level (NWL getEffectiveAccessLevel, shared suite
+    // 4.2 and 4.4, decided 2026-11-11): `anyone` is the floor of a
+    // collaborator's level, and a logged-out visitor annotates at most 'view'
+    it('a collaborator whose own row is lower than anyone\'s gets anyone\'s level', async function () {
+      const res = await layers(ANYONE_EDIT_SRC, viewerAgent);
+      assert.equal(res.status, 200);
+      assert.deepEqual(res.body.layers.map((l) => l.access), ['edit']);
+    });
+
+    it('a logged-out visitor gets view where anyone may edit the annotations', async function () {
+      const res = await layers(ANYONE_EDIT_SRC);
+      assert.equal(res.status, 200);
+      assert.deepEqual(res.body.layers.map((l) => l.access), ['view']);
+    });
+
+    it('a logged-in non-collaborator gets anyone\'s edit', async function () {
+      const res = await layers(ANYONE_EDIT_SRC, editorAgent);
+      assert.equal(res.status, 200);
+      assert.deepEqual(res.body.layers.map((l) => l.access), ['edit']);
+    });
 
     it('an unknown dataset 404, no source 400', async function () {
       assert.equal((await layers(UNKNOWN_SRC)).status, 404);

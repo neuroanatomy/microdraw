@@ -10,7 +10,7 @@ const { withBothKeys } = require('../../app/controller/project/project.validatio
 
 // S2: the settings page (GET /project/:name/settings) embeds only what the
 // visitor may see, by the same rule as the project page (M3c,
-// visibleProject.js): no annotation layers without annotations view rights,
+// NWL visibleProject): no annotation layers without annotations view rights,
 // no collaborators other than 'anyone' without collaborators view rights.
 const member = { username: 's2-member', password: 's2-member-password' };
 const editor = { username: 's2-editor', password: 's2-editor-password' };

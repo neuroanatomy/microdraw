@@ -7,12 +7,11 @@
 // const dataSlices = require('../dataSlices/dataSlices.js');
 const _ = require('lodash');
 const logger = require('../../log');
-const { AccessControlService, AccessLevel, AccessType } = require('neuroweblab');
+const { AccessControlService, AccessLevel, AccessType, visibleProject } = require('neuroweblab');
 const { asFileObject, checkProject, collaboratorName, listOf, withBothKeys } = require('./project.validation');
 const { withProjectLock } = require('../projectLock');
 const { deleteStoredProject } = require('./project.delete');
 const { findCurrentProject, saveProjectVersion } = require('./currentProject');
-const { visibleProjectParts } = require('./visibleProject');
 const { currentTextValues } = require('../textAnnotations');
 const { canSaveProject, catchErrors, droppedMessage, filesListIncomplete, ignoredChangesMessage, jsonForScript, keepFieldsWithoutFilesEdit, saveRefusal } = require('neuroweblab');
 const { escapeHTML } = require('../escape');
@@ -63,7 +62,7 @@ const project = async function (req, res) {
       const context = {
         projectShortname: json.shortname,
         projectName: json.name,
-        projectInfo: jsonForScript(visibleProjectParts(json, loggedUser)),
+        projectInfo: jsonForScript(visibleProject(json, loggedUser)),
         wsPort: req.app.get('wsPort') || 8080,
         login
       };
@@ -142,7 +141,7 @@ var settingsUnsafe = async function(req, res) {
   // (M3c, S2): no annotation layers without annotations view rights, no
   // collaborators but 'anyone' without collaborators view rights
   const canViewCollaborators = AccessControlService.canViewCollaborators(json, loggedUser);
-  json = visibleProjectParts(json, loggedUser);
+  json = visibleProject(json, loggedUser);
 
   // every row shown with username and userID, equal, whichever of the two is
   // stored (T002 2.2: before, a row without `username` answered an error text)
@@ -241,7 +240,7 @@ const apiProjectUnsafe = async function (req, res) {
     return;
   }
 
-  json = visibleProjectParts(json, loggedUser);
+  json = visibleProject(json, loggedUser);
   // As BrainBox: no _id. It changes on every save (T002 2.1b), and no client
   // reads it (the settings page sends it back; saves ignore it).
   delete json._id;
@@ -267,7 +266,7 @@ const apiProject = catchErrors(apiProjectUnsafe);
 // project's named text layers, { <source>: { <layer>: {value, user, modified} } }.
 // Answers as GET /project/json/:projectName for an unknown project (404) or one
 // the visitor may not see (401 logged out, 403 logged in), and only for the files and layers the project
-// page shows the visitor (visibleProjectParts): {} if the layers are hidden (M3c).
+// page shows the visitor (NWL visibleProject): {} if the layers are hidden (M3c).
 const apiTextAnnotationsUnsafe = async function (req, res) {
   const json = await findCurrentProject(req.appConfig.db.nativeMongoDB(), req.params.projectName);
   if (_.isNil(json)) {
@@ -281,7 +280,7 @@ const apiTextAnnotationsUnsafe = async function (req, res) {
 
     return;
   }
-  res.json(await currentTextValues(req.appConfig.db.nativeMongoDB(), visibleProjectParts(json, loggedUser)));
+  res.json(await currentTextValues(req.appConfig.db.nativeMongoDB(), visibleProject(json, loggedUser)));
 };
 
 const apiTextAnnotations = catchErrors(apiTextAnnotationsUnsafe);

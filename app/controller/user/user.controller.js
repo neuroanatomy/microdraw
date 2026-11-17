@@ -5,7 +5,7 @@ const dateFormat = require('dateformat');
 const log = require('../../log');
 const { AccessControlService } = require('neuroweblab');
 const { jsonForScript } = require('neuroweblab');
-const { visibleProjectParts } = require('../project/visibleProject');
+const { visibleProject } = require('neuroweblab');
 const { findUserProjects } = require('../project/currentProject');
 const { lastModified, newestAnnotations } = require('./lastModified');
 const { pageOf, userAnnotations, userDatasets } = require('./userTabs');
@@ -198,7 +198,7 @@ const listLength = (part) => (part && Array.isArray(part.list) ? part.list.lengt
  * @returns {object} The row
  */
 const projectRow = (project, loggedUser, annotated) => {
-  const { modified: saved, ...rest } = visibleProjectParts(project, loggedUser);
+  const { modified: saved, ...rest } = visibleProject(project, loggedUser);
   const modified = lastModified(saved, annotated.get(project.shortname), rest.created);
 
   return {

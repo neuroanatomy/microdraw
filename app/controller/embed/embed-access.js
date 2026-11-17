@@ -106,14 +106,17 @@ const mayEmbedData = async (db, { source, project, username }) => {
 };
 
 /**
- * The annotation access level of a visitor in a project, as a string
+ * The annotation access level of a visitor in a project, as a string: the
+ * higher of the visitor's own and `anyone`'s, and at most 'view' logged out
+ * (NWL getEffectiveAccessLevel, shared suite 4.2 and 4.4, 2026-11-11); 'view'
+ * when the project has neither row
  * @param {Object} project The project
  * @param {string} username The username, or 'anyone'
  * @returns {string} 'view', 'edit', ...
  */
 const annotationsAccess = (project, username) => {
   try {
-    return AccessControlService.getUserOrPublicAccessLevel(project, username, AccessType.ANNOTATIONS).toString();
+    return AccessControlService.getEffectiveAccessLevel(project, username, AccessType.ANNOTATIONS).toString();
   } catch (err) {
     return 'view';
   }

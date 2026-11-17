@@ -8,7 +8,7 @@
   - The page shell (header, menu, login, title) is rendered by the server
     (project.mustache); Vue only renders the two tables, from templates in this
     file, so no server-rendered text is ever compiled as a Vue template.
-  - `projectInfo` holds only what the visitor may see (M3c, visibleProjectParts),
+  - `projectInfo` holds only what the visitor may see (M3c, NWL visibleProject),
     serialised with jsonForScript (H2b). Every user-set name is written as text
     ({{ }} interpolation, textContent): there is no v-html.
   - The name, file and layer cells are read only. The old page had editable
