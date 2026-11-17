@@ -3,11 +3,11 @@ const express = require('express');
 const router = new express.Router();
 const multer = require('multer');
 const { AccessControlService } = require('neuroweblab');
-const { catchErrors } = require('neuroweblab');
+const { catchErrors, labelSetsRoute } = require('neuroweblab');
 const { saveEditorChanges } = require('./editorSave');
 const { textWriteError, storeTextValue } = require('../textAnnotations');
 const { findCurrentProject } = require('../project/currentProject');
-const { getLabelsets } = require('./labelsets');
+const { LABELS_DIR, DEFAULT_SOURCE } = require('./labelsets');
 const microdrawWebsocketServer = require('../microdrawWebsocketServer/microdrawWebsocketServer');
 
 const fs = require('fs');
@@ -83,7 +83,9 @@ const serverError = (res) => res.status(500).send({err: 'Server error'});
 router.get('/', catchErrors(getAnnotationsUnsafe, serverError));
 
 // The label sets of app/public/labels/, as BrainBox's (T002 3.2)
-router.get('/getLabelsets', catchErrors(getLabelsets));
+// NeuroWebLab's labelSetsRoute (routes/labelSets.js), the default label set
+// first (T002 3.5); see ./labelsets.js
+router.get('/getLabelsets', labelSetsRoute(LABELS_DIR, { first: DEFAULT_SOURCE, logger: log }));
 
 // What the current user (or 'anyone' when logged out) may do with a project's
 // annotations, and, with ?source=, whether the project lists that image (as the
