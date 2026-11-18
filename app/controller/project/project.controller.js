@@ -7,13 +7,13 @@
 // const dataSlices = require('../dataSlices/dataSlices.js');
 const _ = require('lodash');
 const logger = require('../../log');
-const { AccessControlService, AccessLevel, AccessType, visibleProject } = require('neuroweblab');
+const { AccessControlService, AccessLevel, visibleProject } = require('neuroweblab');
 const { asFileObject, checkProject, collaboratorName, listOf, withBothKeys } = require('./project.validation');
 const { withProjectLock } = require('../projectLock');
 const { deleteStoredProject } = require('./project.delete');
 const { findCurrentProject, saveProjectVersion } = require('./currentProject');
 const { currentTextValues } = require('../textAnnotations');
-const { canSaveProject, catchErrors, droppedMessage, filesListIncomplete, ignoredChangesMessage, jsonForScript, keepFieldsWithoutFilesEdit, projectFilesRoute, projectListRoute, saveRefusal } = require('neuroweblab');
+const { canSaveProject, catchErrors, droppedMessage, filesListIncomplete, ignoredChangesMessage, jsonForScript, keepFieldsWithoutFilesEdit, keepListsWithoutEditRights, projectFilesRoute, projectListRoute, saveRefusal } = require('neuroweblab');
 const { escapeHTML } = require('../escape');
 const validator = function (req, res, next) {
   next();
@@ -335,38 +335,13 @@ const apiProjectFiles = projectFilesRoute({
   entries: (req, json, slice, { names }) => slice.map((entry) => fileEntry(entry, names))
 });
 
-const listTypes = [AccessType.COLLABORATORS, AccessType.FILES, AccessType.ANNOTATIONS];
-
-// What two versions of a list are compared on: a collaborator's name and
-// access (the settings page adds a display name), the whole entry otherwise.
+// What two versions of a list are compared on, by list: a collaborator's name
+// and access (the settings page adds a display name), the whole entry
+// otherwise. The `rowKey` given to NWL's keepListsWithoutEditRights.
 const comparableEntry = {
   collaborators: (c) => ({ user: collaboratorName(c), access: c.access }),
   files: (f) => f,
   annotations: (a) => a
-};
-
-/**
- * Keep the stored version of each list that the user may not edit (M3). NWL's
- * preventUnauthorizedUpdates only compares the lengths of the lists, so a
- * collaborator who may edit the files could otherwise change the access
- * values of the collaborators (their own included) or the annotation layers.
- * @param {object} newProject The project sent (changed in place)
- * @param {object} oldProject The stored project
- * @param {string} loggedUser The user saving
- * @returns {Array<string>} The lists whose changes were ignored
- */
-const keepListsWithoutEditRights = (newProject, oldProject, loggedUser) => {
-  const ignored = [];
-  for (const type of listTypes) {
-    const oldList = (oldProject[type] && Array.isArray(oldProject[type].list)) ? oldProject[type].list : [];
-    const changed = !_.isEqual(newProject[type].list.map(comparableEntry[type]), oldList.map(comparableEntry[type]));
-    if (changed && !AccessControlService.hasAccess(type, AccessLevel.EDIT, oldProject, loggedUser)) {
-      newProject[type].list = oldList;
-      ignored.push(type);
-    }
-  }
-
-  return ignored;
 };
 
 // The reason goes in `error`, which the settings page shows (nwl-components
@@ -416,8 +391,7 @@ const saveProject = async function (req, res, loggedUser) {
 
   let ignoredChanges = [];
   if (!_.isNil(oldProject)) {
-    ignoredChanges = AccessControlService.preventUnauthorizedUpdates(newProject, oldProject, loggedUser);
-    ignoredChanges = _.union(ignoredChanges, keepListsWithoutEditRights(newProject, oldProject, loggedUser));
+    ignoredChanges = keepListsWithoutEditRights(newProject, oldProject, loggedUser, { rowKey: comparableEntry });
     ignoredChanges = _.union(ignoredChanges, keepFieldsWithoutFilesEdit(newProject, oldProject, loggedUser));
   }
 
