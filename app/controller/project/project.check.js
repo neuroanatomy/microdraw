@@ -17,9 +17,9 @@
  */
 const crypto = require('crypto');
 const _ = require('lodash');
+const { projectRowProblems, validateProject } = require('neuroweblab');
 const {
-  asFileObject, collaboratorName, isAnyone, isBlank, listOf, nameKey, rowProblemList,
-  sanitize, storedRows, structureError
+  asFileObject, collaboratorName, isBlank, listOf, nameKey, rules, sanitize
 } = require('./project.validation');
 
 const KIND = {
@@ -30,6 +30,8 @@ const KIND = {
 };
 
 const listTypes = ['files', 'collaborators', 'annotations'];
+
+const isAnyone = (c) => c.username === 'anyone' || c.userID === 'anyone';
 
 /**
  * A token for the version of a stored project document: a hash of the
@@ -104,22 +106,41 @@ const unnamedLayers = (project) => {
 };
 
 /**
+ * What would refuse saving a stored project again unchanged from the
+ * settings page: the validation of saves (NeuroWebLab's validateProject with
+ * microdraw's rules, as checkProject), the stored project sent as the
+ * settings page sends it back. Its users are not looked up: the ones that
+ * don't exist are listed apart ('missing user'), and are kept on save.
+ * @param {object} project A project document
+ * @returns {Promise<string|null>} The answer of the save, or null
+ */
+const savedAgainError = async (project) => {
+  const { error } = await validateProject(asSentBySettingsPage(project), {
+    shortname: project.shortname,
+    oldProject: project,
+    owner: project.owner,
+    findMissingUsers: () => [],
+    rules
+  });
+
+  return error || null;
+};
+
+/**
  * The problems of a stored project, as if its owner saved it again unchanged
  * from the settings page (M3a2: stored rows are accepted unchanged)
  * @param {object} project A project document
  * @param {Set<string>} users The usernames that exist
+ * @param {string|null} [refusal] What refuses saving it again unchanged (savedAgainError)
  * @returns {Array<object>} [{ kind, message, list?, row?, users? }]
  */
 // eslint-disable-next-line max-statements
-const projectProblems = (project, users) => {
+const projectProblems = (project, users, refusal = null) => {
   const problems = [];
-  const sent = sanitize(asSentBySettingsPage(project));
-  const { stored } = storedRows(sent, project);
-  const error = structureError(sent, { shortname: project.shortname, isNew: false, stored });
-  if (error) {
-    problems.push({ kind: KIND.BLOCKING, message: error });
+  if (refusal) {
+    problems.push({ kind: KIND.BLOCKING, message: refusal });
   }
-  for (const rowProblem of rowProblemList(sanitize(asSentBySettingsPage(project)))) {
+  for (const rowProblem of projectRowProblems(sanitize(asSentBySettingsPage(project)), rules)) {
     problems.push({ kind: KIND.WARNING, ...rowProblem });
   }
   if (!_.isEqual(sanitize(project), project)) {
@@ -162,15 +183,15 @@ const formatProblem = (problem) => {
  * Check one stored project
  * @param {object} project A project document
  * @param {Set<string>} users The usernames that exist
- * @returns {object} { shortname, name, owner, version, problems, blankRows:
+ * @returns {Promise<object>} { shortname, name, owner, version, problems, blankRows:
  *   counts by list, unnamedLayers }
  */
-const checkStoredProject = (project, users) => ({
+const checkStoredProject = async (project, users) => ({
   shortname: project.shortname,
   name: typeof project.name === 'string' ? project.name : '',
   owner: project.owner,
   version: projectVersion(project),
-  problems: projectProblems(project, users),
+  problems: projectProblems(project, users, await savedAgainError(project)),
   blankRows: _.mapValues(blankRows(project), (rows) => rows.length),
   unnamedLayers: unnamedLayers(project)
 });
@@ -186,7 +207,7 @@ const checkStoredProjects = async (db) => {
   const users = new Set(await db.collection('users').distinct('username'));
   const projects = await db.collection('projects').find({ backup: { $exists: false } })
     .toArray();
-  const list = projects.map((project) => checkStoredProject(project, users))
+  const list = (await Promise.all(projects.map((project) => checkStoredProject(project, users))))
     .filter((p) => p.problems.length > 0);
 
   return {
@@ -207,5 +228,6 @@ module.exports = {
   nameKey,
   projectProblems,
   projectVersion,
+  savedAgainError,
   unnamedLayers
 };
