@@ -9,180 +9,153 @@ const _ = require('lodash');
 const logger = require('../../log');
 const { AccessControlService, AccessLevel, visibleProject } = require('neuroweblab');
 const { asFileObject, checkProject, collaboratorName, listOf, withBothKeys } = require('./project.validation');
-const { withProjectLock } = require('../projectLock');
 const { deleteStoredProject } = require('./project.delete');
 const { findCurrentProject, saveProjectVersion } = require('./currentProject');
 const { currentTextValues } = require('../textAnnotations');
 const { canSaveProject, catchErrors, droppedMessage, filesListIncomplete, ignoredChangesMessage, jsonForScript, keepFieldsWithoutFilesEdit, keepListsWithoutEditRights, projectFilesRoute, projectListRoute, saveRefusal } = require('neuroweblab');
+const { noViewStatus, projectDeleteRoute, projectJsonRoute, projectKey, projectPageRoute, projectSaveRoute, projectSettingsRoute, visitor } = require('neuroweblab');
 const { escapeHTML } = require('../escape');
 const validator = function (req, res, next) {
   next();
 };
 
-// The username of the requester (session or API token), or 'anyone'.
-const getLoggedUser = (req) => {
-  if (req.isAuthenticated()) {
-    return req.user.username;
+// The username of the requester (session or API token: NWL's visitor), or
+// microdraw's sentinel 'anyone' when logged out
+const getLoggedUser = (req) => visitor(req) || 'anyone';
+
+// What every project route asks of microdraw (NeuroWebLab 1.17.0 and
+// 1.21.0): the native db and the view right
+const db = (req) => req.appConfig.db.nativeMongoDB();
+const canView = (req, json) => AccessControlService.canViewFiles(json, getLoggedUser(req));
+
+/**
+ * GET /project/:projectName: the project page (NeuroWebLab's
+ * projectPageRoute: the return path, 404, the view right; an error goes to
+ * the app's errorHandler). Only what the visitor may see goes into the page
+ * (M3).
+ */
+const project = projectPageRoute({
+  db,
+  canView,
+  render: (req, res, json) => {
+    const login = (req.user) ?
+      ('<a href=\'/user/' + escapeHTML(encodeURIComponent(req.user.username)) + '\'>' + escapeHTML(req.user.username) + '</a> (<a href=\'/logout\'>Log Out</a>)') :
+      ('<a href=\'/auth/github\'>Log in with GitHub</a>');
+    res.render('project', {
+      projectShortname: json.shortname,
+      projectName: json.name,
+      projectInfo: jsonForScript(visibleProject(json, getLoggedUser(req))),
+      wsPort: req.app.get('wsPort') || 8080,
+      login
+    });
   }
-  if (req.isTokenAuthenticated) {
-    return req.tokenUsername;
-  }
+});
 
-  return 'anyone';
-};
-
-// No view right on a project (shared suite 1.5, 2026-11-11): 401 logged out
-// ("who are you?"), 403 logged in, by session or by token
-const noViewStatus = (loggedUser) => (loggedUser === 'anyone' ? 401 : 403);
-
-// eslint-disable-next-line max-statements -- existing handler, not refactored in a lint-only change; 2026-10-11
-const project = async function (req, res) {
-  const login = (req.user) ?
-    ('<a href=\'/user/' + escapeHTML(encodeURIComponent(req.user.username)) + '\'>' + escapeHTML(req.user.username) + '</a> (<a href=\'/logout\'>Log Out</a>)') :
-    ('<a href=\'/auth/github\'>Log in with GitHub</a>');
-  const requestedProject = req.params.projectName;
-  let loggedUser = "anyone";
-  if(req.isAuthenticated()) {
-    loggedUser = req.user.username;
-  } else if(req.isTokenAuthenticated) {
-    loggedUser = req.tokenUsername;
-  }
-
-  // Store return path in case of login
-  req.session.returnTo = req.originalUrl;
-  try {
-    const json = await findCurrentProject(req.appConfig.db.nativeMongoDB(), requestedProject);
-    if (json) {
-      if (!AccessControlService.canViewFiles(json, loggedUser)) {
-        res.status(noViewStatus(loggedUser)).send('Not authorized to view project');
-
-        return;
+// The project the settings page shows for an unknown shortname, owned by the
+// visitor (or 'anyone' when logged out)
+const blankProject = (req) => ({
+  name: "",
+  shortname: req.params.projectName,
+  url: "",
+  created: (new Date()).toJSON(),
+  owner: getLoggedUser(req),
+  collaborators: {
+    list: [
+      {
+        username: 'anyone',
+        userID: 'anyone',
+        access: {
+          collaborators: 'view',
+          annotations: 'edit',
+          files: 'view'
+        }
       }
-      // only what the visitor may see goes into the page (M3)
-      const context = {
-        projectShortname: json.shortname,
-        projectName: json.name,
-        projectInfo: jsonForScript(visibleProject(json, loggedUser)),
-        wsPort: req.app.get('wsPort') || 8080,
-        login
-      };
-      res.render('project', context);
-    } else {
-      res.status(404).send('Project Not Found');
-    }
-  } catch(err) {
-    logger.error({ err, project: requestedProject, user: loggedUser }, 'cannot render project page');
-    res.status(400).send('Error');
+    ]
+  },
+  files: {
+    list: []
+  },
+  annotations: {
+    list: []
+  }
+});
+
+/**
+ * The display name of each collaborator, from the users collection; a row
+ * whose user is not found keeps its stored name (or ''). A failing read is
+ * logged, and the rows are kept as they are.
+ * @param {object} req The request
+ * @param {Array} list The collaborators' rows
+ * @returns {Promise<Array>} The rows, with their names
+ */
+const withCollaboratorNames = async (req, list) => {
+  try {
+    const names = _.uniq(list.map(collaboratorName).filter((name) => typeof name === 'string'));
+    const users = await db(req).collection('users')
+      .find({ username: { $in: names } }, { projection: { _id: 0, username: 1, name: 1 } })
+      .toArray();
+    const nameOf = new Map(users.map((u) => [u.username, u.name]));
+
+    return list.map((c) => {
+      if (!_.isPlainObject(c)) {
+        return c;
+      }
+      const found = nameOf.get(collaboratorName(c));
+
+      return { ...c, name: typeof found === 'string' ? found : (c.name || '') };
+    });
+  } catch(e) {
+    logger.error({ err: e, project: req.params.projectName }, 'cannot resolve collaborator names');
+
+    return list;
   }
 };
 
 /**
- * @desc Render the settings page GUI
- * @param {Object} req Req object from express
- * @param {Object} res Res object from express
- * @returns {void}
+ * GET /project/:projectName/settings: the settings page (NeuroWebLab's
+ * projectSettingsRoute: the return path, the view right of a stored project,
+ * the blank project of an unknown one; an error goes to the app's
+ * errorHandler).
  */
-// eslint-disable-next-line max-statements -- existing handler, not refactored in a lint-only change; 2026-10-11
-var settingsUnsafe = async function(req, res) {
-  const requestedProject = req.params.projectName;
+const settings = projectSettingsRoute({
+  db,
+  canView,
+  blankProject,
+  render: async (req, res, stored) => {
+    const loggedUser = getLoggedUser(req);
 
-  var loggedUser = "anyone";
-  if(req.isAuthenticated()) {
-    loggedUser = req.user.username;
-  } else if(req.isTokenAuthenticated) {
-    loggedUser = req.tokenUsername;
-  }
+    // the files are not in the page: the settings page loads them in batches
+    // from /project/json/:p/files, and says how many it received in
+    // filesLoaded.count when saving (see filesListIncomplete), as BrainBox
+    // does (T002 3.1)
+    const filesTotal = listOf(stored, 'files').length;
 
-  req.session.returnTo = req.originalUrl;
+    // only what the visitor may see goes into the page, as on the project
+    // page (M3c, S2): no annotation layers without annotations view rights,
+    // no collaborators but 'anyone' without collaborators view rights
+    const canViewCollaborators = AccessControlService.canViewCollaborators(stored, loggedUser);
+    const json = visibleProject(stored, loggedUser);
 
-  let json = await findCurrentProject(req.appConfig.db.nativeMongoDB(), requestedProject);
-  if (_.isNil(json)) {
-    json = {
-      name: "",
-      shortname: requestedProject,
-      url: "",
-      created: (new Date()).toJSON(),
-      owner: loggedUser,
-      collaborators: {
-        list: [
-          {
-            username: 'anyone',
-            userID: 'anyone',
-            access: {
-              collaborators: 'view',
-              annotations: 'edit',
-              files: 'view'
-            }
-          }
-        ]
-      },
-      files: {
-        list: []
-      },
-      annotations: {
-        list: []
-      }
-    };
-  }
-
-  if (!AccessControlService.canViewFiles(json, loggedUser)) {
-    res.status(noViewStatus(loggedUser)).send('Not authorized to view project');
-
-    return;
-  }
-
-  // the files are not in the page: the settings page loads them in batches
-  // from /project/json/:p/files, and says how many it received in
-  // filesLoaded.count when saving (see filesListIncomplete), as BrainBox does
-  // (T002 3.1)
-  const filesTotal = listOf(json, 'files').length;
-
-  // only what the visitor may see goes into the page, as on the project page
-  // (M3c, S2): no annotation layers without annotations view rights, no
-  // collaborators but 'anyone' without collaborators view rights
-  const canViewCollaborators = AccessControlService.canViewCollaborators(json, loggedUser);
-  json = visibleProject(json, loggedUser);
-
-  // every row shown with username and userID, equal, whichever of the two is
-  // stored (T002 2.2: before, a row without `username` answered an error text)
-  json.collaborators.list = json.collaborators.list.map(withBothKeys);
-
-  // the display name of each collaborator, from the users collection; a row
-  // whose user is not found keeps its stored name (or '')
-  if (canViewCollaborators) {
-    try {
-      const names = _.uniq(json.collaborators.list.map(collaboratorName).filter((name) => typeof name === 'string'));
-      const users = await req.appConfig.db.nativeMongoDB().collection('users')
-        .find({ username: { $in: names } }, { projection: { _id: 0, username: 1, name: 1 } })
-        .toArray();
-      const nameOf = new Map(users.map((u) => [u.username, u.name]));
-      json.collaborators.list = json.collaborators.list.map((c) => {
-        if (!_.isPlainObject(c)) {
-          return c;
-        }
-        const found = nameOf.get(collaboratorName(c));
-
-        return { ...c, name: typeof found === 'string' ? found : (c.name || '') };
-      });
-    } catch(e) {
-      logger.error({ err: e, project: requestedProject }, 'cannot resolve collaborator names');
+    // every row shown with username and userID, equal, whichever of the two
+    // is stored (T002 2.2: before, a row without `username` answered an error
+    // text)
+    json.collaborators.list = json.collaborators.list.map(withBothKeys);
+    if (canViewCollaborators) {
+      json.collaborators.list = await withCollaboratorNames(req, json.collaborators.list);
     }
+
+    json.files = { ...json.files, list: [] };
+    json.filesLoaded = { count: 0 };
+
+    res.render('projectSettings', {
+      projectShortname: json.shortname,
+      owner: json.owner,
+      projectInfo: jsonForScript(json),
+      filesTotal,
+      loggedUser: jsonForScript(req.user || null)
+    });
   }
-
-  json.files = { ...json.files, list: [] };
-  json.filesLoaded = { count: 0 };
-
-  var context = {
-    projectShortname: json.shortname,
-    owner: json.owner,
-    projectInfo: jsonForScript(json),
-    filesTotal,
-    loggedUser: jsonForScript(req.user || null)
-  };
-  res.render('projectSettings', context);
-};
-
-const settings = catchErrors(settingsUnsafe, (res) => res.status(500).send('Error'));
+});
 
 /**
  * @function projectNew
@@ -192,19 +165,10 @@ const settings = catchErrors(settingsUnsafe, (res) => res.status(500).send('Erro
  * @returns {void}
  */
 const projectNew = function (req, res) {
-
-  let loggedUser = "anyone";
-  if(req.isAuthenticated()) {
-    loggedUser = req.user.username;
-  } else
-  if(req.isTokenAuthenticated) {
-    loggedUser = req.tokenUsername;
-  }
-
   // Store return path in case of login
   req.session.returnTo = req.originalUrl;
 
-  if(loggedUser === "anyone" ) {
+  if (visitor(req) === null) {
     res.render('askForLogin', {
       title: "MicroDraw: New Project",
       functionality: "create a new project",
@@ -218,69 +182,39 @@ const projectNew = function (req, res) {
   }
 };
 
-// eslint-disable-next-line max-statements -- existing handler, not refactored in a lint-only change; 2026-10-11
-const apiProjectUnsafe = async function (req, res) {
-  let json = await findCurrentProject(req.appConfig.db.nativeMongoDB(), req.params.projectName);
-  if (_.isNil(json)) {
-    res.status(404).json({error: 'Project not found'});
-
-    return;
-  }
-
-  let loggedUser = "anyone";
-  if(req.isAuthenticated()) {
-    loggedUser = req.user.username;
-  } else if(req.isTokenAuthenticated) {
-    loggedUser = req.tokenUsername;
-  }
-
-  if (!AccessControlService.canViewFiles(json, loggedUser)) {
-    res.status(noViewStatus(loggedUser)).json({error: 'Not authorized to view project'});
-
-    return;
-  }
-
-  json = visibleProject(json, loggedUser);
-  // As BrainBox: no _id. It changes on every save (T002 2.1b), and no client
-  // reads it (the settings page sends it back; saves ignore it).
-  delete json._id;
-
-  if (req.query.var) {
-    let i;
-    const arr = req.query.var.split('/');
-    for (i in arr) {
-      if({}.hasOwnProperty.call(arr, i)) {
-        json = json[arr[i]];
-      }
-    }
-  }
-  // JSON, also when ?var= selects a string (res.send would send it as HTML)
-  res.json(json);
-};
-
-// Any error in apiProjectUnsafe (a db failure, a ?var= path that does not
-// exist) answers 500.
-const apiProject = catchErrors(apiProjectUnsafe);
+/**
+ * GET /project/json/:projectName: the project as the visitor may see it, or
+ * with ?var=a/b the value at that path (NeuroWebLab's projectJsonRoute: 404,
+ * the view right, own properties only; an error, as a ?var= path through a
+ * missing value, goes to the app's errorHandler, a 500). No _id (the default
+ * projection): it changes on every save (T002 2.1b), and no client reads it.
+ */
+const apiProject = projectJsonRoute({
+  db,
+  canView,
+  visible: (req, json) => visibleProject(json, getLoggedUser(req))
+});
 
 // GET /project/json/:projectName/text-annotations: the current values of the
 // project's named text layers, { <source>: { <layer>: {value, user, modified} } }.
 // Answers as GET /project/json/:projectName for an unknown project (404) or one
 // the visitor may not see (401 logged out, 403 logged in), and only for the files and layers the project
 // page shows the visitor (NWL visibleProject): {} if the layers are hidden (M3c).
+// The 404 text is the JSON route's since NeuroWebLab 1.21.0 (`No project <name>`).
 const apiTextAnnotationsUnsafe = async function (req, res) {
-  const json = await findCurrentProject(req.appConfig.db.nativeMongoDB(), req.params.projectName);
+  const json = await findCurrentProject(db(req), req.params.projectName);
   if (_.isNil(json)) {
-    res.status(404).json({error: 'Project not found'});
+    res.status(404).json({error: `No project ${req.params.projectName}`});
 
     return;
   }
   const loggedUser = getLoggedUser(req);
   if (!AccessControlService.canViewFiles(json, loggedUser)) {
-    res.status(noViewStatus(loggedUser)).json({error: 'Not authorized to view project'});
+    res.status(noViewStatus(req)).json({error: 'Not authorized to view project'});
 
     return;
   }
-  res.json(await currentTextValues(req.appConfig.db.nativeMongoDB(), visibleProject(json, loggedUser)));
+  res.json(await currentTextValues(db(req), visibleProject(json, loggedUser)));
 };
 
 const apiTextAnnotations = catchErrors(apiTextAnnotationsUnsafe);
@@ -303,11 +237,8 @@ const fileEntry = (entry, onlyNames) => {
 
 // What the NeuroWebLab routes ask of microdraw (1.17.0, M10b): the native
 // db, the view right (as on the other project routes) and its refusal status
-const routeAdapter = {
-  db: (req) => req.appConfig.db.nativeMongoDB(),
-  canView: (req, json) => AccessControlService.canViewFiles(json, getLoggedUser(req)),
-  noViewStatus: (req) => noViewStatus(getLoggedUser(req))
-};
+// (NWL's: 401 logged out, 403 logged in)
+const routeAdapter = { db, canView, noViewStatus };
 
 /**
  * GET /project/json?page: the shortnames of the projects the requester may
@@ -422,63 +353,45 @@ const saveProject = async function (req, res, loggedUser) {
   }
 };
 
-const postProjectUnsafe = async function (req, res) {
-  const loggedUser = getLoggedUser(req);
-  if (loggedUser === 'anyone') {
-    sendError(res, 401, 'User not authenticated');
-
-    return;
-  }
-
-  await withProjectLock(req.params.projectName, () => saveProject(req, res, loggedUser));
-};
-
-// Any other error (e.g. the database) answers 500.
-const postProject = catchErrors(postProjectUnsafe);
+// The project's lock (NWL's project/lock.js, as projectLock.js)
+const lockKeys = (req) => [projectKey(req.params.projectName)];
 
 /**
- * Delete a project and mark its annotations as backups (never deleted). The
- * project document is kept in the `log` collection, and the annotations it
- * marks carry the id of that log entry, so an admin can restore it (decisions
- * D28, D31; project.delete.js, shared with the admin delete). Runs holding the
- * project's lock.
- * @param {object} req Request object
- * @param {object} res Response object
- * @param {string} loggedUser The user deleting
- * @returns {Promise<void>} Resolves once answered
+ * POST /project/json/:projectName (NeuroWebLab's projectSaveRoute: 401
+ * logged out, then saveProject holding the project's lock; any other error,
+ * e.g. the database, goes to the app's errorHandler, a 500).
  */
-// eslint-disable-next-line max-statements
-const removeProject = async function (req, res, loggedUser) {
-  const shortname = req.params.projectName;
-  const projectToDelete = await findCurrentProject(req.appConfig.db.nativeMongoDB(), shortname);
-  if (_.isNil(projectToDelete)) {
-    res.status(404).json({ success: false, message: 'Project not found' });
+const postProject = projectSaveRoute({ lockKeys, save: saveProject });
 
-    return;
+/**
+ * DELETE /project/json/:projectName (NeuroWebLab's projectDeleteRoute: 401
+ * logged out; holding the project's lock, 404, the REMOVE right, then the
+ * delete). The project is deleted and its annotations marked as backups
+ * (never deleted). The project document is kept in the `log` collection, and
+ * the annotations it marks carry the id of that log entry, so an admin can
+ * restore it (decisions D28, D31; project.delete.js, shared with the admin
+ * delete). The whole document is read (`projection: {}`): the log entry keeps
+ * its `_id`, as `projectId`.
+ */
+const deleteProject = projectDeleteRoute({
+  db,
+  projection: {},
+  lockKeys,
+  canRemove: (req, json) => {
+    const loggedUser = getLoggedUser(req);
+    const allowed = AccessControlService.hasFilesAccess(AccessLevel.REMOVE, json, loggedUser);
+    if (!allowed) {
+      logger.warn({ project: req.params.projectName, user: loggedUser }, 'delete refused: user does not have remove rights');
+    }
+
+    return allowed;
+  },
+  remove: async (req, json, username) => {
+    const { log } = await deleteStoredProject(req.appConfig.db, { project: json, username });
+
+    return { log };
   }
-  if (!AccessControlService.hasFilesAccess(AccessLevel.REMOVE, projectToDelete, loggedUser)) {
-    logger.warn({ project: shortname, user: loggedUser }, 'delete refused: user does not have remove rights');
-    res.status(403).json({ success: false, message: 'The user is not allowed to delete this project' });
-
-    return;
-  }
-
-  const { log } = await deleteStoredProject(req.appConfig.db, { project: projectToDelete, username: loggedUser });
-  res.json({success: true, message: 'Project deleted', log});
-};
-
-const deleteProjectUnsafe = async function (req, res) {
-  const loggedUser = getLoggedUser(req);
-  if (loggedUser === 'anyone') {
-    res.status(401).json({ success: false, message: 'Log in required' });
-
-    return;
-  }
-
-  await withProjectLock(req.params.projectName, () => removeProject(req, res, loggedUser));
-};
-
-const deleteProject = catchErrors(deleteProjectUnsafe);
+});
 
 module.exports = {
   validator,

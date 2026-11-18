@@ -74,17 +74,21 @@ describe('Anonymous requests that must not crash the server', function () {
       assert.equal(JSON.parse(res.text), 'Cat');
     }).timeout(U.shortTimeout);
 
+    // NeuroWebLab 1.21.0 projectJsonRoute: the error goes to the app's
+    // errorHandler, a 500 {error} (the message in development)
     it('a ?var= path that does not exist answers 500 JSON', async function () {
       const res = await get(`/project/json/${publicProject.shortname}?var=no/such/path`);
       assert.equal(res.status, 500);
-      assert.deepEqual(res.body, { error: 'Server error' });
+      assert.match(res.headers['content-type'], /^application\/json/);
+      assert.isString(res.body.error);
       await assertStillServing();
     }).timeout(U.shortTimeout);
 
+    // NeuroWebLab 1.21.0 (shared suite 1.18): the text names the project
     it('a missing project answers 404 JSON', async function () {
       const res = await get(`/project/json/${missingProject}`);
       assert.equal(res.status, 404);
-      assert.deepEqual(res.body, { error: 'Project not found' });
+      assert.deepEqual(res.body, { error: `No project ${missingProject}` });
       await assertStillServing();
     }).timeout(U.shortTimeout);
   });

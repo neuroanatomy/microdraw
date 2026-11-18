@@ -3,6 +3,7 @@
  * 2 (create, save, delete, validation, versions), 3 (listings and search), 4 (annotations
  * by project) and 5 (admin), against the server test/api/runner.js started (neuroweblab/conformance/README.md).
  */
+const crypto = require('crypto');
 const { accessMatrix, projectAdmin, projectAnnotations, projectLifecycle, projectListings, signUp } = require('neuroweblab/conformance');
 const U = require('../mocha.test.util');
 const admins = require('../../app/controller/admin/admins');
@@ -133,6 +134,15 @@ const adapter = {
   setUserFields: (username, fields) => db().collection('users')
     .updateOne({ username }, { $set: fields }),
   routes: { searchUsers: '/search/json/users?q=:q' },
+  // 1.19: an expired token of the user, in NWL's token store (the `log`
+  // collection, as db.findToken reads it); removeUser deletes it
+  expiredToken: async (user) => {
+    const token = `${user.username}expired${crypto.randomBytes(4).toString('hex')}`;
+    await db().collection('log')
+      .insertOne({ token, username: user.username, expiryDate: new Date(Date.now() - 60000) });
+
+    return token;
+  },
   // none since NeuroWebLab 1.7.0: the statuses of 1.5 and 1.6 and the route /files (2026-11-11)
   expectedDifferences: {}
 };
