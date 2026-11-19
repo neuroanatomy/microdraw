@@ -30,6 +30,13 @@
 #projectFiles table :is(th, td),
 #vecAnnotations :is(th, td) {
     overflow: hidden;
+}
+/* Only until a resize: a resized table's cells wrap, even inside a word, and
+   clip at their edge with no ellipsis (nwl-components/resize, 3.4.0); the
+   table scrolls in its wrapper when it is wider than the pane. A double-click
+   on a handle gives the clipped layout back. */
+#projectFiles table:not(.nwl-resized) :is(th, td),
+#vecAnnotations:not(.nwl-resized) :is(th, td) {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -49,16 +56,6 @@
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-/* A table whose columns were resized (nwl-components/resize): its cells wrap,
-   even inside a word, so nothing is cut; the table scrolls in its wrapper when
-   it is wider than the pane. A double-click on a handle gives the clipped
-   layout back. */
-#projectFiles table.nwl-resized :is(th, td),
-#vecAnnotations.nwl-resized :is(th, td) {
-    text-overflow: clip;
-    white-space: normal;
-    overflow-wrap: anywhere;
 }
 #right {
     background-color: var(--nwl-bg-canvas);

@@ -11,8 +11,10 @@
   On the project page and the user page: every header has a handle; before any
   drag the columns are as wide as without the helper (handles and wrapper
   taken out by hand, within 0.5px); a mouse drag widens that column only and
-  does not sort; ArrowRight on a focused handle adds 10px; a reload gives the
-  automatic layout. On the settings and admin pages: every header has a handle.
+  does not sort; once resized, every cell computes text-overflow: clip,
+  white-space: normal and overflow-wrap: anywhere (nwl-components 3.4.0);
+  ArrowRight on a focused handle adds 10px; a reload gives the automatic
+  layout. On the settings and admin pages: every header has a handle.
 */
 const { assert } = require('chai');
 const U = require('../mocha.test.util');
@@ -139,6 +141,19 @@ const checkTable = (getPage, open, table) => {
     assert.deepEqual(await layout(page, table), { fixed: true, resized: true });
     assert.deepEqual(await firstColumn(page, table), rows, 'rows not sorted');
     assert.deepEqual((await headerState(page, table)).map((h) => h.sort), sorts, 'aria-sort unchanged');
+  }).timeout(U.shortTimeout);
+
+  // nwl-components 3.4.0: a resized table's cells wrap and clip, with no
+  // ellipsis (the app keeps its ellipsis for tables that weren't resized)
+  it(`${table}: once resized, its cells wrap and clip without an ellipsis`, async function () {
+    const page = getPage();
+    const cells = await page.$eval(table, (t) => [...t.querySelectorAll('th, td')].map((c) => {
+      const s = getComputedStyle(c);
+
+      return { textOverflow: s.textOverflow, whiteSpace: s.whiteSpace, overflowWrap: s.overflowWrap };
+    }));
+    assert.isAtLeast(cells.length, 2);
+    cells.forEach((c, i) => assert.deepEqual(c, { textOverflow: 'clip', whiteSpace: 'normal', overflowWrap: 'anywhere' }, `cell ${i + 1}`));
   }).timeout(U.shortTimeout);
 
   it(`${table}: ArrowRight on a focused handle adds 10px`, async function () {

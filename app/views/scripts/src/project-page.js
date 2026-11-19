@@ -54,7 +54,9 @@
     helper as its wrapper. The headers never change after mount; if they did,
     the helper's MutationObserver would give new ones a handle. Widths are
     not remembered. A resized table's cells wrap instead of being clipped
-    with an ellipsis (project-style.css).
+    with an ellipsis (project-style.css limits its ellipsis to tables not
+    resized; nwl-components 3.4.0 gives resized cells clip and normal), and
+    the class nwl-table gives the 1em gaps between the columns.
   - Moving to another file reloads the page with ?source=<file>&project=<name>,
     as before, both encoded with encodeURIComponent since N3; the viewer reads
     both from the URL (Microdraw.deparam decodes them).
@@ -221,7 +223,7 @@ const ProjectTables = {
   components: { SortHeader },
   template: `
     <div id="projectFiles" class="block" style="flex:1 1 auto">
-      <div ref="filesWrap" class="nwl-resize-wrap"><table ref="filesTable" style="width:100%;text-align:left">
+      <div ref="filesWrap" class="nwl-resize-wrap"><table ref="filesTable" class="nwl-table" style="width:100%;text-align:left">
         <thead>
           <tr>
             <SortHeader :sort="fileSort" column="Name" @sort="sortFiles" />
@@ -247,7 +249,7 @@ const ProjectTables = {
       <p id="noFiles" class="emptyState" v-if="files.length === 0">This project has no files yet. Add them in the <a :href="settingsURL">project settings</a>.</p>
     </div>
     <div id="annotations" class="block" style="flex:1 1 200px">
-      <div ref="layersWrap" class="nwl-resize-wrap"><table ref="layersTable" id="vecAnnotations" style="width:100%;text-align:left">
+      <div ref="layersWrap" class="nwl-resize-wrap"><table ref="layersTable" id="vecAnnotations" class="nwl-table" style="width:100%;text-align:left">
         <thead>
           <tr>
             <SortHeader :sort="layerSort" column="Name" @sort="sortLayers" />
