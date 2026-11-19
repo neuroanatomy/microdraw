@@ -1,30 +1,8 @@
 /* globals userInfo, loggedUser */
 import 'nwl-components/dist/style.css';
-import { SortableTh, Tab, Table, Tabs, UserPage, useSortable } from 'nwl-components';
+import { SortableTh, Tab, Table, Tabs, UserPage, localDate, shownName, useSortable } from 'nwl-components';
 import { createApp, onMounted, ref } from 'vue';
 import config from './nwl-components-config';
-
-const pad = (n) => String(n).padStart(2, '0');
-
-// An ISO date as a local YYYY-MM-DD (dateTime: YYYY-MM-DD HH:MM:SS), '' when
-// missing or not a date
-const localDate = (iso, dateTime = false) => {
-  const d = new Date(iso);
-  if (!iso || isNaN(d)) {
-    return '';
-  }
-  const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-
-  return dateTime ? `${date} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}` : date;
-};
-
-// What the Name column shows, and sorts by: the project's display name, or its
-// short name when the display name is missing or empty
-const shownName = (project) => {
-  const name = typeof project.name === 'string' ? project.name.trim() : '';
-
-  return name === '' ? project.shortname : project.name;
-};
 
 // The viewer's address for a source, in a project or none
 const viewerURL = (source, project) => `/data?source=${encodeURIComponent(source)}${project ? `&project=${encodeURIComponent(project)}` : ''}`;

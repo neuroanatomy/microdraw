@@ -1,7 +1,7 @@
 /* global loggedUser */
 // Admin page (A1, A2, A3; T002 3.6: damaged projects, datasets, message). Same structure as BrainBox view/brainbox/src/pages/admin-page.js.
 import 'nwl-components/dist/style.css';
-import { Button, Footer, Header, Table, Wrapper } from 'nwl-components';
+import { Button, Footer, Header, Table, Wrapper, fetchJSON, formatDate as formatDateOf, postJSON } from 'nwl-components';
 import { ProjectActions, useProjectActions } from './admin-project-actions';
 import { createApp, provide, ref } from 'vue';
 import { useBroadcast, useDataset } from './admin-datasets';
@@ -11,30 +11,8 @@ import { useInvalidProjects } from './admin-projects';
 
 const PAGE_SIZE = 50;
 
-const fetchJSON = async (url, options = {}) => {
-  const res = await fetch(url, {
-    ...options,
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
-  });
-  let body;
-  try {
-    body = await res.json();
-  } catch (err) {
-    body = { success: false, error: `${res.status} ${res.statusText}` };
-  }
-  if (!res.ok || body.success === false) {
-    throw new Error(body.error || body.msg || `${res.status} ${res.statusText}`);
-  }
-
-  return body;
-};
-
-const postJSON = (url, data) => fetchJSON(url, { method: 'POST', body: JSON.stringify(data) });
-
-const formatDate = (date) => (date
-  ? String(date).slice(0, 16)
-    .replace('T', ' ')
-  : '');
+// microdraw's dates show the time
+const formatDate = (date) => formatDateOf(date, { time: true });
 
 const keyOf = (g) => JSON.stringify([g.fileID, g.user, g.project]);
 

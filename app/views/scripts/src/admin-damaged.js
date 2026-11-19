@@ -1,12 +1,11 @@
 // Admin page, section "Damaged projects" (T002 3.6 A), as BrainBox's admin
 // page. The list is read on demand (it reads every version of every project);
 // the fixes are the routes /admin/json/projects/restore-files and fix-current.
+import { formatDate as formatDateOf } from 'nwl-components';
 import { ref } from 'vue';
 
-const formatDate = (date) => (date
-  ? String(date).slice(0, 16)
-    .replace('T', ' ')
-  : '');
+// microdraw's dates show the time
+const formatDate = (date) => formatDateOf(date, { time: true });
 
 /**
  * State and actions of the section

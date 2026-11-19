@@ -6,8 +6,6 @@ export default {
   issuesURL: "https://github.com/neuroanatomy/microdraw/issues",
   docURL: "https://microdraw.pasteur.fr/doc/",
   userSearchURL: "/search/json/users?q=",
-  // the label sets of app/public/labels/, as BrainBox's (T002 3.2)
-  fetchLabelSets: async () => (await fetch('/api/getLabelsets')).json(),
   annotationTypes: ["text", "vectorial"],
   usernameField: 'username',
   // The "Embed Project" button (nwl-components ProjectInfo.vue) shows an
