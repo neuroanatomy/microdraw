@@ -6,7 +6,7 @@ const log = require('../../log');
 const { AccessControlService } = require('neuroweblab');
 const { jsonForScript } = require('neuroweblab');
 const { visibleProject } = require('neuroweblab');
-const { findUserProjects } = require('../project/currentProject');
+const { publicUser, userProjectsRoute, visitor } = require('neuroweblab');
 const { lastModified, newestAnnotations } = require('./lastModified');
 const { pageOf, userAnnotations, userDatasets } = require('./userTabs');
 //const checkAccess = require('../checkAccess/checkAccess.js');
@@ -27,21 +27,10 @@ const validator = function (req, res, next) {
   next();
 };
 
-// Fields of a user document that the public user routes may expose
-// (GET /user/json/:userName and the userInfo of GET /user/:userName).
-// Never passhash, tokens, or anything else stored on the user.
-const publicUserFields = ['username', 'name', 'avatarURL', 'url', 'joined'];
-
-const publicUser = (doc) => {
-  const pub = {};
-  for (const field of publicUserFields) {
-    if (typeof doc[field] !== 'undefined') {
-      pub[field] = doc[field];
-    }
-  }
-
-  return pub;
-};
+// What of a user others may see (GET /user/json/:userName and the userInfo of
+// GET /user/:userName): NWL's publicUser, an allow-list of the username field
+// (`username`, Configuration's usernameField) and PUBLIC_USER_FIELDS. Never
+// passhash, tokens, email, or anything else stored on the user.
 
 const user = function (req, res) {
   const username = req.params.userName;
@@ -173,18 +162,6 @@ const api_userFiles = tabRoute(userDatasets, 'success');
  */
 const api_userAtlas = tabRoute(userAnnotations, 'successful');
 
-/**
- * A non-negative integer query parameter, or `fallback` when it is missing or not one.
- * @param {string} value The query value
- * @param {number} fallback The default
- * @returns {number} The integer
- */
-const queryInt = (value, fallback) => {
-  const n = Number(value);
-
-  return Number.isInteger(n) && n >= 0 ? n : fallback;
-};
-
 // The length of a project's `files.list` or `collaborators.list`, 0 when missing.
 // (No `?.`/`??`: the eslint config parses an older ECMAScript.)
 const listLength = (part) => (part && Array.isArray(part.list) ? part.list.length : 0);
@@ -209,42 +186,27 @@ const projectRow = (project, loggedUser, annotated) => {
   };
 };
 
-// The page of the user's projects that the visitor may see, and the visitor
-const userProjectsPage = async (req) => {
-  const start = queryInt(req.query.start, 0);
-  const length = queryInt(req.query.length, Infinity);
-  const loggedUser = req.user ? req.user.username : 'anyone';
-  const result = await findUserProjects(req.appConfig.db.nativeMongoDB(), req.params.userName);
-  const page = result
-    .filter((project) => AccessControlService.canViewFiles(project, loggedUser))
-    .slice(start, start + length);
-
-  return { page, loggedUser };
-};
-
 /**
- * The projects of a user that the visitor may see, `length` of them from
- * `start` (query parameters; by default all of them), each with its number of
- * files and of visible collaborators, and its last modification date (the
- * later of its last save and its newest annotation, else its creation date;
- * none when none of them is known).
- * @param {object} req Request object
- * @param {object} res Response object
- * @returns {void}
+ * GET /user/json/:userName/projects?[start][&length]: NWL's userProjectsRoute
+ * (1.22.0). The user's current projects (owner, or a collaborator row naming
+ * them by userID, username or nickname) that the visitor may see, `length` of
+ * them from `start` (by default all of them), as `{successful: true, list}`:
+ * each the visible project with its number of files and of visible
+ * collaborators, and its last modification date (the later of its last save
+ * and its newest annotation, else its creation date; none when none of them
+ * is known). An error goes to the app's errorHandler (a 500 `{error}`).
  */
-const api_userProjects = async function (req, res) {
-  try {
-    const { page, loggedUser } = await userProjectsPage(req);
+const api_userProjects = userProjectsRoute({
+  db: (req) => req.appConfig.db.nativeMongoDB(),
+  canView: (req, project) => AccessControlService.canViewFiles(project, visitor(req) || 'anyone'),
+  rows: async (req, page) => {
     const annotated = await newestAnnotations(req.appConfig.db.nativeMongoDB(), page.map((project) => project.shortname));
-    res.send({
-      successful: true,
-      list: page.map((project) => projectRow(project, loggedUser, annotated))
-    });
-  } catch (err) {
-    log.error({ err, profile: req.params.userName }, 'user request failed');
-    res.status(500).send({successful: false, list: []});
-  }
-};
+    const loggedUser = visitor(req) || 'anyone';
+
+    return page.map((project) => projectRow(project, loggedUser, annotated));
+  },
+  answer: (list) => ({ successful: true, list })
+});
 
 module.exports = {
   validator,
