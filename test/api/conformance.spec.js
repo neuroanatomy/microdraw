@@ -58,7 +58,10 @@ const admin = {
     if (res.status !== 200) {
       throw new Error(`name-layers ${shortname}: ${res.status} ${res.text}`);
     }
-  }
+  },
+  // 5.6: the number of `log` entries about a project (the admin fixes log value.shortname)
+  logEntries: (shortname) => db().collection('log')
+    .countDocuments({ 'value.shortname': shortname })
 };
 
 const adapter = {

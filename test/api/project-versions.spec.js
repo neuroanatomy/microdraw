@@ -11,7 +11,9 @@ const admins = require('../../app/controller/admin/admins');
 const adminProjects = require('../../app/controller/admin/admin.projects');
 const projectActions = require('../../app/controller/admin/admin.projectActions');
 const adminAnnotations = require('../../app/controller/admin/admin.annotations');
+const { ObjectId } = require('neuroweblab');
 const { projectVersion } = require('../../app/controller/project/project.check');
+const { findCurrentProject } = require('../../app/controller/project/currentProject');
 
 // T002 2.1b: every change of a project stores a new version. The new document
 // is inserted (new _id), then the previous current one gets `backup: true`. A
@@ -339,6 +341,31 @@ describe('Project versions: every change keeps the old version (T002 2.1b)', fun
       assert.isUndefined(res.error, res.error);
       assert.isTrue(res.addedImage);
       await expectNewVersion(shortname, before, (doc) => assert.deepEqual(doc.files.list.map((f) => f.source), [source('a'), source('orphan')]));
+    }).timeout(U.shortTimeout);
+  });
+
+  // M16b: projectVersion is NeuroWebLab's (1.23.0). The admin page holds
+  // tokens computed by microdraw's own function: a stored document must give
+  // the same token. '4f606da40b541d529ada' is what microdraw's function (the
+  // sha256 of JSON.stringify(doc), 20 hex digits) gave for this document.
+  describe('the version token', function () {
+    it('a stored document gives the token microdraw\'s own function gave', async function () {
+      const shortname = `${PREFIX}-token`;
+      await db().collection('projects')
+        .insertOne({
+          _id: new ObjectId('65a1b2c3d4e5f60718293a4b'),
+          shortname,
+          name: 'Token fixture',
+          owner: owner.username,
+          collaborators: { list: [{ username: 'anyone', access: { collaborators: 'view', annotations: 'view', files: 'view' } }] },
+          files: { list: [{ source: `/test_data/${shortname}-a.dzi`, name: 'A' }, `/test_data/${shortname}-b.dzi`] },
+          annotations: { list: [{ type: 'vectorial', name: 'Layer', values: 'Set I' }] },
+          modified: '2026-11-19T08:00:00.000Z',
+          modifiedBy: owner.username
+        });
+      const stored = await findCurrentProject(db(), shortname);
+      assert.equal(projectVersion(stored), '4f606da40b541d529ada');
+      assert.equal(projectVersion(await findCurrentProject(db(), shortname)), '4f606da40b541d529ada', 'a second read, the same token');
     }).timeout(U.shortTimeout);
   });
 });

@@ -15,9 +15,12 @@
  * and what the admin fixes can do about it: the blank rows they would
  * remove, and the unnamed layers that have values (with a proposed name).
  */
-const crypto = require('crypto');
 const _ = require('lodash');
-const { projectRowProblems, validateProject } = require('neuroweblab');
+// projectVersion: the token of a stored project version, NeuroWebLab's since
+// 1.23.0 (project/versions.js, written from this file's; the same tokens).
+// The admin fixes refuse a project whose token changed since it was listed.
+// Re-exported for admin.projects.js, admin.projectActions.js and the tests.
+const { projectRowProblems, projectVersion, validateProject } = require('neuroweblab');
 const {
   asFileObject, collaboratorName, isBlank, listOf, nameKey, rules, sanitize
 } = require('./project.validation');
@@ -32,17 +35,6 @@ const KIND = {
 const listTypes = ['files', 'collaborators', 'annotations'];
 
 const isAnyone = (c) => c.username === 'anyone' || c.userID === 'anyone';
-
-/**
- * A token for the version of a stored project document: a hash of the
- * document as stored. The admin fixes refuse a project whose token changed
- * since it was listed.
- * @param {object} doc The project document, as read from the database
- * @returns {string} 20 hexadecimal digits
- */
-const projectVersion = (doc) => crypto.createHash('sha256').update(JSON.stringify(doc))
-  .digest('hex')
-  .slice(0, 20);
 
 // The project as the settings page sends it back: nwl-components turns files
 // stored as plain strings into {source, name} (asFileObject, as the server's

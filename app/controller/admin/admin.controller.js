@@ -289,7 +289,7 @@ const restoreProjectFiles = (req, res) => {
   if (typeof body.save !== 'string' || body.save === '') {
     return res.status(400).json({ success: false, error: 'Provide the save: the id of the version it stored, as listed' });
   }
-  sendResult(res, damaged.restoreFiles(req.app.db, { shortname, version, save: body.save, username: requestUsername(req) }));
+  sendResult(res, damaged.restoreFiles(nativeDb(req), { shortname, version, save: body.save, username: requestUsername(req) }));
 };
 
 /**
@@ -304,7 +304,7 @@ const fixProjectCurrentVersions = (req, res) => {
   if (error) {
     return res.status(400).json({ success: false, error });
   }
-  sendResult(res, damaged.fixCurrentVersions(req.app.db, { shortname, version, username: requestUsername(req) }));
+  sendResult(res, damaged.fixCurrentVersions(nativeDb(req), { shortname, version, username: requestUsername(req) }));
 };
 
 const sourceError = (source) => (typeof source !== 'string' || source === '' || source.length > 2048 ? 'Provide the source: the URL of the dataset' : null);
