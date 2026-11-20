@@ -34,18 +34,30 @@ const NewPage = {
     const existingProject = ref(false);
     const validInput = ref(true);
 
+    // the name in the input: an answer about an earlier one is dropped
+    let typedName = '';
+
     const checkIfProjectIsExisting = debounce(async (projectName) => {
-      const res = await fetch(`/project/json/${projectName}`);
-      existingProject.value = (res.status === 200);
+      // only a 404 means the name is free: a project the user may not see
+      // answers 401 or 403, and its name is taken all the same
+      const res = await fetch(`/project/json/${encodeURIComponent(projectName)}`);
+      if (projectName !== typedName) { return; }
+      existingProject.value = (res.status !== 404);
     });
 
     return {
       existingProject,
       validInput,
       checkInput(event) {
+        typedName = event.target.value;
         if(event.target.value.length > 0) {
-          checkIfProjectIsExisting(event.target.value);
           validInput.value = (/^[a-zA-Z0-9-]*$/).test(event.target.value);
+          // an invalid name is refused before it is looked up: no existence check
+          if (validInput.value) {
+            checkIfProjectIsExisting(event.target.value);
+          } else {
+            existingProject.value = false;
+          }
         }
       }
     };

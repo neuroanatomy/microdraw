@@ -27,6 +27,8 @@ const EXISTING = 'e2em7title';
 const NEW = 'e2em7newtitle';
 const NOLISTS = 'e2em7nolists';
 const MARKUP = 'e2en1markup';
+// someone else's project that no one else may see
+const PRIVATE = 'e2enewprivate';
 
 const projectOf = (shortname, name) => {
   const project = U.createProjectWithPermission(shortname, {});
@@ -94,7 +96,7 @@ const focusTitleEnd = (page) => page.$eval('span.title[contenteditable]', (span)
   selection.addRange(range);
 });
 
-// eslint-disable-next-line max-statements -- setup, helpers and eight tests
+// eslint-disable-next-line max-statements -- setup, helpers and nine tests
 describe('Project title and settings pages (M7)', () => {
   let context;
   let page;
@@ -105,13 +107,13 @@ describe('Project title and settings pages (M7)', () => {
   };
 
   before(async () => {
-    await Promise.all([EXISTING, NEW, NOLISTS, MARKUP].map((shortname) => U.removeProject(shortname)));
+    await Promise.all([EXISTING, NEW, NOLISTS, MARKUP, PRIVATE].map((shortname) => U.removeProject(shortname)));
     await U.insertProject(projectOf(EXISTING, 'Initial Name'));
     const noLists = projectOf(NOLISTS, 'No lists');
     delete noLists.files;
     delete noLists.annotations.list;
     await U.insertProject(noLists);
-    await U.insertProject(markupProject());
+    await Promise.all([markupProject(), U.createProjectWithPermission(PRIVATE, {})].map((project) => U.insertProject(project)));
     context = await H.newContext();
     page = await context.newPage();
     await H.logIn(page, owner);
@@ -122,7 +124,7 @@ describe('Project title and settings pages (M7)', () => {
     try {
       await H.closeContext(context);
     } finally {
-      await Promise.all([EXISTING, NEW, NOLISTS, MARKUP].map((shortname) => U.removeProject(shortname)));
+      await Promise.all([EXISTING, NEW, NOLISTS, MARKUP, PRIVATE].map((shortname) => U.removeProject(shortname)));
       await U.removeLocalUser(owner.username);
     }
   });
@@ -234,5 +236,14 @@ describe('Project title and settings pages (M7)', () => {
     await page.waitForFunction(() => [...document.querySelectorAll('.warning')]
       .some((div) => div.style.display !== 'none' && div.textContent.includes('already exists')), { polling: 50, timeout: U.shortTimeout });
     assert.deepEqual(await warnings(), [`The project ${EXISTING} already exists`]);
+  }).timeout(U.mediumTimeout);
+
+  it('the new-project page counts a project the user may not see as existing', async () => {
+    // its JSON answers 403, not 404: the name is taken, and saving it would be refused
+    await page.goto(U.url('/project/new'), { waitUntil: 'load' });
+    await page.waitForSelector('input.input', { timeout: U.shortTimeout });
+    await page.type('input.input', PRIVATE);
+    await page.waitForFunction((name) => [...document.querySelectorAll('.warning')]
+      .some((div) => div.style.display !== 'none' && div.textContent.includes(`The project ${name} already exists`)), { polling: 50, timeout: U.shortTimeout }, PRIVATE);
   }).timeout(U.mediumTimeout);
 });
