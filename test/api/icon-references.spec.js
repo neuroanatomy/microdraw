@@ -99,7 +99,9 @@ describe('Icon references (UI kit steps 11b, 11c)', function () {
   it('finds the references (toolbar, pages, CSS, JS, doc) and nwl\'s icons', function () {
     assert.isAtLeast(viewRefs.length, 55, 'Mustache image references');
     assert.isAtLeast(viewRefs.filter(({ file }) => file.endsWith('toolsFull.mustache')).length, 40, 'toolbar references');
-    assert.isAtLeast(cssRefs.length, 8, 'CSS url() references');
+    // app/public/css has no url() left since access-style.css went (T002 R2b): any
+    // added later is still checked by the next test
+    assert.isArray(cssRefs, 'CSS url() references');
     assert.isAtLeast(jsRefs.length, 30, 'JS references (microdraw.js, configuration.json)');
     assert.isAtLeast(docRefs.length, 30, 'user doc image references');
     assert.isAtLeast(shipped.length, 70, 'icons in nwl-components dist/icons');

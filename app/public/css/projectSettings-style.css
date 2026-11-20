@@ -29,3 +29,9 @@ td {
     pointer-events: none;
 }
 
+
+/* The access icons' row (nwl Access.vue) sits 5px lower than nwl draws it. Kept from the
+   removed access-style.css (T002 R2b): its other rules repeat Access.vue's scoped CSS. */
+.access {
+    padding-top: 5px;
+}

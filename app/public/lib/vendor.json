@@ -4,7 +4,7 @@
     "runtime and now ships locally. Run `npm run verify-vendor` to check that every",
     "file still matches the bytes that were downloaded, and to see the exact URL to",
     "re-download from when bumping a version.",
-    "Loaded by app/public/js/microdraw.js (scripts), the mustache views (font) and the example pages in app/public/examples/ (Vue 2, Vue.Draggable)."
+    "Loaded by app/public/js/microdraw.js (scripts) and the example pages in app/public/examples/ (Vue 2, Vue.Draggable). The Roboto font comes from nwl-components (fonts.css) since T002 R2b."
   ],
   "retrieved": "2026-08-05",
   "assets": [
@@ -40,24 +40,6 @@
       "note": "Kept under its own filename because it is NOT identical to the openseadragonScreenshot.js already in that directory: the CDN build adds a viewer.screenshotInstance.showOptions guard. The suffixed name preserves both. Patched locally (2026-11-14): its loading overlay draws a CSS spinner instead of requesting ajax_loader_gray_32.gif, which OpenSeadragon does not ship (CDN sha256 da1eb10f1d9c7316612d661aab3ebba92a30ec418ccecdddf8998814181c6439). The checksum is the patched file's, so --refetch skips this asset (upstreamStable false)."
     },
     {
-      "name": "roboto-100-latin",
-      "version": "Google Fonts v51",
-      "path": "app/public/lib/roboto/roboto-100-latin.woff2",
-      "url": "https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbFmQiAr0klQmz24O0g.woff2",
-      "sha256": "71c03e1302469fe67f4156ecd4c5edcbb2a506d3eb45ce9c9f96395602b89559",
-      "upstreamStable": false,
-      "note": "URL taken from https://fonts.googleapis.com/css?family=Roboto:100 requested with a Chrome user agent, which is what selects the woff2 subsets. gstatic re-subsets its binaries at the same versioned URL — hours after retrieval it served 7816 bytes where this copy is 16140 — so the checksum guards this file against in-repo drift but cannot be reproduced by re-downloading. That instability is itself the reason to vendor the font: otherwise the glyphs behind the reference screenshots could change without notice."
-    },
-    {
-      "name": "roboto-100-latin-ext",
-      "version": "Google Fonts v51",
-      "path": "app/public/lib/roboto/roboto-100-latin-ext.woff2",
-      "url": "https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbFmZiAr0klQmz24O0g.woff2",
-      "sha256": "a444ef34fcd2c2410a476f795c634e4747df3afd8400cf91e65fd54f6e83dabb",
-      "upstreamStable": false,
-      "note": "Same gstatic re-subsetting caveat as roboto-100-latin."
-    },
-    {
       "name": "vue",
       "version": "2.7.16",
       "path": "app/public/lib/vue-2.7.16/vue.js",
@@ -72,12 +54,6 @@
       "url": "https://cdnjs.cloudflare.com/ajax/libs/Vue.Draggable/2.24.3/vuedraggable.umd.min.js",
       "sha256": "2db16c371d58fcd4c7c2b367c8b5409cc7538d53ee1fdee6fda8ee97d685456c",
       "note": "Used only by the example composer pages (M8b, retrieved 2026-10-13), same URL as before. It expects window.Sortable (sortablejs) when a <draggable> is mounted; the pages register the component but their <draggable> markup is commented out, and Sortable was never loaded, so it is not vendored."
-    }
-  ],
-  "derived": [
-    {
-      "path": "app/public/lib/roboto/roboto.css",
-      "note": "Hand-written from the Google Fonts stylesheet: only the latin and latin-ext @font-face blocks are kept (the app renders Latin text only) and their src URLs point at the local woff2 files. Not byte-identical to any upstream file, so it is not checksummed."
     }
   ]
 }
