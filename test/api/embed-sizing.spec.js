@@ -1,7 +1,8 @@
 'use strict';
 
 const { assert } = require('chai');
-const { imageAspect, desiredEmbedHeight, positiveIntParam } = require('../../app/public/js/embed-sizing');
+const { imageAspect } = require('../../app/public/js/embed-sizing');
+const { desiredEmbedHeight, positiveIntParam } = require('nwl-components/embed');
 
 // The embed's sizing arithmetic (T002 3.7), as BrainBox's embedSizing: the
 // height asked for is computed, never measured. No server, no browser.

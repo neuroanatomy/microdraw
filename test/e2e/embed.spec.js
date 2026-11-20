@@ -12,7 +12,8 @@
 const { assert } = require('chai');
 const U = require('../mocha.test.util');
 const H = require('./helpers');
-const { imageAspect, desiredEmbedHeight } = require('../../app/public/js/embed-sizing');
+const { imageAspect } = require('../../app/public/js/embed-sizing');
+const { desiredEmbedHeight } = require('nwl-components/embed');
 
 const SOURCE = '/test_data/cat.json';
 const PRIVATE_SOURCE = '/test_data/cat-zarr.json';

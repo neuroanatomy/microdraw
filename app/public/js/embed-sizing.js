@@ -1,6 +1,8 @@
 /**
- * Sizing arithmetic of the embeddable viewer (T002 3.7), as BrainBox's
- * view/shared/embedSizing.js.
+ * The image's aspect ratio, for the embeddable viewer's sizing (T002 3.7), as
+ * BrainBox's planeAspect (view/shared/embedSizing.js). The height asked for,
+ * desiredEmbedHeight, and positiveIntParam are nwl-components' (embed build,
+ * the global nwlComponentsEmbed; nwl-components/embed in node).
  *
  * CommonJS, so that mocha can require it (test/api/embed-sizing.spec.js);
  * in the browser, where there is no `module`, it sets window.EmbedSizing.
@@ -29,43 +31,7 @@
     return width / height;
   };
 
-  /**
-   * Height the host page should give the iframe, so that the image is not
-   * letterboxed (the same function as BrainBox's)
-   * @param {object} opts Options
-   * @param {number} opts.width Content width of the embed, in px
-   * @param {number} opts.aspect The image's aspect ratio, from imageAspect()
-   * @param {number} opts.toolbarHeight Height of the toolbar below the image, in px
-   * @param {number} [opts.minHeight] Never less than this
-   * @param {number} [opts.maxHeight] Never more than this
-   * @returns {number} Integer height in px, or NaN when the aspect is unknown
-   */
-  const desiredEmbedHeight = function ({ width, aspect, toolbarHeight, minHeight = 160, maxHeight = Infinity }) {
-    if (!isFinite(width) || width <= 0 || !isFinite(aspect) || aspect <= 0) {
-      return NaN;
-    }
-
-    const bar = isFinite(toolbarHeight) ? toolbarHeight : 0;
-    const ideal = Math.round(width / aspect) + bar;
-
-    // a max below the min is contradictory: keep the min, a smaller box
-    // cannot show anything useful
-    return Math.max(minHeight, Math.min(maxHeight, ideal));
-  };
-
-  /**
-   * A positive integer query parameter (maxHeight)
-   * @param {string} value The raw value
-   * @returns {number|undefined} The number, or undefined when unusable
-   */
-  const positiveIntParam = function (value) {
-    const n = parseInt(value, 10);
-
-    // eslint-disable-next-line no-undefined
-    return (isFinite(n) && n > 0) ? n : undefined;
-  };
-
-  const api = { imageAspect, desiredEmbedHeight, positiveIntParam };
+  const api = { imageAspect };
 
   if (typeof module === 'object' && module.exports) {
     module.exports = api;

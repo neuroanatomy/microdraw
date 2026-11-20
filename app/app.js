@@ -13,6 +13,7 @@ const routes = require('./routes/routes');
 const log = require('./log');
 const errors = require('./errors');
 const { ensureIndexes } = require('./controller/indexes');
+const { embedScriptRoute } = require('./controller/embed/embed-script');
 let port;
 let server;
 
@@ -132,6 +133,8 @@ const start = async function () {
   //app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
   app.use(bodyParser.json({ limit: '50mb', extended: true }));
   app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
+  // the embed loader, made by nwl-components' embedScript() (app/public/embed.js before)
+  app.get('/embed.js', embedScriptRoute);
   app.use(express.static(path.join(__dirname, 'public')));
   // nwl-components' built files, among them the design tokens (tokens.css) that
   // every page links from partials/header.mustache (UI kit decision U9)

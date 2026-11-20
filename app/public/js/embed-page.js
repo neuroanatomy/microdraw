@@ -16,9 +16,11 @@
  *
  * Sizing: the page posts {type: 'microdraw:embed-resize', height, width,
  * aspect, slice} to its parent on first render, on each slice change, and
- * when the toolbar's height or the width changes (embed-sizing.js).
+ * when the toolbar's height or the width changes (embed-sizing.js for the
+ * image's aspect; desiredEmbedHeight and positiveIntParam from nwl-components'
+ * embed build, the global nwlComponentsEmbed).
  */
-/* global params embedWsTicket paper OpenSeadragon EmbedSizing */
+/* global params embedWsTicket paper OpenSeadragon EmbedSizing nwlComponentsEmbed */
 /* eslint max-statements: ["error", 50], max-lines: ["error", 650] */
 (function () {
   'use strict';
@@ -341,7 +343,7 @@
   };
 
   /*
-    Sizing contract (embed-sizing.js)
+    Sizing contract (embed-sizing.js, nwl-components/embed)
   */
 
   const imageSize = () => {
@@ -361,11 +363,11 @@
     }
     const width = document.documentElement.clientWidth;
     const aspect = EmbedSizing.imageAspect(imageSize());
-    const height = EmbedSizing.desiredEmbedHeight({
+    const height = nwlComponentsEmbed.desiredEmbedHeight({
       width,
       aspect,
       toolbarHeight: el('tools').offsetHeight,
-      maxHeight: EmbedSizing.positiveIntParam(params.maxHeight) || Infinity
+      maxHeight: nwlComponentsEmbed.positiveIntParam(params.maxHeight) || Infinity
     });
     if (!isFinite(height)) {
       return;
