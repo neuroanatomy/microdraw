@@ -15,6 +15,9 @@ const nwl = require('neuroweblab');
 // requireAdmin: admins only (logged in, or authenticated by a token), 401/403 JSON
 const { requireAdmin, requestUsername } = admins;
 
+// { shortname, version } from the body of a fix, or { error } (NeuroWebLab 1.24.0)
+const { projectFromBody } = nwl;
+
 // The admin page: 401 askForLogin when logged out, 403 to non-admins
 const adminPage = admins.adminPage({
   title: 'MicroDraw: Admin',
@@ -143,18 +146,6 @@ const getInvalidProjects = (req, res) => {
   sendResult(res, projects.findInvalidProjects(req.app.db.nativeMongoDB()));
 };
 
-// { project, version } from the body of a fix, or the reason it is invalid
-const projectFromBody = (body) => {
-  if (typeof body.project !== 'string' || body.project === '') {
-    return { error: 'Provide the project shortname' };
-  }
-  if (typeof body.version !== 'string' || body.version === '') {
-    return { error: 'Provide the version of the project, as listed' };
-  }
-
-  return { shortname: body.project, version: body.version };
-};
-
 /**
  * Remove the blank rows of a project. Body: { project, version }
  * @param {object} req Request object
@@ -261,51 +252,10 @@ const transferProject = (req, res) => {
   sendResult(res, projectActions.transferProject(req.app.db, { shortname, version, owner: body.owner, username: requestUsername(req) }));
 };
 
-/**
- * List the damaged projects (T002 3.6 A): files removed by a save that are
- * still missing, several current versions
- * @param {object} req Request object
- * @param {object} res Response object
- * @returns {void}
- */
-const getDamagedProjects = (req, res) => {
-  sendResult(res, damaged.findDamagedProjects(nativeDb(req)));
-};
-
-/**
- * Add back the files a save removed that are still missing, as a new
- * version. Body: { project, version, save } (save: the id of the version the
- * save stored, as listed). Undone by restoreProject.
- * @param {object} req Request object
- * @param {object} res Response object
- * @returns {void}
- */
-const restoreProjectFiles = (req, res) => {
-  const body = req.body || {};
-  const { shortname, version, error } = projectFromBody(body);
-  if (error) {
-    return res.status(400).json({ success: false, error });
-  }
-  if (typeof body.save !== 'string' || body.save === '') {
-    return res.status(400).json({ success: false, error: 'Provide the save: the id of the version it stored, as listed' });
-  }
-  sendResult(res, damaged.restoreFiles(nativeDb(req), { shortname, version, save: body.save, username: requestUsername(req) }));
-};
-
-/**
- * Keep the newest of several current versions of a project, mark the others
- * backup. Body: { project, version }
- * @param {object} req Request object
- * @param {object} res Response object
- * @returns {void}
- */
-const fixProjectCurrentVersions = (req, res) => {
-  const { shortname, version, error } = projectFromBody(req.body || {});
-  if (error) {
-    return res.status(400).json({ success: false, error });
-  }
-  sendResult(res, damaged.fixCurrentVersions(nativeDb(req), { shortname, version, username: requestUsername(req) }));
-};
+// The damaged projects routes (T002 3.6 A): list them, restore the files a
+// save removed (undone by restoreProject), keep the newest of several current
+// versions. NeuroWebLab 1.24.0's handlers, same bodies, texts and answers.
+const { getDamagedProjects, restoreProjectFiles, fixProjectCurrentVersions } = nwl.damagedProjectsRoutes(damaged, { nativeDb, requestUsername, logger });
 
 const sourceError = (source) => (typeof source !== 'string' || source === '' || source.length > 2048 ? 'Provide the source: the URL of the dataset' : null);
 

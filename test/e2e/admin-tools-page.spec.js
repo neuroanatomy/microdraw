@@ -31,7 +31,7 @@ const project = (shortname, list, extra = {}) => ({
   ...extra
 });
 const viewerProject = U.createPublicAnnotationProject('e2eadm36viewer');
-const shortnames = ['e2eadm36inc', 'e2eadm36ds', viewerProject.shortname];
+const shortnames = ['e2eadm36inc', 'e2eadm36stale', 'e2eadm36ds', viewerProject.shortname];
 const region = (slice, user) => ({ fileID: `${DS}&slice=${slice}`, project: 'e2eadm36ds', user, Hash: 'h', annotation: { name: 'r', path: [] } });
 
 describe('Admin page: damaged projects, datasets, message (T002 3.6)', () => {
@@ -63,6 +63,10 @@ describe('Admin page: damaged projects, datasets, message (T002 3.6)', () => {
       .insertOne(project('e2eadm36inc', rows(102), { backup: true }));
     await U.getDB().collection('projects')
       .insertOne(project('e2eadm36inc', rows(100)));
+    await U.getDB().collection('projects')
+      .insertOne(project('e2eadm36stale', rows(102), { backup: true }));
+    await U.getDB().collection('projects')
+      .insertOne(project('e2eadm36stale', rows(100)));
     await U.insertProject([project('e2eadm36ds', [{ source: DS, name: 'brain' }]), { ...viewerProject }]);
     await U.getDB().collection('datasets')
       .insertOne({ source: DS, name: 'slideFiles', owner: 'wwlOath', included: '2026-10-20T00:00:00.000Z' });
@@ -98,6 +102,38 @@ describe('Admin page: damaged projects, datasets, message (T002 3.6)', () => {
     await waitFor((s) => document.querySelector('#damaged-projects button.undo-restore-files') && !document.querySelector(s), sel);
     assert.include(await page.$eval('#damaged-projects p.result', (p) => p.textContent), 'restored 2 file(s), it has 102 now');
     assert.deepEqual((await current('e2eadm36inc')).files.list, rows(102));
+  }).timeout(U.mediumTimeout);
+
+  it('Damaged projects: the 409 of a project changed since it was listed stays shown after the list is read again', async () => {
+    const sel = '#damaged-projects div.project[data-shortname="e2eadm36stale"]';
+    let lists = 0;
+    const countLists = (response) => {
+      if (response.url().includes('/admin/json/projects/damaged')) {
+        lists += 1;
+      }
+    };
+    await page.goto(U.url('/admin'), { waitUntil: 'load' });
+    await page.click('#damaged-projects button.find-damaged');
+    await waitFor((s) => document.querySelector(s), sel);
+    // the project changes after it was listed: its version token is stale
+    await U.getDB().collection('projects')
+      .updateOne({ shortname: 'e2eadm36stale', backup: { $exists: false } }, { $set: { name: 'changed' } });
+
+    page.on('response', countLists);
+    try {
+      await page.click(`${sel} button.restore-files`);
+      await waitFor(() => {
+        const button = document.querySelector('#damaged-projects button.find-damaged');
+
+        return document.querySelector('#damaged-projects p.error') && !button.disabled;
+      });
+    } finally {
+      page.off('response', countLists);
+    }
+    assert.equal(lists, 1, 'the list was read again after the fix');
+    assert.include(await page.$eval('#damaged-projects p.error', (p) => p.textContent), 'Project e2eadm36stale has changed since it was listed');
+    assert.isNull(await page.$('#damaged-projects p.result'));
+    assert.deepEqual((await current('e2eadm36stale')).files.list, rows(100));
   }).timeout(U.mediumTimeout);
 
   it('Datasets: finds a dataset, changes its owner and name, removes a user\'s annotations and undoes it', async () => {

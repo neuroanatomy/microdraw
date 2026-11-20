@@ -190,50 +190,7 @@
         </form>
       </div>
     </section>
-    <section id="damaged-projects">
-      <h2>Damaged projects</h2>
-      <p class="help">
-        Projects whose current version lacks files that a save removed, and projects with several
-        current versions. The settings page used to save before all its files had arrived: a save
-        that kept the first files of the previous version, a multiple of 100 of them, is flagged
-        <b>incomplete save</b>. Other removals are listed too, as they may have been deliberate.
-        <b>Restore files</b> adds a save's missing files back at the end of the project's files, with
-        their names, as a new version (<b>Restore</b> puts the previous one back). <b>Keep the most
-        recent</b> makes the other current versions backups. Both refuse a project changed since the
-        list was read.
-      </p>
-      <p v-if="damagedError" class="error">[[damagedError]]</p>
-      <p v-if="damagedResult" class="result">
-        [[damagedResult.text]]
-        <Button v-if="damagedResult.restore" class="undo-restore-files" @click="undoRestoreFiles(damagedResult)">Restore</Button>
-      </p>
-      <p class="summary">
-        <Button class="find-damaged" :disabled="damagedLoading" @click="loadDamaged()">[[damagedLoading ? 'Looking…' : (damaged ? 'Reload' : 'Find damaged projects')]]</Button>
-        <span v-if="damaged && !damagedLoading" class="count">[[damaged.length === 0 ? 'No damaged project found.' : damaged.length + ' damaged project(s).']]</span>
-      </p>
-      <div v-for="p in damaged || []" :key="p.shortname" class="project" :data-shortname="p.shortname">
-        <h3>
-          <code>[[p.shortname]]</code> [[p.name]] <span class="owner">owner: [[p.owner]]</span>
-          <a class="settings" :href="settingsLink(p)" target="_blank">Settings</a>
-        </h3>
-        <p class="counts">[[p.files]] file(s) now, [[p.versions]] version(s), [[p.missing]] file(s) missing</p>
-        <div v-if="p.currentVersions.length > 1" class="current-versions">
-          <p><span class="tag">[[p.currentVersions.length]] current versions</span>
-            <span v-for="v in p.currentVersions" :key="v.id" class="current-version">[[formatDate(v.modified)]] by [[v.modifiedBy || '?']]; </span>
-          </p>
-          <Button class="fix-current" @click="fixCurrent(p)">Keep the most recent</Button>
-        </div>
-        <ul class="events">
-          <li v-for="e in p.events" :key="e.save" class="event" :data-save="e.save">
-            <span v-if="e.incomplete" class="tag">incomplete save</span>
-            [[formatDate(e.modified)]] by [[e.modifiedBy || '?']]: [[e.before]] → [[e.after]] files,
-            [[e.stillMissing]] still missing<span v-if="e.annotated">, [[e.annotated]] with annotations</span>
-            <span class="examples">(<code v-for="x in e.examples" :key="x">[[x]] </code><span v-if="e.stillMissing > e.examples.length">…</span>)</span>
-            <Button class="restore-files" :disabled="p.currentVersions.length > 1" @click="restoreFiles(p, e)">Restore [[e.stillMissing]] file(s)</Button>
-          </li>
-        </ul>
-      </div>
-    </section>
+    <damaged-projects id="damaged-projects" show-time undo-url="/admin/json/projects/restore"></damaged-projects>
     <section id="datasets">
       <h2>Datasets</h2>
       <p class="help">
@@ -448,17 +405,6 @@ form.name-layers label {
 }
 form.name-layers input {
     margin-left: 6px;
-}
-ul.events {
-    margin: 4px 0;
-    padding-left: 20px;
-}
-ul.events li {
-    margin: 4px 0;
-}
-.examples {
-    color: #aaa;
-    word-break: break-all;
 }
 form.dataset-document {
     display: flex;

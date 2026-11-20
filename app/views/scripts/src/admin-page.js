@@ -1,12 +1,11 @@
 /* global loggedUser */
 // Admin page (A1, A2, A3; T002 3.6: damaged projects, datasets, message). Same structure as BrainBox view/brainbox/src/pages/admin-page.js.
 import 'nwl-components/dist/style.css';
-import { Button, Footer, Header, Table, Wrapper, fetchJSON, formatDate as formatDateOf, postJSON } from 'nwl-components';
+import { Button, DamagedProjects, Footer, Header, Table, Wrapper, fetchJSON, formatDate as formatDateOf, postJSON } from 'nwl-components';
 import { ProjectActions, useProjectActions } from './admin-project-actions';
 import { createApp, provide, ref } from 'vue';
 import { useBroadcast, useDataset } from './admin-datasets';
 import config from './nwl-components-config';
-import { useDamagedProjects } from './admin-damaged';
 import { useInvalidProjects } from './admin-projects';
 
 const PAGE_SIZE = 50;
@@ -186,7 +185,6 @@ const AdminPage = {
       targetOf,
       ...invalidProjects,
       ...projectActions,
-      ...useDamagedProjects({ fetchJSON, postJSON }),
       ...useDataset({ fetchJSON, postJSON }),
       ...useBroadcast({ postJSON })
     };
@@ -203,6 +201,8 @@ app.component('Footer', Footer);
 app.component('Table', Table);
 app.component('Button', Button);
 app.component('ProjectActions', ProjectActions);
+// the damaged projects section (nwl-components 3.7.0): the dates with the time, a restore undone by /admin/json/projects/restore
+app.component('DamagedProjects', DamagedProjects);
 app.provide('config', config);
 app.provide('user', loggedUser);
 app.provide('displaySettings', false);
