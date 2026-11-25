@@ -2005,9 +2005,10 @@ const Microdraw = (function () {
        */
     initShortCutHandler: function () {
       window.addEventListener("keydown", (e) => {
-        if (e.isComposing || e.keyCode === 229) {
-          return;
-        }
+        if (e.isComposing || e.keyCode === 229) { return; }
+        // no shortcut in a text entry, the key keeps its effect (copy of isTextEntry, app/views/scripts/src/project-page.js)
+        const [el] = e.composedPath();
+        if (el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName))) { return; }
         const key = [];
         if( e.ctrlKey ) { key.push("^"); }
         if( e.altKey ) { key.push("alt"); }
