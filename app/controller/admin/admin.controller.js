@@ -344,8 +344,6 @@ const restoreDatasetAnnotations = async (req, res) => {
   sendResult(res, datasets.restoreAnnotations(nativeDb(req), { logId: log, username: requestUsername(req) }));
 };
 
-const MAX_MESSAGE_LENGTH = 500;
-
 /**
  * Send a message to every viewer connected to the live-update server
  * (T002 3.6 C). Body: { message }, at most 500 characters. Logged.
@@ -355,11 +353,10 @@ const MAX_MESSAGE_LENGTH = 500;
  */
 // eslint-disable-next-line max-statements
 const broadcastMessage = async (req, res) => {
-  const { message } = req.body || {};
-  if (typeof message !== 'string' || message.trim() === '' || message.length > MAX_MESSAGE_LENGTH) {
-    return res.status(400).json({ success: false, error: `Provide the message: 1 to ${MAX_MESSAGE_LENGTH} characters` });
+  const msg = nwl.noticeMessage((req.body || {}).message);
+  if (msg === null) {
+    return res.status(400).json({ success: false, error: `Provide the message: 1 to ${nwl.MAX_NOTICE_LENGTH} characters` });
   }
-  const msg = message.trim();
   const username = requestUsername(req);
   try {
     const viewers = microdrawWebsocketServer.broadcastNotice(msg);

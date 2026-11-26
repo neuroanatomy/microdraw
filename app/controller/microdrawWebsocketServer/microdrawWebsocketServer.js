@@ -14,12 +14,26 @@ const log = require('../../log').child({ module: 'websocket' });
 const WebSocketServer = WebSocket.Server;
 const liveRooms = require('./liveRooms');
 const embedConnections = require('./embedConnections');
+// the chat relay: known fields only, at most 1000 characters, in order per sender
+const { chatMessage, relayInOrder } = require('neuroweblab');
 var websocketserver;
 
-// longer chat messages are dropped
-const MAX_CHAT_LENGTH = 1000;
-// connection -> the promise of its last relayed chat message
-const chatQueues = new WeakMap();
+/**
+ * The chat to relay (neuroweblab's chatMessage), with the sender's nickname
+ * seed `randomUuid` kept only if it is a number, as before 1.25.0 (the
+ * shared helper keeps strings too).
+ * @param {object} data The received message
+ * @param {string|null} username The sender's session user
+ * @returns {object|null} The message to relay
+ */
+const relayedChat = (data, username) => {
+  const chat = chatMessage(data, { username });
+  if (chat !== null && typeof data.randomUuid === 'number') {
+    chat.randomUuid = data.randomUuid;
+  }
+
+  return chat;
+};
 
 const microdrawWebsocketServer = (function () {
   const me = {
@@ -119,26 +133,6 @@ const microdrawWebsocketServer = (function () {
       return true;
     },
 
-    /**
-     * The chat message relayed for a received one, built from known fields
-     * only, or null if the received one is not a valid chat. The sender's
-     * name is the session user of its connection, never the one it sent.
-     * @param {object} data The received message
-     * @param {string|null} username The sender's session user
-     * @returns {object|null} The message to relay
-     */
-    _chatMessage: (data, username) => {
-      if (data.type !== 'chat' || typeof data.msg !== 'string' || data.msg.length > MAX_CHAT_LENGTH) {
-        return null;
-      }
-      const chat = { type: 'chat', msg: data.msg, username: username || 'Anonymous' };
-      if (typeof data.randomUuid === 'number') {
-        chat.randomUuid = data.randomUuid;
-      }
-
-      return chat;
-    },
-
     // the chat goes to every connection but the sender's and the embeds'
     _broadcast: (text, ws) => {
       websocketserver.clients.forEach((client) => {
@@ -156,17 +150,13 @@ const microdrawWebsocketServer = (function () {
     // sender's name is looked up for each message; the lookups of one
     // connection are chained, so its messages are relayed in order.
     _handleBroadcastWebSocketMessage: function ({data, ws}) {
-      if (me._chatMessage(data, null) === null) {
+      if (chatMessage(data) === null) {
         return;
       }
-      const previous = chatQueues.get(ws) || Promise.resolve();
-      const next = previous
-        .then(() => liveRooms.sessionUsername(ws, me.sessionParser))
-        .then((username) => {
-          me._broadcast(JSON.stringify(me._chatMessage(data, username)), ws);
-        })
-        .catch((err) => log.error({ err }, 'cannot relay chat message'));
-      chatQueues.set(ws, next);
+      relayInOrder(ws, async () => {
+        const username = await liveRooms.sessionUsername(ws, me.sessionParser);
+        me._broadcast(JSON.stringify(relayedChat(data, username)), ws);
+      }, { onError: (err) => log.error({ err }, 'cannot relay chat message') });
     },
 
     // eslint-disable-next-line max-statements
