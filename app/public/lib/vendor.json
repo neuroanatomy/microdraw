@@ -4,7 +4,8 @@
     "runtime and now ships locally. Run `npm run verify-vendor` to check that every",
     "file still matches the bytes that were downloaded, and to see the exact URL to",
     "re-download from when bumping a version.",
-    "Loaded by app/public/js/microdraw.js (scripts) and the example pages in app/public/examples/ (Vue 2, Vue.Draggable). The Roboto font comes from nwl-components (fonts.css) since T002 R2b."
+    "Loaded by app/public/js/microdraw.js (scripts) and the example pages in app/public/examples/ (Vue 2, Vue.Draggable). The Roboto font comes from nwl-components (fonts.css) since T002 R2b.",
+    "T002 C2 (2026-11-26) removed the vendored files nothing loaded: html-sanitizer-minified.js, openseadragon.min.js (+map), the older openseadragonScreenshot.js (+min), FileSaver.js (FileSaver.min.js is loaded) with its demo/ and bower.json."
   ],
   "retrieved": "2026-08-05",
   "assets": [
@@ -37,7 +38,7 @@
       "url": "https://cdn.jsdelivr.net/gh/r03ert0/Openseadragon-screenshot@v0.0.1/openseadragonScreenshot.js",
       "sha256": "68d7f36c1abc435a59e493f72dd9ba506a014e0a8742f096f9d4ede110706b88",
       "upstreamStable": false,
-      "note": "Kept under its own filename because it is NOT identical to the openseadragonScreenshot.js already in that directory: the CDN build adds a viewer.screenshotInstance.showOptions guard. The suffixed name preserves both. Patched locally (2026-11-14): its loading overlay draws a CSS spinner instead of requesting ajax_loader_gray_32.gif, which OpenSeadragon does not ship (CDN sha256 da1eb10f1d9c7316612d661aab3ebba92a30ec418ccecdddf8998814181c6439). The checksum is the patched file's, so --refetch skips this asset (upstreamStable false)."
+      "note": "Kept under its own filename because it is NOT identical to the openseadragonScreenshot.js that was in that directory (the CDN build adds a viewer.screenshotInstance.showOptions guard); that older copy and its .min.js, which nothing loaded, were removed in T002 C2 (2026-11-26). Patched locally (2026-11-14): its loading overlay draws a CSS spinner instead of requesting ajax_loader_gray_32.gif, which OpenSeadragon does not ship (CDN sha256 da1eb10f1d9c7316612d661aab3ebba92a30ec418ccecdddf8998814181c6439). The checksum is the patched file's, so --refetch skips this asset (upstreamStable false)."
     },
     {
       "name": "vue",

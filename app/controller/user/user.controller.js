@@ -95,7 +95,9 @@ const api_user = function (req, res) {
 };
 
 // Lists usernames, 20 per page, as BrainBox's apiUserAll lists nicknames.
-// Queried here: NWL's db.js does not export queryAllUsers (T001 step 2).
+// Queried here since T001 step 2. NWL's db.js exports queryAllUsers(query,
+// options) since 2026-10-13 (skip, limit and projection accepted), which could
+// replace this query.
 const api_userAll = async function (req, res) {
   if (!req.query.page) {
     res.json({error: 'The \'pages\' parameter has to be specified'});

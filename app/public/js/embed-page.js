@@ -20,7 +20,7 @@
  * image's aspect; desiredEmbedHeight and positiveIntParam from nwl-components'
  * embed build, the global nwlComponentsEmbed).
  */
-/* global params embedWsTicket paper OpenSeadragon EmbedSizing nwlComponentsEmbed */
+/* global params embedWsTicket paper OpenSeadragon EmbedSizing nwlComponentsEmbed PageHelpers */
 /* eslint max-statements: ["error", 50], max-lines: ["error", 650] */
 (function () {
   'use strict';
@@ -72,7 +72,7 @@
   /**
    * GET a URL and parse its JSON. Requests to this server carry the embed
    * header; others (a dataset hosted elsewhere) do not, so that they need no
-   * CORS preflight.
+   * CORS preflight. PageHelpers: /js/page-helpers.js (dataEmbed.mustache).
    * @param {string} u The URL
    * @returns {Promise<any>} The answer; rejects with err.status on an error status
    */
@@ -81,12 +81,9 @@
     if (isSameOrigin(u)) {
       headers[EMBED_HEADER] = typeof embedWsTicket === 'string' ? embedWsTicket : '';
     }
-    const res = await fetch(u, { headers, credentials: 'same-origin' });
-    if (!res.ok) {
-      throw Object.assign(new Error(`${u} answered ${res.status}`), { status: res.status });
-    }
+    const answer = await PageHelpers.fetchJSON(u, { headers, credentials: 'same-origin' });
 
-    return res.json();
+    return answer;
   };
 
   /**
@@ -110,14 +107,6 @@
 
     return getJSON(`/getJson?source=${encodeURIComponent(source)}`);
   };
-
-  const loadScript = (src) => new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = src;
-    s.onload = resolve;
-    s.onerror = reject;
-    document.body.appendChild(s);
-  });
 
   /*
     Labels and colours, as microdraw.js (projectLabelSetURL, regionColor,
@@ -428,6 +417,9 @@
       loadRegions();
     } else if (data.type === 'join-refused') {
       console.info('No live updates for this slice:', String(data.reason));
+    } else if (data.type === 'writeRefused') {
+      // the server's answer to a write from an embed; this page only joins,
+      // so there is nothing to undo or show
     }
   };
 
@@ -586,7 +578,7 @@
     const needsOMEZarr = sources.some((s) => s && typeof s === 'object' &&
       (s.type === 'ome-zarr' || (/\.(zarr|ozx)$/).test(s.url || '')));
     if (needsOMEZarr) {
-      await loadScript('/lib/omezarr-tilesource/omezarr-tilesource.js');
+      await PageHelpers.loadScript('/lib/omezarr-tilesource/omezarr-tilesource.js');
       sources.forEach((s) => {
         if (s && typeof s === 'object' && s.url) {
           s.url = new URL(s.url, window.location.href).href;

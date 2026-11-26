@@ -26,9 +26,7 @@
  *
  * The API upload (POST /api/upload) uses storeUpload in index.js.
  */
-const { ObjectId } = require('neuroweblab');
-
-const current = { backup: { $exists: false } };
+const { CURRENT: current, ObjectId } = require('neuroweblab');
 
 // A JSON string with the keys of every object sorted: two values that are equal
 // once parsed give the same string, whatever their key order. A stored path may

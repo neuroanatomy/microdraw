@@ -21,8 +21,6 @@ const { findCurrentProject } = require('../project/currentProject');
 const { usernameFromCookie } = require('neuroweblab');
 const log = require('../../log').child({ module: 'websocket' });
 
-// Types only the server handles or sends: never relayed to other clients.
-const SERVER_TYPES = new Set(['join', 'joined', 'join-refused', 'saved', 'notice']);
 // longer join fields make the message invalid, and it is ignored
 const MAX_FIELD_LENGTH = 2048;
 
@@ -240,8 +238,6 @@ const viewersOfSource = (source) => {
   return count;
 };
 
-const isServerType = (type) => SERVER_TYPES.has(type);
-
 /**
  * The session user of a connection, from the cookie kept at connect. Read
  * again at each call, as for a join, so a logout or an expired session counts.
@@ -255,4 +251,4 @@ const sessionUsername = (ws, sessionParser) => {
   return usernameFromCookie(sessionParser, state ? state.cookie : null);
 };
 
-module.exports = { connect, disconnect, join, notifySaved, roomSize, viewersOfSource, isServerType, sessionUsername };
+module.exports = { connect, disconnect, join, notifySaved, roomSize, viewersOfSource, sessionUsername };

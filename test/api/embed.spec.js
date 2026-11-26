@@ -349,7 +349,7 @@ describe('Embeddable viewer (T002 3.7)', function () {
       const observer = await connect();
       const probe = await connect();
       ws.send(JSON.stringify({ type: 'chat', msg: 'embed-chat', username: 'x' }));
-      assert.deepEqual(await nextMessage(ws), { type: 'write-refused', write: 'chat', reason: 'an embedded viewer cannot edit' });
+      assert.deepEqual(await nextMessage(ws), { type: 'writeRefused', write: 'chat', reason: 'an embedded viewer cannot edit' });
       probe.send(JSON.stringify({ type: 'chat', msg: 'embed-probe' }));
       // the server relays in order: the probe comes first if the chat was dropped
       assert.include(await nextMessage(observer), { type: 'chat', msg: 'embed-probe' });

@@ -9,10 +9,10 @@
  * Only named `text` layers hold values (an unnamed one has no column on the
  * project page), and only for sources in the project's files list.
  */
+const { CURRENT: current } = require('neuroweblab');
+
 const TEXT_ANNOTATIONS = 'textAnnotations';
 const MAX_TEXT_LENGTH = 10000;
-
-const current = { backup: { $exists: false } };
 
 const listOf = (project, type) => ((project && project[type] && Array.isArray(project[type].list)) ? project[type].list : []);
 

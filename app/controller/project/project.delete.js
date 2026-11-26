@@ -15,10 +15,9 @@
 const _ = require('lodash');
 const logger = require('../../log');
 const { toId } = require('neuroweblab');
-const { saveProjectVersion } = require('./currentProject');
+const { CURRENT: current, saveProjectVersion } = require('./currentProject');
 
 const deleteKeys = ['deleteProject', 'adminDeleteProject'];
-const current = { backup: { $exists: false } };
 
 /**
  * Delete a stored project: log it, mark its current version(s), annotations

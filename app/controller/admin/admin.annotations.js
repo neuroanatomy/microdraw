@@ -23,8 +23,7 @@ const { adminLog, escapeRegex, toId } = require('neuroweblab');
 
 const isProjectName = (name) => typeof name === 'string' && name !== '';
 
-const current = { backup: { $exists: false } };
-const { NEWEST_FIRST: newestFirst, saveProjectVersion } = require('../project/currentProject');
+const { CURRENT: current, NEWEST_FIRST: newestFirst, saveProjectVersion } = require('../project/currentProject');
 const { listOf } = require('../project/project.validation');
 
 /**

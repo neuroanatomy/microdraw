@@ -145,14 +145,6 @@ html, body {
 .button {
     vertical-align: middle;
 }
-.buttonGroup {
-    background-color:rgba(127,127,127,0.0);
-    margin:1px 1rem;
-    padding:1px;
-}
-.slice-nav * {
-    vertical-align:middle;
-}
 #slider {
     width: calc( 100% - 4px); /* 100% - 2*margin */
 }
@@ -215,28 +207,7 @@ html, body {
     border:thin solid lightgrey;
     background-color:rgba(255,255,255,0.7);
 }
-#okStrokeColor {
-    position:absolute;
-    right:0px;
-    width:2.15em;
-    text-align:right;
-    border-radius:5px;
-    border:thin solid lightgrey;
-    background-color:rgba(255,255,255,0.7);
-}
 
-#regionPicker {
-    position:absolute;
-    width:200px;
-    height:auto;
-    /*height:100%; if you want it grey all the way down*/
-    top:0;
-    left:200px;
-    background-color:rgba(200,200,200,0.5);
-    padding:5px;
-    display:none;
-    overflow-y:scroll;
-}
 .region-tag {
     position: relative;
 }
@@ -375,15 +346,6 @@ html, body {
     border: none;
 }
 
-.mui-select {
-    border:none;
-    background:none; /* no color, no decoration */
-    color:var(--nwl-text);
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    cursor: pointer;
-}
 /*--------------------------------------*/
 
 /*-----------------*/

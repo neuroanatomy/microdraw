@@ -109,8 +109,9 @@ const microdrawWebsocketServer = (function () {
      * An embed-only connection (T002 3.7, embedConnections.js) may only join
      * the rooms of its ticket: any other message (a chat, or anything a
      * future version would write with) is refused, whatever it claims. The
-     * first refusal is answered {type: 'write-refused', write, reason}, as
-     * BrainBox's.
+     * first refusal is answered {type: 'writeRefused', write, reason}: the
+     * name and the write/reason fields of BrainBox's refusal (which also
+     * names the atlas). The embed page only joins, and ignores it.
      * @param {object} params Parameters
      * @param {object} params.data The message
      * @param {object} params.ws The connection
@@ -124,7 +125,7 @@ const microdrawWebsocketServer = (function () {
       log.warn({ write }, 'message from an embedded viewer refused');
       if (embedConnections.firstRefusal(ws) && ws.readyState === WebSocket.OPEN) {
         try {
-          ws.send(JSON.stringify({ type: 'write-refused', write, reason: 'an embedded viewer cannot edit' }));
+          ws.send(JSON.stringify({ type: 'writeRefused', write, reason: 'an embedded viewer cannot edit' }));
         } catch (err) {
           log.error({ err }, 'cannot send the refusal');
         }

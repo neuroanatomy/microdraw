@@ -1,5 +1,5 @@
 /* eslint-disable max-lines */
-/* global projectInfo, Microdraw */
+/* global projectInfo, Microdraw, PageHelpers */
 /*
   The project page (/project/:name), M8a: the files and annotation tables, the
   resize handle and the embedded viewer. Until M8 this was an inline Vue 2 app
@@ -576,20 +576,14 @@ document.body.addEventListener('mouseup', resizeEnd);
 document.body.addEventListener('touchend', resizeEnd);
 
 // The viewer, in a shadow root, as on /data. Only when there is a file to show.
-const loadScript = (path) => new Promise((resolve, reject) => {
-  const s = document.createElement('script');
-  s.src = path;
-  s.onload = resolve;
-  s.onerror = reject;
-  document.body.appendChild(s);
-});
+// PageHelpers: /js/page-helpers.js, loaded by project.mustache before this page.
 const attachViewer = async () => {
   const res = await fetch('/microdraw');
   const txt = await res.text();
   const elem = new DOMParser().parseFromString(txt, 'text/html').documentElement;
   const shadow = document.querySelector('#microdraw').attachShadow({ mode: 'open' });
   shadow.appendChild(elem);
-  await loadScript('/js/microdraw.js');
+  await PageHelpers.loadScript('/js/microdraw.js');
   Microdraw.init(shadow);
 };
 if (files.length > 0 && !redirecting) {

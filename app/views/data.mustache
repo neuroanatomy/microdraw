@@ -25,23 +25,11 @@
 
 <div id="content" style="width:100%;height:calc( 100% - 48px );background:white;position:relative"></div>
 
+<script src="/js/page-helpers.js"></script>
 <script>
 // Port the websocket server is listening on, injected by the server so that
 // the client still connects correctly when it is not the default 8080.
 window.MICRODRAW_WS_PORT = {{ wsPort }};
-
-function loadScript (path, testScriptPresent) {
-  return new Promise((resolve, reject) => {
-      if(testScriptPresent && testScriptPresent()) {
-          resolve();
-      }
-      const s = document.createElement("script");
-      s.src = path;
-      s.onload=resolve;
-      s.onerror=reject;
-      document.body.appendChild(s);
-  });
-}
 
 async function attach () {
   const res = await fetch("/microdraw");
@@ -50,7 +38,7 @@ async function attach () {
   const elem = parser.parseFromString(txt, 'text/html').documentElement;
   const shadow = document.querySelector("#content").attachShadow({mode: 'open'});
   shadow.appendChild(elem);
-  loadScript("/js/microdraw.js")
+  PageHelpers.loadScript("/js/microdraw.js")
   .then(() => {
       Microdraw.init(shadow);
   });

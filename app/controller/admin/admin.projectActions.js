@@ -17,8 +17,7 @@ const { deleteStoredProject, findDeleteEntry, restoreDeletedProject } = require(
 const { escapeRegex } = require('neuroweblab');
 const { changeProject } = require('./admin.projects');
 
-const current = { backup: { $exists: false } };
-const { NEWEST_FIRST: newestFirst, saveProjectVersion } = require('../project/currentProject');
+const { CURRENT: current, NEWEST_FIRST: newestFirst, saveProjectVersion } = require('../project/currentProject');
 
 const maxFound = 20;
 

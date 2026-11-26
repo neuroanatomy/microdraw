@@ -30,8 +30,7 @@ const {
   blankRows, checkStoredProjects, isUnnamedLayer, projectVersion
 } = require('../project/project.check');
 
-const current = { backup: { $exists: false } };
-const { NEWEST_FIRST: newestFirst, findCurrentProject, saveProjectVersion } = require('../project/currentProject');
+const { CURRENT: current, NEWEST_FIRST: newestFirst, findCurrentProject, saveProjectVersion } = require('../project/currentProject');
 // adminRestoreProjectFiles: damaged projects' restore-files (admin.damaged.js)
 const fixKeys = ['adminRemoveBlankRows', 'adminNameLayers', 'adminTransferOwner', 'adminRestoreProjectFiles'];
 

@@ -1,148 +1,85 @@
-/* eslint-disable no-useless-escape */
 /* eslint-disable no-undef */
-const chai = require('chai');
-const assert = require('assert');
-const http = require('http');
-
-/**
- * Make an HTTP GET request.
- * @param {string} requestUrl The URL to fetch
- * @param {Function} callback Callback with (err, res, body)
- * @returns {void}
+/*
+ * The top-right menu partial (menu.mustache), rendered by index and data:
+ * a logged-in user gets a link to their page and "Log Out", a visitor gets
+ * the login links. Run by npm run mocha (test/mocha.test.js).
  */
-const request = (requestUrl, callback) => {
-  http.get(requestUrl, (res) => {
-    const chunks = [];
-    res.on('data', (chunk) => chunks.push(chunk));
-    res.on('end', () => callback(null, res, Buffer.concat(chunks).toString()));
-    res.on('error', (err) => callback(err));
-  }).on('error', (err) => callback(err));
-};
-const {expect} = chai;
+const http = require('http');
+const { expect } = require('chai');
 const express = require('express');
 const mustacheExpress = require('mustache-express');
-const app = express();
 
+const app = express();
 app.engine('mustache', mustacheExpress());
 app.set('views', __dirname);
 app.set('view engine', 'mustache');
 
-const bobjane = {
-  username : 'bobjane'
-};
-const marydoe = {
-  username : 'marydoe'
-};
 const loginMethods = [
-  {
-    url : 'http://github.com',
-    text : 'github'
-  }, {
-    url : 'http://facebook.com',
-    text : 'facebook'
-  }
+  { url: 'http://github.com', text: 'github' },
+  { url: 'http://facebook.com', text: 'facebook' }
 ];
 
-const logoutRegex = /\<span\>\(\<a href \= \"\/logout\"\>Log Out\<\/a\>\)\<\/span\>/;
-const userRegex = (username) => new RegExp(`\<span\>\<a href = \"\/user\/${username}\"\>${username}\<\/span\>`);
-
-const login1 = /\<span\>\<a href = \"http:\/\/github.com\"\>github\<\/a\>\<\/span\>/;
-const login2 = /\<span\>\<a href = \"http:\/\/facebook.com\"\>facebook\<\/a\>\<\/span\>/;
-
-app.get('/bobjane', (req, res) => {
-  res.render('menu', {
-    username : bobjane,
-    loginMethods
-  });
+const views = {
+  '/bobjane': { user: { username: 'bobjane' }, loginMethods },
+  '/marydoe': { user: { username: 'marydoe' }, loginMethods },
+  '/notLoggedIn': { loginMethods },
+  '/nothingProvided': {}
+};
+Object.entries(views).forEach(([path, view]) => {
+  app.get(path, (req, res) => res.render('menu', view));
 });
 
-app.get('/marydoe', (req, res) => {
-  res.render('menu', {
-    username: marydoe,
-    loginMethods
-  });
-});
+const userLink = (username) => `<a href = "/user/${username}">${username}</a>`;
+const logoutLink = '(<a href = "/logout">Log Out</a>)';
+const loginLinks = ['<a href = "http://github.com">github</a>', '<a href = "http://facebook.com">facebook</a>'];
 
-app.get('/notLoggedIn', (req, res) => {
-  res.render('menu', {
-    loginMethods
-  });
-});
+describe('menu partial', () => {
+  let server;
+  let base;
 
-app.get('/nothingProvided', (req, res) => {
-  res.render('menu', {
-
-  });
-});
-
-describe('Mocha Started', () => {
-  it('Mocha works properly', () => {
-    assert.equal(1, 1);
-  });
-});
-
-let _server;
-describe('render user correctly', () => {
-  before(() => {
-    _server = app.listen(10002);
+  const get = (path) => new Promise((resolve, reject) => {
+    http.get(base + path, (res) => {
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
+      res.on('end', () => resolve({ statusCode: res.statusCode, body: Buffer.concat(chunks).toString() }));
+      res.on('error', reject);
+    }).on('error', reject);
   });
 
-  after(() => {
-    _server.close();
-  });
-
-  it('fetches user bobjane correctly', (done) => {
-    request('http://localhost:10002/bobjane', (err, res, body) => {
-      expect(err).to.be.equal(null);
-      expect(res.statusCode).to.equal(200);
-      expect(body).to.match(userRegex('bobjane'));
-      expect(body).to.match(logoutRegex);
-
-      expect(body).to.not.match(login1);
-      expect(body).to.not.match(login2);
+  before((done) => {
+    server = app.listen(0, '127.0.0.1', () => {
+      base = `http://127.0.0.1:${server.address().port}`;
       done();
     });
   });
 
-  it('fetches user marydoe correctly', (done) => {
-    request('http://localhost:10002/marydoe', (err, res, body) => {
-      expect(err).to.be.equal(null);
-      expect(res.statusCode).to.equal(200);
-      expect(body).to.match(userRegex('marydoe'));
-      expect(body).to.match(logoutRegex);
+  after((done) => {
+    server.close(done);
+  });
 
-      expect(body).to.not.match(login1);
-      expect(body).to.not.match(login2);
-      done();
+  ['bobjane', 'marydoe'].forEach((username) => {
+    it(`shows ${username}'s page link and Log Out, no login links`, async () => {
+      const { statusCode, body } = await get(`/${username}`);
+      expect(statusCode).to.equal(200);
+      expect(body).to.include(userLink(username));
+      expect(body).to.include(logoutLink);
+      loginLinks.forEach((link) => expect(body).to.not.include(link));
     });
   });
 
-  it('fetches non logged in correctly', (done) => {
-    request('http://localhost:10002/notLoggedIn', (err, res, body) => {
-      expect(err).to.be.equal(null);
-      expect(res.statusCode).to.equal(200);
-      expect(body).to.not.match(userRegex('marydoe'));
-      expect(body).to.not.match(userRegex('bobjane'));
-      expect(body).to.not.match(logoutRegex);
-
-      expect(body).to.match(login1);
-      expect(body).to.match(login2);
-      done();
-    });
+  it('shows the login links to a visitor, no user link and no Log Out', async () => {
+    const { statusCode, body } = await get('/notLoggedIn');
+    expect(statusCode).to.equal(200);
+    expect(body).to.not.include('href = "/user/');
+    expect(body).to.not.include(logoutLink);
+    loginLinks.forEach((link) => expect(body).to.include(link));
   });
 
-  it('if no params are provided, the fetches normally', (done) => {
-    request('http://localhost:10002/nothingProvided', (err, res, body) => {
-      expect(err).to.be.equal(null);
-      expect(res.statusCode).to.equal(200);
-
-      expect(body).to.not.match(userRegex('marydoe'));
-      expect(body).to.not.match(userRegex('bobjane'));
-
-      expect(body).to.not.match(login1);
-      expect(body).to.not.match(login2);
-
-      done();
-    });
+  it('renders with no data: no user link, no Log Out, no login links', async () => {
+    const { statusCode, body } = await get('/nothingProvided');
+    expect(statusCode).to.equal(200);
+    expect(body).to.not.include('href = "/user/');
+    expect(body).to.not.include(logoutLink);
+    loginLinks.forEach((link) => expect(body).to.not.include(link));
   });
 });

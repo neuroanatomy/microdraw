@@ -3,6 +3,7 @@
 /*eslint max-lines: ["error", 3000]*/
 /*eslint no-alert: "off"*/
 /* global paper */
+/* global PageHelpers */
 /*global OpenSeadragon*/
 /*global MUI*/
 /* exported Microdraw */
@@ -2331,30 +2332,11 @@ const Microdraw = (function () {
     },
 
     /**
-       * @desc Loads script from path if test is not fulfilled
+       * @desc Loads a script (page-helpers.js, loaded by the page before microdraw.js)
        * @param {string} path Path to script, either a local path or a url
-       * @param {function} testScriptPresent Function to test if the script is already present. If undefined, the script will be loaded.
        * @returns {promise} A promise fulfilled when the script is loaded
        */
-    loadScript: function (path, testScriptPresent) {
-      return new Promise(function (resolve, reject) {
-        if(testScriptPresent && testScriptPresent()) {
-          console.log("[loadScript] Script", path, "already present, not loading it again");
-          resolve();
-        }
-        const s = document.createElement("script");
-        s.src = path;
-        s.onload=function () {
-          console.log("Loaded", path);
-          resolve();
-        };
-        s.onerror=function() {
-          console.log("Error", path);
-          reject(new Error("something bad happened"));
-        };
-        document.body.appendChild(s);
-      });
-    },
+    loadScript: (path) => PageHelpers.loadScript(path),
 
     /**
        * @desc Changes the way in which the toolbar is displayed
@@ -2647,18 +2629,12 @@ const Microdraw = (function () {
       }
     },
 
-    /** GET a URL and parse its JSON answer; an error status throws.
+    /** GET a URL and parse its JSON answer; an error status throws
+     * (page-helpers.js).
      * @param {string} url The URL
      * @returns {Promise<any>} The parsed answer
      */
-    fetchJSON: async (url) => {
-      const res = await fetch(url);
-      if (!res.ok) {
-        throw new Error(`${url} answered ${res.status}`);
-      }
-
-      return res.json();
-    },
+    fetchJSON: (url) => PageHelpers.fetchJSON(url),
 
     /** The label set used when the project has none: 10 regions. */
     defaultLabelSet: "/labels/10regions.json",

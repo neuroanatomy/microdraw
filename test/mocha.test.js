@@ -4,6 +4,7 @@
 
 require('../app/routes/routeExtensions.spec');
 require('../app/controller/api/api.spec');
+require('../app/views/partials/menu.spec');
 
 /**
  * testing auth: moved to NWL
