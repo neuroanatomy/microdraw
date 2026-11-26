@@ -131,4 +131,20 @@ describe('Collaborator added in the settings page (M7)', () => {
     assert.equal((await viewProject(tokens.outsider)).status, 403);
     assert.equal((await uploadRegion(tokens.outsider)).status, 403);
   }).timeout(U.shortTimeout);
+
+  // G1, nwl-components 3.7.2: the user search encodes what is typed ("a&b"
+  // was sent as ?q=a&b, so the server searched for "a"). Nothing is saved.
+  it('the user search sends "a&b" whole', async () => {
+    await page.goto(U.url(`/project/${SHORTNAME}/settings`), { waitUntil: 'load' });
+    await page.waitForSelector('#access tbody tr', { timeout: U.shortTimeout });
+    const rows = await page.$$eval('#access tbody tr', (trs) => trs.length);
+    await page.click('button[title="Add collaborator"]');
+    await page.waitForFunction((n) => document.querySelectorAll('#access tbody tr').length === n + 1, { polling: 50, timeout: U.shortTimeout }, rows);
+    // the search is debounced: wait for the one sent after the last key
+    const asked = page.waitForRequest((r) => new URL(r.url()).pathname === '/search/json/users' && r.url().endsWith('b'), { timeout: U.shortTimeout });
+    await page.type(`#access tbody tr:nth-child(${rows + 1}) input[role="searchbox"]`, 'a&b');
+    const url = new URL((await asked).url());
+    assert.equal(url.search, '?q=a%26b');
+    assert.equal(url.searchParams.get('q'), 'a&b');
+  }).timeout(U.mediumTimeout);
 });

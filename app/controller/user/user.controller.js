@@ -94,10 +94,8 @@ const api_user = function (req, res) {
     });
 };
 
-// Lists usernames, 20 per page, as BrainBox's apiUserAll lists nicknames.
-// Queried here since T001 step 2. NWL's db.js exports queryAllUsers(query,
-// options) since 2026-10-13 (skip, limit and projection accepted), which could
-// replace this query.
+// Lists usernames, 20 per page, in stored order, as BrainBox's apiUserAll
+// lists nicknames: current versions with a string username only.
 const api_userAll = async function (req, res) {
   if (!req.query.page) {
     res.json({error: 'The \'pages\' parameter has to be specified'});
@@ -109,9 +107,10 @@ const api_userAll = async function (req, res) {
   const nItemsPerPage = 20;
 
   try {
-    const users = await req.appConfig.db.nativeMongoDB().collection('users')
-      .find({backup: {$exists: false}, username: {$type: 'string'}}, {skip: page * nItemsPerPage, limit: nItemsPerPage, projection: {_id: 0, username: 1}})
-      .toArray();
+    const users = await req.appConfig.db.queryAllUsers(
+      {backup: {$exists: false}, username: {$type: 'string'}},
+      {skip: page * nItemsPerPage, limit: nItemsPerPage, projection: {_id: 0, username: 1}}
+    );
     res.send(users.map((o) => o.username));
   } catch (err) {
     log.error({ err }, 'cannot list users');

@@ -307,5 +307,39 @@ describe('Label sets in the viewer and the settings (T002 3.2)', () => {
         ['vectorial', '10regions.json']
       ]);
     }).timeout(U.longTimeout);
+
+    // G1, nwl-components 3.7.2: defaultFetchLabelSets throws on an error
+    // status (it returned the error body before). Either way the menus offer
+    // only the stored values, and the page keeps working.
+    // eslint-disable-next-line max-statements -- one test, step by step
+    it('when the label set list answers 500, the menus offer the stored values', async () => {
+      const onRequest = (req) => {
+        if (new URL(req.url()).pathname === '/api/getLabelsets') {
+          req.respond({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'Server error' }) });
+        } else {
+          req.continue();
+        }
+      };
+      await page.setRequestInterception(true);
+      page.on('request', onRequest);
+      try {
+        await page.goto(U.url(`/project/${projects.settings.shortname}/settings`), { waitUntil: 'load' });
+        await page.waitForFunction(() => {
+          const trs = [...document.querySelectorAll('#annotations tbody tr')];
+
+          return trs.length === 3 && trs.every((tr) => tr.cells[2].querySelector('select') && tr.cells[2].querySelector('select').options.length > 0);
+        }, { polling: 50, timeout: U.shortTimeout });
+        const rows = await layerRows();
+        assert.deepEqual(rows[0].options, [
+          { name: '10regions.json', source: '10regions.json' },
+          { name: 'Set 1', source: 'Set 1' }
+        ]);
+        assert.deepEqual(rows.map((r) => r.value), ['10regions.json', 'Set 1', '10regions.json']);
+        assert.deepEqual(errors, []);
+      } finally {
+        page.off('request', onRequest);
+        await page.setRequestInterception(false);
+      }
+    }).timeout(U.longTimeout);
   });
 });

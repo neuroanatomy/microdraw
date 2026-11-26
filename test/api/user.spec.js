@@ -161,6 +161,28 @@ describe('Public user data (/user/json/:userName, /user/:userName)', function ()
         assert.isArray(res.body);
         assert.lengthOf(res.body, 20);
       }).timeout(U.shortTimeout);
+
+      // G1: pinned before api_userAll used NWL's queryAllUsers, unchanged
+      // after: pages 0 and 1 are the stored order's names 0-19 and 20-39
+      // (current versions, string names), and no page answers the same error.
+      // eslint-disable-next-line max-statements -- three answers, each checked
+      it('answers page 0, page 1 and no page as before (G1)', async function () {
+        const stored = (await U.getDB().collection('users')
+          .find({}, { projection: { _id: 0, username: 1, backup: 1 } })
+          .toArray())
+          .filter((u) => !('backup' in u) && typeof u.username === 'string')
+          .map((u) => u.username);
+        assert.isAbove(stored.length, 20);
+        const page0 = await get('/user/json?page=0');
+        const page1 = await get('/user/json?page=1');
+        assert.equal(page0.status, 200);
+        assert.equal(page1.status, 200);
+        assert.deepEqual(page0.body, stored.slice(0, 20));
+        assert.deepEqual(page1.body, stored.slice(20, 40));
+        const none = await get('/user/json');
+        assert.equal(none.status, 200);
+        assert.deepEqual(none.body, { error: 'The \'pages\' parameter has to be specified' });
+      }).timeout(U.shortTimeout);
     });
   });
 });
