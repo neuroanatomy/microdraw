@@ -2261,7 +2261,10 @@ const Microdraw = (function () {
         me.loadScript("/lib/paper-full-0.12.15.min.js"),
         me.loadScript("/lib/openseadragon/openseadragon.js"),
         me.loadScript("/lib/hippy-hippo/hippy-hippo-umd.js"), // vendored: hippy-hippo@0.0.1
-        me.loadScript("/js/microdraw-ws.js"),
+        // the chat helpers (chatLog, chatInput and textArea, nwl-components 3.8.0) before
+        // microdraw-ws.js, whose WebSocket may open, and use them, as soon as it runs
+        me.loadScript("/lib/nwl-components/chat/nwl-components-chat.umd.js")
+          .then(() => me.loadScript("/js/microdraw-ws.js")),
         me.loadScript("/js/unsaved-stash.js"),
         me.loadScript("/js/regions-list.js"),
         // floatingPanel() for the labels and layers panels (nwl-components 3.2.0)
@@ -2486,70 +2489,35 @@ const Microdraw = (function () {
     },
 
     /**
-     * @desc The chat/script area (#textInputBlock) is resized by dragging the strip at its
-     * bottom (#textInputResize), with the mouse or a finger; at least 100 px (M4e, as BrainBox)
+     * @desc The chat/script area: its Chat/Script switch and the strip at its bottom
+     * (#textInputResize) that resizes it, with the mouse or a finger, at least 100 px
+     * (nwl-components/chat's textArea). Set by initTextInputResize.
+     */
+    textArea: null,
+
+    /**
+     * @desc Set up the chat/script area (#textInputBlock): nwl-components/chat's textArea
+     * makes #textInputResize resize it, and switches it between the chat and the script
      * @returns {void}
      */
     initTextInputResize: () => {
-      const handle = me.dom.querySelector("#textInputResize");
-      const block = me.dom.querySelector("#textInputBlock");
-      if (!handle || !block) { return; }
-      const resizer = (startY) => {
-        const startHeight = block.offsetHeight;
-
-        return (y) => { block.style.flex = "0 0 " + Math.max(100, startHeight + y - startY) + "px"; };
-      };
-
-      handle.addEventListener("mousedown", (e) => {
-        e.preventDefault();
-        const resize = resizer(e.clientY);
-        const onMouseMove = (ev) => { resize(ev.clientY); };
-        const onMouseUp = () => {
-          document.removeEventListener("mousemove", onMouseMove);
-          document.removeEventListener("mouseup", onMouseUp);
-        };
-        document.addEventListener("mousemove", onMouseMove);
-        document.addEventListener("mouseup", onMouseUp);
+      const d = me.dom;
+      const block = d.querySelector("#textInputBlock");
+      if (!block) { return; }
+      me.textArea = window.nwlComponentsChat.textArea({
+        block,
+        chat: d.getElementById("logChat"),
+        script: d.getElementById("logScript"),
+        handle: d.querySelector("#textInputResize")
       });
-
-      handle.addEventListener("touchstart", (e) => {
-        e.preventDefault();
-        const resize = resizer(e.touches[0].clientY);
-        const onTouchMove = (ev) => {
-          ev.preventDefault();
-          resize(ev.touches[0].clientY);
-        };
-        const onTouchEnd = () => {
-          document.removeEventListener("touchmove", onTouchMove);
-          document.removeEventListener("touchend", onTouchEnd);
-        };
-        document.addEventListener("touchmove", onTouchMove, {passive: false});
-        document.addEventListener("touchend", onTouchEnd);
-      }, {passive: false});
     },
 
     /**
-       * @param {string} mode One from Chat or Script
+       * @param {string} mode One from Chat or Script; anything else hides the area
        * @returns {void}
        */
     toggleTextInput: function (mode) {
-      switch(mode) {
-      case "Chat":
-        // flex, as in toolsFull: the area shrinks with #textInputResize (M4e)
-        me.dom.querySelector("#textInputBlock").style.display = "flex";
-        me.dom.getElementById("logScript").classList.add("hidden");
-        me.dom.getElementById("logChat").classList.remove("hidden");
-        me.dom.querySelector("#logChat #msg").focus();
-        break;
-      case "Script":
-        me.dom.querySelector("#textInputBlock").style.display = "flex";
-        me.dom.getElementById("logScript").classList.remove("hidden");
-        me.dom.getElementById("logChat").classList.add("hidden");
-        me.dom.querySelector("#logScript textarea").focus();
-        break;
-      default:
-        me.dom.querySelector("#textInputBlock").style.display = "none";
-      }
+      if (me.textArea) { me.textArea.show(mode); }
     },
 
     /**

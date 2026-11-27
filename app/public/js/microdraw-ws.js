@@ -26,30 +26,15 @@ const _decodeRandomUuidToNickname = (n) => {
   return HippyHippo.getNickName(n);
 };
 
-// An element with a text, never parsed as HTML.
-const _element = (tag, text) => {
-  const el = document.createElement(tag);
-  el.textContent = text;
-
-  return el;
-};
-
-/**
- * Add a line to the chat: the name in bold, then the text.
- * @param {object} params Parameters
- * @param {string} params.name The sender's name
- * @param {boolean} params.own Whether it is the user's own message
- * @param {string} params.msg The text
- * @returns {void}
- */
-const _addChatLine = ({ name, own, msg }) => {
-  const log = Microdraw.dom.querySelector("#logChat .text");
-  if (own) {
-    log.append(_element("b", name), " ", _element("i", "(me)"), ": " + msg, document.createElement("br"));
-  } else {
-    log.append(_element("b", name + ":"), " " + msg, document.createElement("br"));
+// The chat log (#logChat .text), as nwl-components/chat's chatLog: the name in bold, then
+// `(me)` in italics for an own line, then the text, all as text, never parsed as HTML.
+let chatLog = null;
+const _chatLog = () => {
+  if (!chatLog) {
+    chatLog = window.nwlComponentsChat.chatLog(Microdraw.dom.querySelector("#logChat .text"));
   }
-  log.scrollTop = log.scrollHeight;
+
+  return chatLog;
 };
 
 /**
@@ -63,7 +48,7 @@ const receiveChatMessage = (data) => {
   } else if (typeof data.randomUuid === 'number') {
     theUsername = _decodeRandomUuidToNickname(data.randomUuid);
   }
-  _addChatLine({ name: theUsername, own: false, msg: String(data.msg) });
+  _chatLog().append({ name: theUsername, own: false, text: String(data.msg) });
 };
 
 const _getUserName = () => {
@@ -76,34 +61,27 @@ const _getUserName = () => {
   return username;
 };
 
-const _makeMessageObject = () => {
-  const {dom} = Microdraw;
-
-  const msg = dom.querySelector('input#msg').value;
-
-  return {
-    type: "chat",
-    msg,
-    randomUuid,
-    username: _getUserName()
-  };
-};
+const _makeMessageObject = (msg) => ({
+  type: "chat",
+  msg,
+  randomUuid,
+  username: _getUserName()
+});
 
 const _displayOwnMessage = (msg) => {
-  const {dom} = Microdraw;
   const _username = _getUserName();
   const username = _username === 'Anonymous'
     ? _decodeRandomUuidToNickname(randomUuid)
     : _username;
-  _addChatLine({ name: username, own: true, msg });
-  dom.querySelector('input#msg').value = "";
+  _chatLog().append({ name: username, own: true, text: msg });
 };
 
 /**
+  * @param {string} msg The text typed in #msg (trimmed and not empty: chatInput)
   * @returns {void}
   */
-const sendChatMessage = () => {
-  const obj = _makeMessageObject();
+const sendChatMessage = (msg) => {
+  const obj = _makeMessageObject(msg);
 
   try {
     ws.send(JSON.stringify(obj));
@@ -194,16 +172,12 @@ const onOpen = () => {
   console.log("open");
 
   const {dom} = Microdraw;
-  dom.querySelector("#msg").onkeypress = (e) => {
-    if (e.keyCode === 13) {
-      sendChatMessage();
-    }
-  };
-
   dom.querySelector("#notifications").innerHTML = "Chat";
 
   if (!entered) {
     entered = true;
+    // Enter in #msg sends its text (nwl-components/chat), set once: reconnections reuse it
+    window.nwlComponentsChat.chatInput(dom.querySelector("#msg"), sendChatMessage);
     const obj = {
       type: "chat",
       msg: "entered",
