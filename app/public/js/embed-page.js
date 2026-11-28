@@ -584,11 +584,6 @@
       const name = (json.names && json.names[i]) ? String(json.names[i]) : String(i);
       state.imageOrder.push(name);
       state.tileSources[name] = { source };
-      // a getTileUrl given as a string is evaluated, as microdraw.js does
-      if (source && typeof source.getTileUrl === 'string') {
-        // eslint-disable-next-line no-eval
-        source.getTileUrl = eval(`(${source.getTileUrl})`);
-      }
     });
     const requested = parseInt(params.slice, 10);
     const first = (isFinite(requested) && requested >= 0 && requested < sources.length) ? requested : Math.floor(sources.length / 2);

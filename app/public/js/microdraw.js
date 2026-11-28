@@ -75,39 +75,20 @@ const jqGetJSON = async (url, headers = {}) => {
 };
 
 /**
- * jQuery.ajax({dataType: 'jsonp', jsonpCallback: 'f'}) on a URL ending in
- * '?callback=?': the script is requested with callback=f and a cache buster
- * `_` (jQuery's default for scripts), the global f is set while it loads and
- * restored afterwards. Fails if the script does not load or does not call f.
+ * A .jsonp file, requested as jQuery.ajax({dataType: 'jsonp', jsonpCallback:
+ * 'f'}) did (callback=f and a cache buster `_`), but read as data: it is not
+ * run as a script (page-helpers.js parseJSONP).
  * @param {string} url URL of the .jsonp file, without query
- * @returns {Promise<any>} The value passed to f
+ * @returns {Promise<any>} The value the file passes to f
  */
-const jqGetJSONP = (url) => new Promise((resolve, reject) => {
-  const name = 'f';
-  const previous = window[name];
-  let called = false;
-  let result;
-  window[name] = (obj) => { called = true; result = obj; };
-  const script = document.createElement('script');
-  const done = () => {
-    window[name] = previous;
-    script.remove();
-  };
-  script.onload = () => {
-    done();
-    if (called) {
-      resolve(result);
-    } else {
-      reject(new Error(`${name} was not called`));
-    }
-  };
-  script.onerror = () => {
-    done();
-    reject(new Error(`could not load ${url}`));
-  };
-  script.src = `${url}?callback=${name}&_=${Date.now()}`;
-  document.head.appendChild(script);
-});
+const jqGetJSONP = async (url) => {
+  const res = await fetch(`${url}?callback=f&_=${Date.now()}`);
+  if (!res.ok) {
+    throw new Error(`could not load ${url}`);
+  }
+
+  return PageHelpers.parseJSONP(await res.text());
+};
 
 const Microdraw = (function () {
   const me = {
@@ -1424,7 +1405,7 @@ const Microdraw = (function () {
       me.currentImage = imageNumber;
 
       // display slice number
-      me.dom.querySelector("#slice-number").innerHTML = `Slice ${imageNumber}`;
+      me.dom.querySelector("#slice-number").textContent = `Slice ${imageNumber}`;
 
       // the toolbar stays where it is: a page starts docked top left (M4g), a slice keeps it (2026-11-15)
 
@@ -2555,7 +2536,7 @@ const Microdraw = (function () {
           me.sliderOnChange(newImageNumber);
         } else {
           const imageNumber = me.imageOrder[newImageNumber];
-          me.dom.querySelector("#slice-number").innerHTML = `Slice ${imageNumber}`;
+          me.dom.querySelector("#slice-number").textContent = `Slice ${imageNumber}`;
         }
       });
       MUI.chose(me.dom.querySelector("#clickTool.mui-chose"), (title) => {
@@ -2710,11 +2691,6 @@ const Microdraw = (function () {
     initOpenSeadragon: (obj) => {
       if( me.debug>1 ) { console.log("json file:", obj); }
 
-      // for loading the bigbrain
-      if( obj.tileCodeY ) {
-        obj.tileSources = obj.tileCodeY;
-      }
-
       // set up the ImageInfo array and me.imageOrder array
       for( let i = 0; i < obj.tileSources.length; i += 1 ) {
         // name is either the index of the tileSource or a named specified in the json file
@@ -2725,11 +2701,6 @@ const Microdraw = (function () {
           Regions: [],
           RegionsToRemove: []
         };
-        // if getTileUrl is specified, we might need to eval it to get the function
-        if( obj.tileSources[i].getTileUrl && typeof obj.tileSources[i].getTileUrl === 'string' ) {
-          // eslint-disable-next-line no-eval
-          eval(`me.ImageInfo[name].source.getTileUrl = ${obj.tileSources[i].getTileUrl}`);
-        }
       }
 
       // set default values for new regions (general configuration)
@@ -2768,7 +2739,7 @@ const Microdraw = (function () {
       }
 
       // display slice number
-      me.dom.querySelector("#slice-number").innerHTML = `Slice ${me.currentImage}`;
+      me.dom.querySelector("#slice-number").textContent = `Slice ${me.currentImage}`;
 
       me.params.tileSources = obj.tileSources;
       if (typeof obj.fileID !== 'undefined') {
@@ -2933,6 +2904,10 @@ const Microdraw = (function () {
       let json;
       try {
         json = await me.loadSourceJson();
+        // for loading the bigbrain
+        if (json.tileCodeY) {
+          json.tileSources = json.tileCodeY;
+        }
         if (json.tileSources) {
           // OMEZarrTileSource must be registered on OpenSeadragon before initOpenSeadragon()
           // calls viewer.open(). Its 1.6 MB bundle is loaded only when a source needs it.

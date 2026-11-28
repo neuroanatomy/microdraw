@@ -150,6 +150,101 @@
     return parseDataset(await res.text(), address);
   };
 
+  /*
+    A dataset is data from anywhere, so nothing in it is run. Two formats look
+    like code: getTileUrl strings and .jsonp files. They are read here.
+  */
+  const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
+  // function (a, b, c) { return ...; }
+  const URL_FUNCTION = /^\s*function(?:\s+[A-Za-z_$][\w$]*)?\s*\(([^()]*)\)\s*\{\s*return\b([\s\S]*?);?\s*\}\s*;?\s*$/;
+  // a template string, a quoted string or a name, and what follows it
+  const URL_TERM = /\s*(?:`((?:[^`\\$]|\$(?!\{)|\$\{\s*[A-Za-z_$][\w$]*\s*\})*)`|"([^"\\\n]*)"|'([^'\\\n]*)'|([A-Za-z_$][\w$]*))\s*(\+|$)/y;
+  const MAX_CODE = 2000;
+
+  const unsupported = () => new Error('getTileUrl is not supported: it can only be a function returning ' +
+    'text made of strings and its arguments (level, x, y)');
+
+  // the pieces of one term: texts, and the positions of arguments
+  const termPieces = (match, argument) => {
+    const [, template, double, single, name] = match;
+    if (typeof name !== 'undefined') {
+      return [argument(name)];
+    }
+    if (typeof template === 'undefined') {
+      return [typeof double === 'undefined' ? single : double];
+    }
+
+    // split on ${name}: every second piece is a name
+    return template.split(/\$\{\s*([A-Za-z_$][\w$]*)\s*\}/).map((piece, i) => (i % 2 ? argument(piece) : piece));
+  };
+
+  /**
+   * A tile source's getTileUrl, given as a string: read, never evaluated
+   * @param {string} code Such as "function(l, x, y) { return `a/${l}/${x}_${y}.jpg` }"
+   * @returns {Function} The function it describes; throws if it is anything else
+   */
+  // eslint-disable-next-line max-statements -- one short parser, kept in one place
+  const tileUrlFunction = (code) => {
+    const found = code.length <= MAX_CODE && code.match(URL_FUNCTION);
+    if (!found) {
+      throw unsupported();
+    }
+    const [, parameters, returned] = found;
+    const names = parameters.split(',').map((n) => n.trim())
+      .filter(Boolean);
+    if (!names.every((n) => IDENTIFIER.test(n))) {
+      throw unsupported();
+    }
+    const argument = (name) => {
+      const index = names.indexOf(name);
+      if (index < 0) {
+        throw unsupported();
+      }
+
+      return index;
+    };
+    const body = returned.trim();
+    const terms = [];
+    let more = '+';
+    URL_TERM.lastIndex = 0;
+    while (more === '+') {
+      const match = URL_TERM.exec(body);
+      if (!match) {
+        throw unsupported();
+      }
+      const [, , , , name, next] = match;
+      terms.push({ isName: typeof name !== 'undefined', pieces: termPieces(match, argument) });
+      more = next;
+    }
+    // JavaScript would add two numbers that come first, not join them
+    if (terms.length > 1 && terms[0].isName && terms[1].isName) {
+      throw unsupported();
+    }
+    const pieces = terms.flatMap((term) => term.pieces);
+
+    return (...args) => pieces.map((p) => (typeof p === 'number' ? String(args[p]) : p)).join('');
+  };
+
+  /**
+   * A .jsonp file's data
+   * @param {string} text The file: f(JSON), comments before it allowed
+   * @returns {any} The JSON; throws if the file is anything else
+   */
+  const parseJSONP = (text) => {
+    const found = text.replace(/^\uFEFF/, '').trim()
+      .replace(/^(\/\*(?:(?!\*\/)[\s\S])*\*\/\s*)+/, '')
+      .match(/^f\s*\(([\s\S]*)\)\s*;?$/);
+    if (!found) {
+      throw new Error('this .jsonp file is not of the form f(JSON)');
+    }
+
+    return JSON.parse(found[1]);
+  };
+
+  const withTileUrlFunction = (source) => (source && typeof source.getTileUrl === 'string'
+    ? { ...source, getTileUrl: tileUrlFunction(source.getTileUrl) }
+    : source);
+
   /**
    * Make a list's entries ready for OpenSeadragon: an OME-Zarr store may be
    * named by its address alone, its reader (1.6 MB) is loaded only when there
@@ -161,7 +256,7 @@
    */
   const prepareTileSources = async (tileSources, load, base) => {
     const sources = tileSources.map((s) => {
-      if (typeof s !== 'string') { return s; }
+      if (typeof s !== 'string') { return withTileUrlFunction(s); }
       if (isZarrURL(s)) { return zarrSource(s); }
 
       return isCziURL(s) ? cziAddress(s, base) : s;
@@ -176,7 +271,18 @@
     return sources;
   };
 
-  const api = { loadScript, fetchJSON, isZarrURL, isCziURL, cziAddress, parseDataset, fetchDataset, prepareTileSources };
+  const api = {
+    loadScript,
+    fetchJSON,
+    isZarrURL,
+    isCziURL,
+    cziAddress,
+    parseDataset,
+    fetchDataset,
+    prepareTileSources,
+    tileUrlFunction,
+    parseJSONP
+  };
 
   if (typeof module === 'object' && module.exports) {
     module.exports = api;
