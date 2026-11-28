@@ -1,6 +1,7 @@
 const http = require('http');
 const https = require('https');
 const log = require('../log');
+const { relayedType, inertHeaders } = require('./relayed');
 // the pages' reading of what an address names: a JSON list or one image
 const { isZarrURL, isCziURL, parseDataset } = require('../public/js/page-helpers');
 
@@ -28,6 +29,7 @@ const httpGet = (requestUrl) => new Promise((resolve, reject) => {
 module.exports = (app) => {
   app.get('/getTile', function (req, res) {
     const { source } = req.query;
+    res.set(inertHeaders());
 
     if( !source ) {
       return res.status(404).send('source must be defined');
@@ -36,20 +38,24 @@ module.exports = (app) => {
     httpGet(source)
       .then(({ statusCode, headers, body }) => {
         res.status(statusCode);
-        if(headers['content-type']) {
-          res.set('content-type', headers['content-type']);
-        }
+        // setHeader: res.set would add a charset to the other server's type
+        res.setHeader('content-type', relayedType(headers['content-type']));
         res.end(body);
       })
       .catch((err) => {
         (req.log || log).warn({ err, source }, 'cannot fetch tile');
-        res.status(500).send(err.message);
+        res.status(500).type('text/plain')
+          .send(err.message);
       });
   });
 
   // eslint-disable-next-line max-statements
   app.get('/getJson', async function (req, res) {
     const { source } = req.query;
+    res.set(inertHeaders());
+    // a string is otherwise sent as HTML
+    const sendJson = (value) => res.status(200).type('application/json')
+      .send(JSON.stringify(value));
 
     if( !source ) {
       return res.status(404).send('source must be defined');
@@ -74,12 +80,12 @@ module.exports = (app) => {
 
       // an OME-Zarr store is a folder: there is no description to fetch
       if (isZarrURL(address)) {
-        return res.status(200).send(JSON.stringify({ tileSources: [{ type: 'ome-zarr', url: address }] }));
+        return sendJson({ tileSources: [{ type: 'ome-zarr', url: address }] });
       }
 
       // nor is a CZI file, which is gigabytes: the viewer asks the CZI service
       if (isCziURL(address)) {
-        return res.status(200).send(JSON.stringify({ tileSources: [address] }));
+        return sendJson({ tileSources: [address] });
       }
 
       const { statusCode, body } = await httpGet(sourceHostname + sourcePath);
@@ -92,7 +98,7 @@ module.exports = (app) => {
       const json = parseDataset(text, address);
       // one DeepZoom image (XML, not a JSON list): nothing to rewrite
       if (text.trim().startsWith('<')) {
-        return res.status(200).send(JSON.stringify(json));
+        return sendJson(json);
       }
       json.tileSources = json.tileSources.map((result) => {
         let tileSource = result;
@@ -111,10 +117,16 @@ module.exports = (app) => {
 
         return tileSource;
       });
-      res.status(200).send(JSON.stringify(json));
+      sendJson(json);
     } catch (e) {
       (req.log || log).warn({ err: e, source }, 'cannot get the tile source JSON');
-      res.status(404).send(e);
+      // a string is what the other server answered
+      if (typeof e === 'string') {
+        res.status(404).type('text/plain')
+          .send(e);
+      } else {
+        res.status(404).send(e);
+      }
     }
   });
 };

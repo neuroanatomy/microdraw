@@ -1,6 +1,7 @@
 const http = require('http');
 const https = require('https');
 const log = require('../log');
+const { relayedType, inertHeaders } = require('../routes/relayed');
 
 /**
  * Fetch a URL following redirects, returning the final response.
@@ -14,8 +15,9 @@ const fetchFollowingRedirects = (requestUrl, maxRedirects = 5) => new Promise((r
   }
   const isHttps = requestUrl.startsWith('https');
   const client = isHttps ? https : http;
-  const options = isHttps ? { rejectUnauthorized: false } : {};
-  client.get(requestUrl, options, (response) => {
+  // options only for https: the tests' nock does not take an empty object here
+  const options = isHttps ? [{ rejectUnauthorized: false }] : [];
+  client.get(requestUrl, ...options, (response) => {
     if([301, 302, 307, 308].includes(response.statusCode) && response.headers.location) {
       fetchFollowingRedirects(response.headers.location, maxRedirects - 1)
         .then(resolve)
@@ -36,7 +38,7 @@ const getHttpImg = function (req, res) {
       });
       response.on('end', () => {
         const contentType = response.headers['content-type'] || 'image/jpeg';
-        res.writeHead(200, { 'Content-Type': contentType });
+        res.writeHead(200, { 'Content-Type': relayedType(contentType), ...inertHeaders() });
         res.end(data, 'binary');
       });
     })
