@@ -23,4 +23,26 @@ const inertHeaders = () => ({
   'X-Content-Type-Options': 'nosniff'
 });
 
-module.exports = { relayedType, inertHeaders };
+/**
+ * Answer with a short message of ours, never what another server sent
+ * @param {object} res The answer
+ * @param {number} status The HTTP status
+ * @param {string} message What to say
+ * @returns {void}
+ */
+const sendText = (res, status, message) => {
+  res.set(inertHeaders());
+  res.status(status).type('text/plain')
+    .send(message);
+};
+
+/**
+ * Answer with why a fetch failed: a refusal or a limit says so (4xx, 502),
+ * anything else is a 500
+ * @param {object} res The answer
+ * @param {Error} err What went wrong
+ * @returns {void}
+ */
+const sendFailure = (res, err) => sendText(res, err.status || 500, err.status ? err.message : 'cannot fetch');
+
+module.exports = { relayedType, inertHeaders, sendText, sendFailure };

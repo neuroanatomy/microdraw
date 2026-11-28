@@ -3,6 +3,10 @@ const assert = require('assert');
 const http = require('http');
 const chai = require('chai');
 const nock = require('nock');
+const sinon = require('sinon');
+// the proxies resolve a name before fetching it: nock's names resolve here to
+// a public address (TEST-NET-1), and nock answers in place of the network
+const guard = require('./publicFetch');
 const {expect} = chai;
 
 const express = require('express');
@@ -89,12 +93,13 @@ let _server;
 describe('Test /getJson api end point', () => {
 
   before(() => {
-
+    sinon.stub(guard, 'lookup').resolves([{ address: '192.0.2.1', family: 4 }]);
     app.get('/', (_req, res) => res.status(200).send('ok'));
     _server = app.listen(10002, () => console.log('mocha test listening on port 10002'));
   });
 
   after(() => {
+    guard.lookup.restore();
     _server.close();
   });
 
@@ -128,7 +133,8 @@ describe('Test /getJson api end point', () => {
 
     it('sometimes foreign server returns error (resp arg is undefined)', async () => {
       const { statusCode } = await httpGet(`http://localhost:10002/getJson?source=${nockMockUrl}/error.json`);
-      expect(statusCode).to.be.equal(404);
+      // the other server failed: 502 (S1a)
+      expect(statusCode).to.be.equal(502);
     });
 
     describe('correctly formed json returns json with tileSources field correctly augmented', () => {

@@ -14,6 +14,10 @@ const { assert } = require('chai');
 const UI = require('../UI');
 const U = require('../mocha.test.util');
 const H = require('./helpers');
+const sinon = require('sinon');
+// the proxies refuse this computer's addresses (S1a): here the stand-in
+// service on 127.0.0.1 stands for a public server
+const guard = require('../../app/routes/publicFetch');
 
 // Annotations are only saved inside a project: this spec opens its image in one.
 const project = U.createPublicAnnotationProject('e2esingleimage');
@@ -135,6 +139,7 @@ const clickTool = async (selector) => {
 describe('A single image as the source', () => {
   before(async () => {
     await startService();
+    sinon.stub(guard, 'isRefusedAddress').callsFake((address) => address !== '127.0.0.1' && guard.isRefusedAddress.wrappedMethod(address));
     process.env.CZI_SERVICE_URL = `${serviceURL}/czi`;
     // the embed page only shows datasets of the project
     project.files.list = [DZI, ZARR, `${serviceURL}/slide.tiles`, `${serviceURL}${CZI}`].map((source, i) => ({ source, name: `image${i}` }));
@@ -319,6 +324,7 @@ describe('A single image as the source', () => {
   }).timeout(U.mediumTimeout);
 
   after(async () => {
+    guard.isRefusedAddress.restore();
     delete process.env.CZI_SERVICE_URL;
     try {
       await H.closeContext(context);

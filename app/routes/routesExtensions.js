@@ -1,30 +1,17 @@
-const http = require('http');
-const https = require('https');
 const log = require('../log');
-const { relayedType, inertHeaders } = require('./relayed');
+const { relayedType, inertHeaders, sendText, sendFailure } = require('./relayed');
+// only public addresses, with size and time limits (S1a)
+const { fetchPublic, fetchOwn } = require('./publicFetch');
 // the pages' reading of what an address names: a JSON list or one image
 const { isZarrURL, isCziURL, parseDataset } = require('../public/js/page-helpers');
 
 /**
- * Make an HTTP(S) GET request, returning the response metadata and body as a Buffer.
- * @param {string} requestUrl The URL to fetch
- * @returns {Promise<{statusCode: number, headers: object, body: Buffer}>} The response
+ * Whether a source is a path of this server ("/test_data/cat.json"), not an
+ * address elsewhere ("//host/x" included)
+ * @param {string} source The source asked for
+ * @returns {boolean} True for a path
  */
-const httpGet = (requestUrl) => new Promise((resolve, reject) => {
-  const isHttps = requestUrl.startsWith('https');
-  const client = isHttps ? https : http;
-  const args = isHttps ? [requestUrl, { rejectUnauthorized: false }] : [requestUrl];
-  client.get(...args, (res) => {
-    const chunks = [];
-    res.on('data', (chunk) => chunks.push(chunk));
-    res.on('end', () => resolve({
-      statusCode: res.statusCode,
-      headers: res.headers,
-      body: Buffer.concat(chunks)
-    }));
-    res.on('error', reject);
-  }).on('error', reject);
-});
+const isOwnPath = (source) => new URL(source, 'http://own.invalid').host === 'own.invalid';
 
 module.exports = (app) => {
   app.get('/getTile', function (req, res) {
@@ -35,7 +22,7 @@ module.exports = (app) => {
       return res.status(404).send('source must be defined');
     }
 
-    httpGet(source)
+    fetchPublic(source)
       .then(({ statusCode, headers, body }) => {
         res.status(statusCode);
         // setHeader: res.set would add a charset to the other server's type
@@ -44,8 +31,7 @@ module.exports = (app) => {
       })
       .catch((err) => {
         (req.log || log).warn({ err, source }, 'cannot fetch tile');
-        res.status(500).type('text/plain')
-          .send(err.message);
+        sendFailure(res, err);
       });
   });
 
@@ -69,7 +55,7 @@ module.exports = (app) => {
       // A relative source is resolved against this server
       const target = new URL(source, thisHostname);
       if (!['http:', 'https:'].includes(target.protocol)) {
-        throw new Error('ERROR: sourceurl must be http or https');
+        throw Object.assign(new Error('only http and https addresses'), { status: 400 });
       }
       sourceHostname = target.protocol + '//' + target.host;
       sourcePath = target.pathname + target.search;
@@ -88,7 +74,9 @@ module.exports = (app) => {
         return sendJson({ tileSources: [address] });
       }
 
-      const { statusCode, body } = await httpGet(sourceHostname + sourcePath);
+      // a path of this server is read through the port the request came in on
+      const own = isOwnPath(source);
+      const { statusCode, body } = await (own ? fetchOwn(req, sourcePath) : fetchPublic(sourceHostname + sourcePath));
 
       if(statusCode >= 400) {
         throw body.toString();
@@ -105,6 +93,11 @@ module.exports = (app) => {
         if(typeof result === 'string' && (isZarrURL(result) || isCziURL(result))) {
           // neither a store's files nor a CZI file can go through /getTile
           tileSource = new URL(result, sourceHostname + '/').href;
+        } else if(typeof result === 'string' && own) {
+          // on this server: the browser loads it itself
+          if((new RegExp('^http')).test(tileSource) === false && tileSource[0] !== '/') {
+            tileSource = '/' + tileSource;
+          }
         } else if(typeof result === 'string') {
           if((new RegExp('^http')).test(tileSource) === false) {
             if(tileSource[0] === '/') {
@@ -122,8 +115,10 @@ module.exports = (app) => {
       (req.log || log).warn({ err: e, source }, 'cannot get the tile source JSON');
       // a string is what the other server answered
       if (typeof e === 'string') {
-        res.status(404).type('text/plain')
-          .send(e);
+        sendText(res, 404, e);
+      } else if (e.status) {
+        // refused, or over a limit: our message, never the other server's
+        sendFailure(res, e);
       } else {
         res.status(404).send(e);
       }

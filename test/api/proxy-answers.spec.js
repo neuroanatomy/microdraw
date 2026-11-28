@@ -5,6 +5,10 @@
 const http = require('http');
 const chai = require('chai');
 const chaiHttp = require('chai-http');
+const sinon = require('sinon');
+// the upstream runs on this computer, where the proxies may not go: here it
+// stands for a public server (the refusals are in public-addresses.spec.js)
+const guard = require('../../app/routes/publicFetch');
 const U = require('../mocha.test.util');
 
 chai.use(chaiHttp);
@@ -41,8 +45,10 @@ describe('answers relayed from other servers', function () {
     });
     await new Promise((resolve) => { upstream.listen(0, '127.0.0.1', resolve); });
     upstreamURL = `http://127.0.0.1:${upstream.address().port}`;
+    sinon.stub(guard, 'isRefusedAddress').returns(false);
   });
   after(function () {
+    guard.isRefusedAddress.restore();
     upstream.close();
   });
 
@@ -95,7 +101,8 @@ describe('answers relayed from other servers', function () {
   it('/getTile says why it failed in plain text', async function () {
     const res = await chai.request(U.serverURL).get('/getTile')
       .query({ source: 'http://<script>.invalid/' });
-    assert.equal(res.status, 500);
+    // not an address: refused before any fetch (S1a; it was a 500)
+    assert.equal(res.status, 400);
     assertInert(res);
   });
 

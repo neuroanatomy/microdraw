@@ -1,50 +1,22 @@
-const http = require('http');
-const https = require('https');
 const log = require('../log');
-const { relayedType, inertHeaders } = require('../routes/relayed');
+const { relayedType, inertHeaders, sendFailure } = require('../routes/relayed');
+// only public addresses, each redirect checked again, with size and time limits (S1a)
+const { fetchPublic } = require('../routes/publicFetch');
 
-/**
- * Fetch a URL following redirects, returning the final response.
- * @param {string} requestUrl The URL to fetch
- * @param {number} maxRedirects Maximum number of redirects to follow
- * @returns {Promise<object>} The HTTP response stream
- */
-const fetchFollowingRedirects = (requestUrl, maxRedirects = 5) => new Promise((resolve, reject) => {
-  if(maxRedirects <= 0) {
-    return reject(new Error('Too many redirects'));
-  }
-  const isHttps = requestUrl.startsWith('https');
-  const client = isHttps ? https : http;
-  // options only for https: the tests' nock does not take an empty object here
-  const options = isHttps ? [{ rejectUnauthorized: false }] : [];
-  client.get(requestUrl, ...options, (response) => {
-    if([301, 302, 307, 308].includes(response.statusCode) && response.headers.location) {
-      fetchFollowingRedirects(response.headers.location, maxRedirects - 1)
-        .then(resolve)
-        .catch(reject);
-    } else {
-      resolve(response);
-    }
-  }).on('error', reject);
-});
+// as before S1a: up to 5 redirects
+const MAX_REDIRECTS = 5;
 
 const getHttpImg = function (req, res) {
   const { url } = req.query;
-  fetchFollowingRedirects(url)
+  fetchPublic(String(url || ''), MAX_REDIRECTS)
     .then((response) => {
-      let data = Buffer.alloc(0);
-      response.on('data', (chunk) => {
-        data = Buffer.concat([data, chunk]);
-      });
-      response.on('end', () => {
-        const contentType = response.headers['content-type'] || 'image/jpeg';
-        res.writeHead(200, { 'Content-Type': relayedType(contentType), ...inertHeaders() });
-        res.end(data, 'binary');
-      });
+      const contentType = response.headers['content-type'] || 'image/jpeg';
+      res.writeHead(200, { 'Content-Type': relayedType(contentType), ...inertHeaders() });
+      res.end(response.body, 'binary');
     })
     .catch((err) => {
       log.error({ err, url }, 'cannot fetch remote image');
-      res.sendStatus(500);
+      sendFailure(res, err);
     });
 };
 
