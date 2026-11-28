@@ -37,9 +37,18 @@ window.ToolSelect = {select: (function() {
       return typeof fontSize !== 'undefined';
     },
 
+    /**
+     * A rectangle annotation is selected by its outline (or its text): its
+     * inside is not hit, so what lies under it can be selected
+     * @param {object} hitResult A hit result of paper.js
+     * @returns {boolean} False for a hit inside a rectangle annotation
+     */
+    _isNotInsideRectangle: (hitResult) => hitResult.type !== 'fill' || !Microdraw.ImageInfo[Microdraw.currentImage].Regions
+      .some((reg) => reg.path === hitResult.item && Microdraw.isRectangle(reg)),
+
     _handleHitResultType: function (hitResult, point) {
       if( Microdraw.isRectangle(Microdraw.region) && Microdraw.region.path === hitResult.item ) {
-        // a corner resizes it, the rest opens its panel. Its points are not
+        // a corner resizes it, its outline or text opens its panel. Its points are not
         // dragged one by one: it stays a rectangle
         Microdraw.tools.rectangleAnnotation.press(Microdraw.region, hitResult);
       } else if( hitResult.type === 'handle-in' ) {
@@ -94,7 +103,8 @@ window.ToolSelect = {select: (function() {
         stroke: true,
         segments: true,
         fill: true,
-        handles: true
+        handles: true,
+        match: tool._isNotInsideRectangle
       });
 
       Microdraw.newRegionFlag = false;

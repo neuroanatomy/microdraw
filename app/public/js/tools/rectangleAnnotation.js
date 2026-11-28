@@ -134,7 +134,8 @@ window.ToolRectangleAnnotation = {rectangleAnnotation: (function() {
 
     /**
      * A press with Select: on a corner of a rectangle annotation, the
-     * drag that may follow resizes it; anywhere else on it, its panel opens
+     * drag that may follow resizes it; elsewhere on its outline or its text,
+     * its panel opens
      * @param {object} reg The rectangle annotation hit
      * @param {object} hitResult The hit result of paper.js
      * @returns {void}

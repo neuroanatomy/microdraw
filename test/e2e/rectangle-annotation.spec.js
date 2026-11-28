@@ -1,5 +1,5 @@
 /* global Microdraw, paper */
-/* eslint max-lines: ["error", 500] */
+/* eslint max-lines: ["error", 600] */
 'use strict';
 
 const { assert } = require('chai');
@@ -142,7 +142,7 @@ describe('Rectangle annotations', () => {
 
   it('is edited by clicking it with Select: text and colour, one undo step', async () => {
     await click('#select');
-    await page.mouse.click(500, 280);
+    await page.mouse.click(400, 280); // on its left side
     assert.deepEqual((await state()).panel, { text: 'Lesion', color: '#00ff00', buttons: ['update', 'cancel'] });
     await fill('Tumour', '#ffff00');
     await button('update');
@@ -152,6 +152,39 @@ describe('Rectangle annotations', () => {
     await page.evaluate(() => Microdraw.cmdUndo());
     s = await state();
     assert.deepEqual([s.labels[0].content, s.labels[0].color], ['Lesion', '#00ff00']);
+  }).timeout(U.shortTimeout);
+
+  it('is not edited, nor selected, by a click inside it with Select', async () => {
+    await page.mouse.click(400, 280); // selected, by its outline
+    await button('cancel');
+    await page.mouse.click(500, 280);
+    assert.equal((await state()).panel, false);
+    assert.isNull(await page.evaluate(() => Microdraw.region), 'a click inside is a click beside it');
+  }).timeout(U.shortTimeout);
+
+  it('lets Select reach a region under it', async () => {
+    const uid = await page.evaluate(() => {
+      const [rectangle] = Microdraw.ImageInfo[Microdraw.currentImage].Regions;
+      const path = new paper.Path.Circle({ center: rectangle.path.bounds.center, radius: rectangle.path.bounds.height / 4 });
+      const reg = Microdraw.newRegion({ path });
+      // painted first: under the rectangle, then over it
+      Microdraw.moveRegion(reg, 0);
+
+      return reg.uid;
+    });
+    const centre = await page.evaluate(() => {
+      const { left, top } = Microdraw.dom.querySelector('#paperjs-container').getBoundingClientRect();
+      const v = paper.view.projectToView(Microdraw.ImageInfo[Microdraw.currentImage].Regions[1].path.bounds.center);
+
+      return [v.x + left, v.y + top];
+    });
+    await page.mouse.click(...centre);
+    assert.equal(await page.evaluate(() => Microdraw.region && Microdraw.region.uid), uid);
+    assert.equal((await state()).panel, false);
+    await page.evaluate((id) => {
+      Microdraw.removeRegion(Microdraw.findRegionByUID(id));
+      Microdraw.region = null;
+    }, uid);
   }).timeout(U.shortTimeout);
 
   it('is edited by clicking its label', async () => {
@@ -275,7 +308,7 @@ describe('Rectangle annotations', () => {
     await click('#select');
     const original = await corners();
     const [width, height] = await imageSize();
-    await page.mouse.click(500, 280);
+    await page.mouse.click(400, 280); // on its left side
     assert.deepEqual(await sizeFields(), [Math.round(width), Math.round(height)]);
     await typeSize('width', '200');
     await typeSize('height', '50');
@@ -293,7 +326,7 @@ describe('Rectangle annotations', () => {
 
   it('changes only the size typed; an empty or zero one changes nothing', async () => {
     const [width, height] = await imageSize();
-    await page.mouse.click(500, 280);
+    await page.mouse.click(400, 280); // on its left side
     await typeSize('width', '100');
     await typeSize('height', '0');
     await button('update');
@@ -303,7 +336,7 @@ describe('Rectangle annotations', () => {
     await page.evaluate(() => Microdraw.cmdUndo());
     const exact = () => page.evaluate(() => Microdraw.ImageInfo['0'].Regions[0].path.exportJSON());
     const before = await exact();
-    await page.mouse.click(500, 280);
+    await page.mouse.click(400, 280); // on its left side
     await typeSize('width', '');
     await button('update');
     assert.equal(await exact(), before, 'the rounded values shown change nothing');
@@ -311,7 +344,7 @@ describe('Rectangle annotations', () => {
   }).timeout(U.shortTimeout);
 
   it('shows the new size in an open panel while a corner is dragged', async () => {
-    await page.mouse.click(500, 280);
+    await page.mouse.click(400, 280); // on its left side
     const [width, height] = await sizeFields();
     // moved aside, so that it does not cover the corner
     await page.evaluate(() => {
