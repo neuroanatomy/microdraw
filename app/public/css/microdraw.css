@@ -58,13 +58,6 @@ html, body {
     z-index:10;
     box-shadow: var(--nwl-shadow-sm);
 }
-#bars-icon {
-    width:28px;
-    position:absolute;
-    top:50%;
-    left:50%;
-    transform: translate( -50%, -50%);
-}
 #saveDialog, #importDialog {
     display: none;
     position:absolute;
@@ -358,13 +351,6 @@ body[data-toolbarDisplay=left] #tools-minimized div {
 body[data-toolbarDisplay=right] #menuBar,
 body[data-toolbarDisplay=right] #tools-minimized div {
     right: 0;
-}
-/* The toolbar can be dragged by its header (M4e; always since M4f) */
-#toolsDragHandle {
-    cursor: grab;
-}
-#toolsDragHandle.dragging {
-    cursor: grabbing;
 }
 /*------------------*/
 
@@ -675,36 +661,3 @@ b.layer-item {
     /* pointer-events:  */
 }
 
-/*-----------*/
-/* Consolita */
-.token.message {
-    color: red;
-}
-.codeflask__flatten {
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    caret-color:var(--nwl-text);
-    font-size: var(--nwl-text-sm);
-    line-height: 15px;
-    padding: 10px;
-    position: absolute;
-    top: 0;
-    left: 0;
-    overflow: auto;
-    margin: 0 !important;
-    text-align: left;
-}
-.codeflask__flatten:focus:not(:focus-visible) {
-    outline: none;
-}
-.codeflask {
-    background:var(--nwl-black);
-    position: relative;
-}
-#logChat:not(.hidden) {
-    flex:1;
-    height:auto;
-    display:flex;
-    flex-direction:column;
-}
-/*-----------*/

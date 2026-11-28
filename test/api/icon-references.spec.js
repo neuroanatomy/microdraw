@@ -3,10 +3,13 @@
 const fs = require('fs');
 const path = require('path');
 const { assert } = require('chai');
+const { toolsFrame } = require('nwl-components/chat');
+const { iconUrl } = require('../../app/routes/tools-frame');
 
 // UI kit step 11b: every icon reference resolves to a file, so no toolbar or
 // page shows a broken image. Reads the sources only (no server, no browser).
-// Covers the Mustache views (toolsFull.mustache included), url() in
+// Covers the Mustache views (the toolbar partials included) and the toolbar
+// frame nwl-components' toolsFrame builds with microdraw's icon URLs (T002 K2b), url() in
 // app/public/css, img/ and /lib/nwl-components/ paths in app/public/js (with
 // configuration.json) and the page scripts (the built app/public/js/pages
 // bundles are skipped), and the images in the user doc (app/public/doc).
@@ -83,6 +86,10 @@ describe('Icon references (UI kit steps 11b, 11c)', function () {
   before(async function () {
     const views = await listFiles(path.join(root, 'app', 'views'), '.mustache');
     viewRefs = (await collectAll(views, [SRC, URL_])).filter(({ ref }) => IMG.test(withoutQuery(ref)));
+    // the toolbar frame's icons (menu, minimise, left, right), as app/routes/tools-frame.js asks for them
+    for (const m of toolsFrame({ iconUrl }).matchAll(SRC)) {
+      viewRefs.push({ file: 'toolsFrame (nwl-components/chat)', ref: m[1] });
+    }
 
     const css = await listFiles(path.join(publicDir, 'css'), '.css');
     cssRefs = await collectAll(css, [URL_]);
@@ -98,7 +105,9 @@ describe('Icon references (UI kit steps 11b, 11c)', function () {
 
   it('finds the references (toolbar, pages, CSS, JS, doc) and nwl\'s icons', function () {
     assert.isAtLeast(viewRefs.length, 55, 'Mustache image references');
-    assert.isAtLeast(viewRefs.filter(({ file }) => file.endsWith('toolsFull.mustache')).length, 40, 'toolbar references');
+    const toolbar = ({ file }) => (/^toolsFrame |tools(Full|Slider|Buttons)\.mustache$/).test(file);
+    assert.isAtLeast(viewRefs.filter(toolbar).length, 40, 'toolbar references');
+    assert.lengthOf(viewRefs.filter(({ file }) => file.startsWith('toolsFrame ')), 4, 'toolbar frame icons');
     // app/public/css has no url() left since access-style.css went (T002 R2b): any
     // added later is still checked by the next test
     assert.isArray(cssRefs, 'CSS url() references');

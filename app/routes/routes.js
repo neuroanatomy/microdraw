@@ -8,6 +8,7 @@ const {authTokenMiddleware} = nwl;
 const {getHttpImg} = require('../serveHttpImages/serveHttpImages');
 const log = require('../log');
 const {refuseEmbedWrites} = require('../controller/embed/embed-access');
+const {renderToolsFrame} = require('./tools-frame');
 
 module.exports = (app) => {
   log.debug('configuring routes');
@@ -67,8 +68,12 @@ module.exports = (app) => {
     res.redirect(302, '/labels/10regions.json');
   });
 
-  app.get('/microdraw', (req, res /*, next*/) => {
-    res.render('partials/microdraw');
+  // the viewer, put in a shadow root by the data and project pages; its toolbar frame is
+  // nwl-components' (tools-frame.js)
+  app.get('/microdraw', (req, res, next) => {
+    renderToolsFrame(app)
+      .then((toolsFrame) => res.render('partials/microdraw', { toolsFrame }))
+      .catch(next);
   });
 
   app.use('/api', authTokenMiddleware, require('../controller/api/'));
