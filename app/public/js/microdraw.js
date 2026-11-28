@@ -2594,79 +2594,22 @@ const Microdraw = (function () {
       }
     },
 
-    /** GET a URL and parse its JSON answer; an error status throws
-     * (page-helpers.js).
-     * @param {string} url The URL
-     * @returns {Promise<any>} The parsed answer
-     */
-    fetchJSON: (url) => PageHelpers.fetchJSON(url),
-
-    /** The label set used when the project has none: 10 regions. */
-    defaultLabelSet: "/labels/10regions.json",
-
-    /** The URL of the label set of the project's first vectorial layer (T002
-     * 3.2): its `values` is the file name (`source`) or the name of one of the
-     * label sets of /api/getLabelsets. Without a vectorial layer, or with a
-     * `values` that is not a known label set, the default label set. A failed
-     * request throws.
-     * @param {string} project The project's shortname
-     * @returns {Promise<string>} The URL of the label set
-     */
-    projectLabelSetURL: async (project) => {
-      // only the layers, which the visitor may see, not the project's files
-      const layers = await me.fetchJSON(`/project/json/${encodeURIComponent(project)}?var=annotations/list`);
-      const layer = Array.isArray(layers) ? layers.find((a) => a && a.type === "vectorial") : null;
-      if (!layer) {
-        return me.defaultLabelSet;
-      }
-      const sets = await me.fetchJSON("/api/getLabelsets");
-      const found = Array.isArray(sets) && sets.find((s) => s.source === layer.values || s.name === layer.values);
-      if (!found) {
-        console.warn(`Project ${project}: the vectorial layer's label set "${layer.values}" is not known, using 10 regions`);
-
-        return me.defaultLabelSet;
-      }
-
-      return `/labels/${encodeURIComponent(found.source)}`;
-    },
+    /** What the viewer asks for what depends on where it runs: init's second
+     * argument, or the web's (web-host.js, which describes it) */
+    host: null,
 
     /** Resolves once loadLabelSet is done: the regions of a slice are coloured
      * by their label, so a slice's regions wait for it (_fetchSlice). */
     labelSetReady: Promise.resolve(),
 
-    /** Load the label set into me.ontology: the project's (projectLabelSetURL),
-     * or 10 regions without a project or when a request fails. Never rejects.
+    /** Load the host's label set into me.ontology. Never rejects.
      * @returns {Promise<void>} Resolves once the label set is loaded
      */
     loadLabelSet: async () => {
       try {
-        me.ontology = await me._fetchLabelSet();
+        me.ontology = await me.host.labelSet();
       } catch (err) {
-        console.error("cannot load the 10 regions label set:", err.message);
-      }
-    },
-
-    /** The label set for loadLabelSet.
-     * @returns {Promise<object>} The label set
-     */
-    _fetchLabelSet: async () => {
-      let url = me.defaultLabelSet;
-      if (me.project) {
-        try {
-          url = await me.projectLabelSetURL(me.project);
-        } catch (err) {
-          console.log(`cannot find the label set of project ${me.project}, using 10 regions:`, err.message);
-        }
-      }
-      try {
-        return await me.fetchJSON(url);
-      } catch (err) {
-        if (url === me.defaultLabelSet) {
-          throw err;
-        }
-        console.log(`cannot load the label set ${url}, using 10 regions:`, err.message);
-
-        return me.fetchJSON(me.defaultLabelSet);
+        console.error("cannot load a label set:", err.message);
       }
     },
 
@@ -2871,8 +2814,11 @@ const Microdraw = (function () {
       (me.dom.querySelector('#openseadragon1') || me.dom).appendChild(box);
     },
 
-    init: async function (dom) {
+    init: async function (dom, host) {
       me.dom = dom;
+
+      // loaded beside the other scripts, and only if no host was given
+      const webHost = host ? null : me.loadScript('/js/web-host.js');
 
       await me.loadConfiguration();
 
@@ -2897,6 +2843,12 @@ const Microdraw = (function () {
           me.project = me.params.project;
         }
       }
+
+      if (webHost) {
+        await webHost;
+        host = window.MicrodrawWebHost.create({project: me.project});
+      }
+      me.host = host;
 
       me.labelSetReady = me.loadLabelSet();
       me.initMicrodraw();

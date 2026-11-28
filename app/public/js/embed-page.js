@@ -113,8 +113,8 @@
   };
 
   /*
-    Labels and colours, as microdraw.js (projectLabelSetURL, regionColor,
-    regionHashColor)
+    Labels and colours, as web-host.js (projectLabelSetURL) and microdraw.js
+    (regionColor, regionHashColor)
   */
 
   const labelSetURL = async (project) => {
