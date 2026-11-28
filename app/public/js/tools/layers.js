@@ -1,3 +1,4 @@
+/* global PageHelpers */
 /* eslint-disable max-lines -- long tool file, not split in a lint-only change; 2026-10-11 */
 /* global Microdraw */
 
@@ -37,11 +38,10 @@ window.ToolLayers = { layers : (function() {
       let dzi = null;
 
       try {
-        // const _ = new URL(url);
-        const response0 = await fetch(url, { method: 'HEAD' });
-        if (response0.ok) {
-          const response = await fetch(url);
-          dzi = await response.json();
+        // a JSON list of images, or one image, as ?source=
+        dzi = await PageHelpers.fetchDataset(url);
+        if (dzi.tileSources) {
+          dzi.tileSources = await PageHelpers.prepareTileSources(dzi.tileSources, Microdraw.loadScript, window.location.href);
         }
       } catch (error) {
         console.log('Error:', error);

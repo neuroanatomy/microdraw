@@ -69,6 +69,12 @@
 
   const isSameOrigin = (u) => new URL(u, window.location.href).origin === window.location.origin;
 
+  /** @returns {object} fetch's options for a request to this server */
+  const sameOriginInit = () => ({
+    headers: { Accept: 'application/json', [EMBED_HEADER]: typeof embedWsTicket === 'string' ? embedWsTicket : '' },
+    credentials: 'same-origin'
+  });
+
   /**
    * GET a URL and parse its JSON. Requests to this server carry the embed
    * header; others (a dataset hosted elsewhere) do not, so that they need no
@@ -77,11 +83,8 @@
    * @returns {Promise<any>} The answer; rejects with err.status on an error status
    */
   const getJSON = async (u) => {
-    const headers = { Accept: 'application/json' };
-    if (isSameOrigin(u)) {
-      headers[EMBED_HEADER] = typeof embedWsTicket === 'string' ? embedWsTicket : '';
-    }
-    const answer = await PageHelpers.fetchJSON(u, { headers, credentials: 'same-origin' });
+    const init = isSameOrigin(u) ? sameOriginInit() : { headers: { Accept: 'application/json' }, credentials: 'same-origin' };
+    const answer = await PageHelpers.fetchJSON(u, init);
 
     return answer;
   };
@@ -93,14 +96,15 @@
    * @returns {Promise<object>} The description ({tileSources, names, ...})
    */
   const loadSourceJson = async (source) => {
+    // a CZI file is read by the CZI service: never fetched here, nor by /getJson
+    if (PageHelpers.isCziURL(source)) {
+      return PageHelpers.fetchDataset(source);
+    }
     if (isSameOrigin(source)) {
-      return getJSON(source);
+      return PageHelpers.fetchDataset(source, sameOriginInit());
     }
     try {
-      const res = await fetch(source);
-      if (res.ok) {
-        return await res.json();
-      }
+      return await PageHelpers.fetchDataset(source);
     } catch (err) {
       // cross-origin without CORS: through the server
     }
@@ -574,18 +578,9 @@
     if (json.configuration && typeof json.configuration.defaultFillAlpha === 'number') {
       state.fillAlpha = json.configuration.defaultFillAlpha;
     }
-    // OME-Zarr images, as microdraw.js: only loaded when needed
-    const needsOMEZarr = sources.some((s) => s && typeof s === 'object' &&
-      (s.type === 'ome-zarr' || (/\.(zarr|ozx)$/).test(s.url || '')));
-    if (needsOMEZarr) {
-      await PageHelpers.loadScript('/lib/omezarr-tilesource/omezarr-tilesource.js');
-      sources.forEach((s) => {
-        if (s && typeof s === 'object' && s.url) {
-          s.url = new URL(s.url, window.location.href).href;
-        }
-      });
-    }
-    sources.forEach((source, i) => {
+    // OME-Zarr images, as microdraw.js: their reader only loaded when needed
+    const prepared = await PageHelpers.prepareTileSources(sources, PageHelpers.loadScript, window.location.href);
+    prepared.forEach((source, i) => {
       const name = (json.names && json.names[i]) ? String(json.names[i]) : String(i);
       state.imageOrder.push(name);
       state.tileSources[name] = { source };

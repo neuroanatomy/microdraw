@@ -13,6 +13,7 @@ const { deleteStoredProject } = require('./project.delete');
 const { findCurrentProject, saveProjectVersion } = require('./currentProject');
 const { currentTextValues } = require('../textAnnotations');
 const { canSaveProject, catchErrors, droppedMessage, filesListIncomplete, ignoredChangesMessage, jsonForScript, keepFieldsWithoutFilesEdit, keepListsWithoutEditRights, projectFilesRoute, projectListRoute, saveRefusal } = require('neuroweblab');
+const { cziServiceForScript } = require('../cziService');
 const { noViewStatus, projectDeleteRoute, projectJsonRoute, projectKey, projectPageRoute, projectSaveRoute, projectSettingsRoute, visitor } = require('neuroweblab');
 const { escapeHTML } = require('../escape');
 const validator = function (req, res, next) {
@@ -46,6 +47,7 @@ const project = projectPageRoute({
       projectName: json.name,
       projectInfo: jsonForScript(visibleProject(json, getLoggedUser(req))),
       wsPort: req.app.get('wsPort') || 8080,
+      cziService: cziServiceForScript(),
       login
     });
   }

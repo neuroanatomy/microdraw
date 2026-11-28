@@ -11,6 +11,7 @@
  */
 const _ = require('lodash');
 const { catchErrors, jsonForScript, mintWsTicket, projectEmbedRoute } = require('neuroweblab');
+const { cziServiceForScript } = require('../cziService');
 const { findCurrentProject } = require('../project/currentProject');
 const { mayEmbedData, embedLayers } = require('./embed-access');
 
@@ -77,7 +78,8 @@ const dataEmbedUnsafe = async function (req, res) {
     title: decision.project && decision.project.name ? `${decision.project.name}: MicroDraw` : 'MicroDraw',
     params: jsonForScript(embedParams(req.query)),
     embedWsTicket: jsonForScript(embedWsTicket),
-    wsPort: req.app.get('wsPort') || 8080
+    wsPort: req.app.get('wsPort') || 8080,
+    cziService: cziServiceForScript()
   });
 };
 

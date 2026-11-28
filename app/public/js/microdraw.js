@@ -2206,6 +2206,20 @@ const Microdraw = (function () {
       if( me.debug ) { console.log('> loadSourceJson'); }
 
       return new Promise((resolve, reject) => {
+        // an OME-Zarr store is a folder: there is no description to fetch
+        if (PageHelpers.isZarrURL(me.params.source)) {
+          resolve({ tileSources: [{ type: 'ome-zarr', url: me.params.source }] });
+
+          return;
+        }
+
+        // a CZI file is read by the CZI service: never fetched here, nor by /getJson
+        if (PageHelpers.isCziURL(me.params.source)) {
+          PageHelpers.fetchDataset(me.params.source).then(resolve, reject);
+
+          return;
+        }
+
         const directFetch = new Promise((rs, rj) => {
           // determine if request will be blocked by CORS policy
           if ((new URL(me.params.source)).origin !== window.origin) {
@@ -2224,8 +2238,10 @@ const Microdraw = (function () {
             jqGetJSON(me.params.source, { 'Content-Type': 'application/json' })
               .then(rs, rj);
           } else {
+            // a JSON list, or one DeepZoom image
             fetch(me.params.source)
-              .then((data) => data.json())
+              .then((data) => data.text())
+              .then((text) => PageHelpers.parseDataset(text, me.params.source))
               .then((json) => {
                 rs(json);
               })
@@ -2870,6 +2886,20 @@ const Microdraw = (function () {
       }
     },
 
+    /**
+        * @desc Say on the page why the source cannot be shown
+        * @param {Error} err What went wrong
+        * @returns {void}
+        */
+    showSourceError: (err) => {
+      const box = document.createElement('div');
+      box.id = 'sourceError';
+      box.setAttribute('role', 'alert');
+      box.style.cssText = 'position:absolute;left:0;right:0;top:40%;z-index:20;text-align:center;padding:0 2em;color:black';
+      box.textContent = `This image cannot be shown: ${err.message}`;
+      (me.dom.querySelector('#openseadragon1') || me.dom).appendChild(box);
+    },
+
     init: async function (dom) {
       me.dom = dom;
 
@@ -2878,7 +2908,7 @@ const Microdraw = (function () {
       me.params = me.deparam();
 
       /* recognised parameters:
-         source: url to the dzi file
+         source: url of an image (.dzi, tile service, OME-Zarr store) or of a JSON list of images
          slice: initial slice to display
          project: project name
          displayTools: show or hide the tools
@@ -2900,28 +2930,19 @@ const Microdraw = (function () {
       me.labelSetReady = me.loadLabelSet();
       me.initMicrodraw();
 
-      const json = await me.loadSourceJson();
-
-      // OMEZarrTileSource must be registered on OpenSeadragon before initOpenSeadragon()
-      // calls viewer.open(). Load it only when a source actually needs it: DZI-only pages
-      // (the common case) never pay for the 1.6 MB bundle. ".zarr"/".ozx" is also accepted
-      // in case a source is hand-authored without the "type" field.
-      const needsOMEZarr = (json.tileSources || []).some((source) => (
-        source && typeof source === 'object' &&
-        (source.type === 'ome-zarr' || (/\.(zarr|ozx)$/).test(source.url || ''))
-      ));
-      if (needsOMEZarr) {
-        await me.loadScript("/lib/omezarr-tilesource/omezarr-tilesource.js");
-
-        // OMEZarrTileSource resolves its store with `new URL(source.url)`, which
-        // throws on a relative path. Resolving against the current page lets a
-        // data.json reference its store relatively, so the same file works
-        // whatever host and port it is served from.
-        json.tileSources.forEach((source) => {
-          if (source && typeof source === 'object' && source.url) {
-            source.url = new URL(source.url, window.location.href).href;
-          }
-        });
+      let json;
+      try {
+        json = await me.loadSourceJson();
+        if (json.tileSources) {
+          // OMEZarrTileSource must be registered on OpenSeadragon before initOpenSeadragon()
+          // calls viewer.open(). Its 1.6 MB bundle is loaded only when a source needs it.
+          // Relative store addresses are resolved against the current page, so the same
+          // data.json works whatever host and port it is served from.
+          json.tileSources = await PageHelpers.prepareTileSources(json.tileSources, me.loadScript, window.location.href);
+        }
+      } catch (err) {
+        me.showSourceError(err);
+        throw err;
       }
 
       me.initOpenSeadragon(json);

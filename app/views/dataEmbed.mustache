@@ -40,6 +40,8 @@
 <script>
 // the websocket server's port, as in data.mustache
 window.MICRODRAW_WS_PORT = {{ wsPort }};
+// where CZI files are read (CZI_SERVICE_URL); empty without a CZI service
+window.MICRODRAW_CZI_SERVICE = {{{ cziService }}};
 var params = {{{params}}};
 var embedWsTicket = {{{embedWsTicket}}};
 </script>

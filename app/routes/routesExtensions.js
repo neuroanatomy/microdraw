@@ -1,6 +1,8 @@
 const http = require('http');
 const https = require('https');
 const log = require('../log');
+// the pages' reading of what an address names: a JSON list or one image
+const { isZarrURL, isCziURL, parseDataset } = require('../public/js/page-helpers');
 
 /**
  * Make an HTTP(S) GET request, returning the response metadata and body as a Buffer.
@@ -66,16 +68,38 @@ module.exports = (app) => {
       sourceHostname = target.protocol + '//' + target.host;
       sourcePath = target.pathname + target.search;
 
+      // what a single image is called in the answer: the browser loads it itself,
+      // so a path on this server stays a path
+      const address = target.host === req.get('host') && source.startsWith('/') ? source : target.href;
+
+      // an OME-Zarr store is a folder: there is no description to fetch
+      if (isZarrURL(address)) {
+        return res.status(200).send(JSON.stringify({ tileSources: [{ type: 'ome-zarr', url: address }] }));
+      }
+
+      // nor is a CZI file, which is gigabytes: the viewer asks the CZI service
+      if (isCziURL(address)) {
+        return res.status(200).send(JSON.stringify({ tileSources: [address] }));
+      }
+
       const { statusCode, body } = await httpGet(sourceHostname + sourcePath);
 
       if(statusCode >= 400) {
         throw body.toString();
       }
 
-      const json = JSON.parse(body.toString());
+      const text = body.toString();
+      const json = parseDataset(text, address);
+      // one DeepZoom image (XML, not a JSON list): nothing to rewrite
+      if (text.trim().startsWith('<')) {
+        return res.status(200).send(JSON.stringify(json));
+      }
       json.tileSources = json.tileSources.map((result) => {
         let tileSource = result;
-        if(typeof result === 'string') {
+        if(typeof result === 'string' && (isZarrURL(result) || isCziURL(result))) {
+          // neither a store's files nor a CZI file can go through /getTile
+          tileSource = new URL(result, sourceHostname + '/').href;
+        } else if(typeof result === 'string') {
           if((new RegExp('^http')).test(tileSource) === false) {
             if(tileSource[0] === '/') {
               tileSource = thisHostname + '/getTile?source=' + sourceHostname + tileSource;

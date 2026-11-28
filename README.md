@@ -146,6 +146,18 @@ Deploy environments may not allow for `fs` access. As a result, Microdraw uses [
     }
     ```
 
+### Layers
+
+The Layers tool superimposes other datasets on the one being annotated, each with its own opacity. A layer is the URL of a json file like the one above (`tileSources` list).
+
+Layers can be added one by one in the Layers panel, or configured in the page URL with the `layers` parameter: a JSON list of `[name, url]` pairs, with an optional third element giving the opacity in percent (default 50).
+
+```
+https://microdraw.example.org/project/myproject?source=...&slice=0&layers=[["name1","url1"],["name2","url2",80]]
+```
+
+The layers are set up when the page opens. The parameter is kept up to date as layers are added, deleted or their opacity is changed, so the address bar always describes the current display and can be bookmarked or shared. The older `layers=url,name,opacity;url,name,opacity` form (opacity between 0 and 1) is still read.
+
 
 ## Testing
 

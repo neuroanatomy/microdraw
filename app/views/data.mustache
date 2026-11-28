@@ -30,6 +30,8 @@
 // Port the websocket server is listening on, injected by the server so that
 // the client still connects correctly when it is not the default 8080.
 window.MICRODRAW_WS_PORT = {{ wsPort }};
+// where CZI files are read (CZI_SERVICE_URL); empty without a CZI service
+window.MICRODRAW_CZI_SERVICE = {{{ cziService }}};
 
 async function attach () {
   const res = await fetch("/microdraw");
