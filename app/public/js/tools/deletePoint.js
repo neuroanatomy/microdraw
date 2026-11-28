@@ -36,7 +36,7 @@ window.ToolDeletePoint = { deletePoint : (function() {
         }
         Microdraw.selectRegion(re);
 
-        if( hitResult.type === 'segment' ) {
+        if( hitResult.type === 'segment' && !Microdraw.isRectangle(re) ) {
           hitResult.segment.remove();
           Microdraw.commitMouseUndo();
         }

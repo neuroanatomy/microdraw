@@ -24,6 +24,13 @@ window.ToolSubtractRegion = { subtractRegion : (function() {
       if( hitResult ) {
         var re = Microdraw.ImageInfo[Microdraw.currentImage].Regions.find((region) => region.path === hitResult.item);
 
+        // a rectangle annotation is not combined with other regions
+        if( Microdraw.isRectangle(re) || Microdraw.isRectangle(Microdraw.region) ) {
+          Microdraw.selectRegion(re);
+
+          return;
+        }
+
         // select path
         if( Microdraw.region && Microdraw.region !== re ) {
           Microdraw.region.path.selected = false;

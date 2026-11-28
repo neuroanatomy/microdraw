@@ -37,6 +37,13 @@ window.RegionsList = (function () {
     },
     isText: (reg) => reg.name === "textAnnotation",
 
+    // the text of an annotation with a text of its own, or null for a label's region
+    ownText: (reg) => {
+      const rectangleText = Microdraw.isRectangle(reg) ? reg.path.data.text || "" : null;
+
+      return L.isText(reg) ? reg.path.content : rectangleText;
+    },
+
     // the text of a text annotation, on one line and shortened
     shortText: (content) => {
       const text = String(content || "").replace(/\s+/g, " ")
@@ -46,6 +53,9 @@ window.RegionsList = (function () {
     },
 
     swatchColor: (reg) => {
+      if (Microdraw.isRectangle(reg)) {
+        return reg.path.strokeColor.toCSS(true);
+      }
       if (L.isText(reg)) {
         return reg.path.fillColor ? reg.path.fillColor.toCSS(true) : "transparent";
       }
@@ -56,7 +66,7 @@ window.RegionsList = (function () {
 
     signature: (regions) => JSON.stringify([
       Microdraw.currentImage,
-      regions.map((reg) => [reg.uid, reg.name, L.isText(reg) ? reg.path.content : "", reg === Microdraw.region, Microdraw.hiddenRegions.has(reg.uid)])
+      regions.map((reg) => [reg.uid, reg.name, L.ownText(reg), Microdraw.isRectangle(reg) && L.swatchColor(reg), reg === Microdraw.region, Microdraw.hiddenRegions.has(reg.uid)])
     ]),
 
     cell: (className, ...children) => {
@@ -100,14 +110,17 @@ window.RegionsList = (function () {
       return span;
     },
 
+    // eslint-disable-next-line max-statements
     nameCell: (reg) => {
-      if (!L.isText(reg)) {
+      const own = L.ownText(reg);
+      if (own === null) {
         return L.cell("region-name", reg.name);
       }
       const marker = document.createElement("span");
-      Object.assign(marker, {className: "region-text-marker", textContent: "T", title: "Text annotation"});
+      const [textContent, title] = L.isText(reg) ? ["T", "Text annotation"] : ["▭", "Rectangle annotation"];
+      Object.assign(marker, {className: "region-text-marker", textContent, title});
       const text = document.createElement("span");
-      Object.assign(text, {className: "region-text", textContent: L.shortText(reg.path.content)});
+      Object.assign(text, {className: "region-text", textContent: L.shortText(own)});
       const td = L.cell("region-name", marker, text);
       td.setAttribute("aria-label", `Text: ${text.textContent}`);
 

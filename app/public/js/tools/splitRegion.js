@@ -154,7 +154,8 @@ window.ToolSplitRegion = {splitRegion: (function() {
       newRegionPath is outlining that part of region which has not been overlaid by prevRegion
       i.e. newRegion is what was region and prevRegion color should go to the other part */
       const prevRegion = tool._selectPathToSplit(hitItem);
-      if(!prevRegion) {
+      // a rectangle annotation is neither split nor used to split
+      if(!prevRegion || Microdraw.isRectangle(prevRegion) || Microdraw.isRectangle(hitItem)) {
         return;
       }
 

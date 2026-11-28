@@ -24,7 +24,10 @@ window.ToolMove = {move: (function() {
     },
 
     _handleHitResultType: function (hitResult, point) {
-      if( hitResult.type === 'handle-in' ) {
+      if( Microdraw.isRectangle(Microdraw.region) && Microdraw.region.path === hitResult.item ) {
+        // wherever it is hit, it is only moved (Select edits and resizes it):
+        // no panel, and no point dragged by itself
+      } else if( hitResult.type === 'handle-in' ) {
         Microdraw.handle = hitResult.segment.handleIn;
         Microdraw.handle.point = point;
       } else if( hitResult.type === 'handle-out' ) {
@@ -69,7 +72,7 @@ window.ToolMove = {move: (function() {
       Microdraw.mouseUndo = Microdraw.getUndo();
       Microdraw.handle = null;
 
-      const hitResult = paper.project.hitTest(point, {
+      const hitResult = Microdraw.hitTest(point, {
         tolerance : Microdraw.tolerance/paper.view.zoom,
         stroke: true,
         segments: true,

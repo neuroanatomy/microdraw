@@ -11,7 +11,7 @@ window.ToolToPolygon = {toPolygon: (function() {
          */
     bezierToPolygon: function bezierToPolygon() {
       console.log("> bezierToPolygon");
-      if (Microdraw.region !== null) {
+      if (Microdraw.region !== null && !Microdraw.isRectangle(Microdraw.region)) {
         if (Microdraw.region.path.hasHandles()) {
           // eslint-disable-next-line no-alert
           if (confirm('Convert bezier curve into polygon?')) {

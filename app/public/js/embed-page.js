@@ -183,7 +183,14 @@
     ];
   };
 
-  const isRegionShown = (name) => name === 'textAnnotation' || !state.hiddenLabels.has(name);
+  // text and rectangle annotations have a colour of their own, and are no label
+  const isAnnotation = (name) => name === 'textAnnotation' || name === window.RectangleLabels.NAME;
+
+  const isRegionShown = (name) => isAnnotation(name) || !state.hiddenLabels.has(name);
+
+  const syncRectangleLabels = () => {
+    window.RectangleLabels.sync(state.regions.filter((r) => r.name === window.RectangleLabels.NAME).map((r) => r.item));
+  };
 
   /**
    * A paper.js item from its exported JSON, as microdraw.js's _pathFromJSON
@@ -213,7 +220,7 @@
       const { name } = doc.annotation;
       if (name === 'textAnnotation') {
         if (item.fillColor) { item.fillColor.alpha = 1; }
-      } else {
+      } else if (!isAnnotation(name)) {
         const [r, g, b] = regionColor(name);
         item.fillColor = new paper.Color(r / 255, g / 255, b / 255, state.fillAlpha);
       }
@@ -236,6 +243,7 @@
     state.regions = [];
     sortByOrder(Array.isArray(data) ? data : []).forEach(drawRegion);
     state.drawnSlice = state.current;
+    syncRectangleLabels();
     paper.view.draw();
     // eslint-disable-next-line no-use-before-define
     updateLabelsList();
@@ -281,7 +289,7 @@
   const updateLabelsList = () => {
     const list = el('labelsList');
     list.textContent = '';
-    const names = [...new Set(state.regions.map((r) => r.name).filter((n) => n !== 'textAnnotation'))];
+    const names = [...new Set(state.regions.map((r) => r.name).filter((n) => !isAnnotation(n)))];
     if (names.length === 0) {
       const empty = document.createElement('li');
       empty.className = 'empty';
@@ -326,6 +334,7 @@
     const bounds = viewer.viewport.getBounds(true);
     paper.view.setCenter(MAGIC_V * (bounds.x + (bounds.width / 2)), MAGIC_V * (bounds.y + (bounds.height / 2)));
     paper.view.zoom = (viewer.source.width * z) / MAGIC_V;
+    syncRectangleLabels();
     paper.view.draw();
   };
 
@@ -464,6 +473,7 @@
     state.drawnSlice = null;
     paper.project.activeLayer.removeChildren();
     state.regions = [];
+    syncRectangleLabels();
     el('slice-number').textContent = `Slice ${state.current}`;
     el('previous').disabled = index === 0;
     el('next').disabled = index === state.imageOrder.length - 1;

@@ -42,7 +42,7 @@ window.ToolAddPoint = { addPoint : (function() {
         }
         Microdraw.selectRegion(re);
 
-        if( hitResult.type === 'stroke') {
+        if( hitResult.type === 'stroke' && !Microdraw.isRectangle(re) ) {
           Microdraw.region.path
             .curves[hitResult.location.index]
             .divideAt(hitResult.location);

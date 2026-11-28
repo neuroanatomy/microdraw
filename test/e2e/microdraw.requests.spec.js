@@ -22,7 +22,7 @@ const TOOLS = [
   'addPoint', 'addRegion', 'back', 'backward', 'closeMenu', 'color', 'copy', 'delete',
   'deletePoint', 'draw', 'drawLine', 'drawPolygon', 'findContours', 'flipRegion',
   'foreward', 'front', 'fullscreen', 'home', 'layers', 'move', 'navigate', 'next',
-  'openMenu', 'paste', 'previous', 'redo', 'rotate', 'save', 'screenshot', 'select',
+  'openMenu', 'paste', 'previous', 'rectangleAnnotation', 'redo', 'rotate', 'save', 'screenshot', 'select',
   'simplify', 'splitRegion', 'subtractRegion', 'textAnnotation', 'toBezier',
   'toPolygon', 'undo', 'zoomIn', 'zoomOut'
 ];

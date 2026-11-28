@@ -35,6 +35,7 @@
       { "name": "Delete (\u232b)", "id": "delete", "desc": "", "exportedVar": ["ToolDelete"], "scriptPath": "/js/tools/delete.js", "iconPath": "/lib/nwl-components/icons/delete.svg" },
       { "name": "FindContours", "id": "findContours", "desc": "Find contours using a threshold", "exportedVar": ["ToolFindContours"], "scriptPath": "/js/tools/findContours.js", "iconPath": "/lib/nwl-components/icons/findContours.svg" },
       { "name": "TextAnnotation", "id": "textAnnotation", "desc": "Enter a text annotation", "exportedVar": ["ToolTextAnnotation"], "scriptPath": "/js/tools/textAnnotation.js", "iconPath": "/lib/nwl-components/icons/textAnnotation.svg" },
+      { "name": "RectangleAnnotation", "id": "rectangleAnnotation", "desc": "Draw a rectangle with a text annotation", "exportedVar": ["ToolRectangleAnnotation"], "scriptPath": "/js/tools/rectangleAnnotation.js", "iconPath": "/img/rectangleAnnotation.svg" },
       { "name": "Undo (\u2318Z)", "id": "undo", "desc": "undo last action(s)", "exportedVar": ["ToolUndo"], "scriptPath": "/js/tools/undo.js", "iconPath": "/lib/nwl-components/icons/undo.svg" },
       { "name": "Redo (\u21e7\u2318Z)", "id": "redo", "desc": "redo last action(s)", "exportedVar": ["ToolRedo"], "scriptPath": "/js/tools/redo.js", "iconPath": "/lib/nwl-components/icons/redo.svg" }
     ]

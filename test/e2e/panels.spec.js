@@ -2,7 +2,7 @@
 'use strict';
 
 /*
-  The viewer's floating panels (labels, layers, text annotation) are
+  The viewer's floating panels (labels, layers, text and rectangle annotation) are
   nwl-components' .nwl-panel (3.2.0): a header that stays and a body that
   scrolls. Made short, so that their body scrolls, each keeps its header at its
   top after scrolling to the bottom; the labels and layers panels are still
@@ -14,7 +14,7 @@
   (Before, centred by translate(-50%, -50%), it grew in every direction.)
   The labels and layers panels are resized by nwl-components' resize handle
   (3.3.0), with a finger on a tablet as with the mouse, and their native
-  `resize` is off. (Before, `resize: both`: iOS and iPadOS draw no resize
+  `resize` is off. The annotation panels are dragged too, not resized. (Before, `resize: both`: iOS and iPadOS draw no resize
   corner, so a finger couldn't resize them.)
 */
 const { assert } = require('chai');
@@ -28,9 +28,10 @@ const TABLET = { width: 1180, height: 820, deviceScaleFactor: 1, isMobile: true,
 const HANDLE = ':scope > .nwl-panel-resize-handle';
 
 const PANELS = {
-  labels: { panel: '#labelset-panel', header: '#labelset-header', close: '#labels-close', open: () => window.ToolColor.color.click('select'), drag: true },
-  layers: { panel: '#layers-panel', header: '#layers-header', close: '#layers-close', open: () => Microdraw.tools.layers.click('select'), drag: true },
-  'text annotation': { panel: '#text-annotation-panel', header: '#header', close: '#text-annotation-close', open: () => Microdraw.tools.textAnnotation.mouseDown([100, 100]), drag: false }
+  labels: { panel: '#labelset-panel', header: '#labelset-header', close: '#labels-close', open: () => window.ToolColor.color.click('select'), drag: true, resize: true },
+  layers: { panel: '#layers-panel', header: '#layers-header', close: '#layers-close', open: () => Microdraw.tools.layers.click('select'), drag: true, resize: true },
+  'text annotation': { panel: '#text-annotation-panel', header: '#header', close: '#text-annotation-close', open: () => Microdraw.tools.textAnnotation.mouseDown([100, 100]), drag: true, resize: false },
+  'rectangle annotation': { panel: '#rectangle-annotation-panel', header: '.annotation-header', close: '#rectangle-annotation-close', open: () => Microdraw.tools.rectangleAnnotation.edit({ uid: 'none', path: new window.paper.Path.Rectangle({ from: [0, 0], to: [10, 10], strokeColor: 'red', insert: false }) }), drag: true, resize: false }
 };
 
 let context;
@@ -139,7 +140,7 @@ describe('The viewer\'s floating panels keep their header while they scroll (nwl
   Object.entries(PANELS).forEach(([name, p]) => {
     it(`${name}: the header stays at the top after the short panel's body is scrolled to the bottom`, async () => {
       await page.evaluate(p.open);
-      const r = await scrolledToBottom(p, name === 'text annotation' ? '90px' : '120px');
+      const r = await scrolledToBottom(p, p.resize ? '120px' : '90px');
       assert.equal(r.display, 'flex');
       assert.isTrue(r.overflows, 'the body is taller than the short panel');
       assert.isTrue(r.scrolled, 'the body scrolls');
@@ -148,7 +149,7 @@ describe('The viewer\'s floating panels keep their header while they scroll (nwl
       assert.isFalse(r.headerBelowBody, 'the body starts below the header');
       // the labels and layers panels have nwl-components' resize handle, and no native resize
       assert.equal(r.resize, 'none');
-      assert.equal(r.handle, p.drag ? 1 : 0);
+      assert.equal(r.handle, p.resize ? 1 : 0);
     }).timeout(U.longTimeout);
 
     it(`${name}: closes with its close button and opens again`, async () => {
@@ -171,7 +172,9 @@ describe('The viewer\'s floating panels keep their header while they scroll (nwl
         const after = await rectOf(p.panel);
         assert.deepEqual({ x: Math.round(after.left - before.left), y: Math.round(after.top - before.top) }, DELTA);
       }).timeout(U.longTimeout);
+    }
 
+    if (p.resize) {
       it(`${name}: resized by its handle with the mouse, its top-left corner stays; then dragged, it follows the pointer`, async () => {
         await page.evaluate(p.open);
         const before = round(await sizeOf(p.panel));
@@ -186,6 +189,17 @@ describe('The viewer\'s floating panels keep their header while they scroll (nwl
       }).timeout(U.longTimeout);
     }
   });
+
+  it('an annotation panel stays inside the window, and where it was put when opened again', async () => {
+    const p = PANELS['rectangle annotation'];
+    await page.evaluate(p.open);
+    await mouseDrag(await headerPoint(p.header), { x: -2000, y: -2000 });
+    assert.deepEqual(round(await rectOf(p.panel)), { left: 0, top: 0 });
+    await (await page.evaluateHandle((s) => Microdraw.dom.querySelector(s), p.close)).click();
+    assert.equal(await displayOf(p.panel), 'none', 'the close button closes, it does not drag');
+    await page.evaluate(p.open);
+    assert.deepEqual(round(await rectOf(p.panel)), { left: 0, top: 0 });
+  }).timeout(U.longTimeout);
 
   it('no page errors', () => {
     assert.deepEqual(errors, []);
@@ -218,7 +232,7 @@ describe('On a tablet, a finger resizes the floating panels by their handle (nwl
     await H.closeContext(context);
   });
 
-  Object.entries(PANELS).filter(([, p]) => p.drag)
+  Object.entries(PANELS).filter(([, p]) => p.resize)
     .forEach(([name, p]) => {
       it(`${name}: a finger's drag on its handle resizes it, its top-left corner stays; no native resize`, async () => {
         await page.evaluate(p.open);
@@ -231,6 +245,18 @@ describe('On a tablet, a finger resizes the floating panels by their handle (nwl
         assert.deepEqual({ width: resized.width - before.width, height: resized.height - before.height }, GROW, 'it grows by the drag');
         assert.equal(await page.evaluate((s) => getComputedStyle(Microdraw.dom.querySelector(s)).resize, p.panel), 'none');
         await page.evaluate((s) => { Microdraw.dom.querySelector(s).style.display = 'none'; }, p.panel);
+      }).timeout(U.longTimeout);
+    });
+
+  Object.entries(PANELS).filter(([, p]) => !p.resize)
+    .forEach(([name, p]) => {
+      it(`${name}: a finger drags it by its header`, async () => {
+        await page.evaluate(p.open);
+        const before = round(await sizeOf(p.panel));
+        await touchDrag(await headerPoint(p.header), GROW);
+        const dragged = round(await sizeOf(p.panel));
+        assert.deepEqual({ x: dragged.left - before.left, y: dragged.top - before.top }, { x: GROW.width, y: GROW.height });
+        await page.evaluate((sel) => { Microdraw.dom.querySelector(sel).style.display = 'none'; }, p.panel);
       }).timeout(U.longTimeout);
     });
 

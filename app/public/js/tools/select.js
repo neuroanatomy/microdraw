@@ -11,8 +11,10 @@ window.ToolSelect = {select: (function() {
          * @param {object} dpoint The movement of the point
          * @return {void}
         */
-    // eslint-disable-next-line no-unused-vars -- keeps the tool interface (microdraw.js calls mouseDrag(point, dpoint)); body is commented out; 2026-10-11
+    // eslint-disable-next-line no-unused-vars -- keeps the tool interface (microdraw.js calls mouseDrag(point, dpoint)); 2026-10-11
     mouseDrag: function mouseDrag(point, dpoint) {
+      // a corner of a rectangle annotation; moving regions is commented out
+      Microdraw.tools.rectangleAnnotation.resize(point);
 
       // event.stopHandlers = true;
       // for( var reg of Microdraw.ImageInfo[Microdraw.currentImage].Regions ) {
@@ -36,7 +38,11 @@ window.ToolSelect = {select: (function() {
     },
 
     _handleHitResultType: function (hitResult, point) {
-      if( hitResult.type === 'handle-in' ) {
+      if( Microdraw.isRectangle(Microdraw.region) && Microdraw.region.path === hitResult.item ) {
+        // a corner resizes it, the rest opens its panel. Its points are not
+        // dragged one by one: it stays a rectangle
+        Microdraw.tools.rectangleAnnotation.press(Microdraw.region, hitResult);
+      } else if( hitResult.type === 'handle-in' ) {
         Microdraw.handle = hitResult.segment.handleIn;
         Microdraw.handle.point = point;
       } else if( hitResult.type === 'handle-out' ) {
@@ -77,11 +83,13 @@ window.ToolSelect = {select: (function() {
      * @param {object} point The point where you click (x,y)
      * @returns {void}
      */
+    // eslint-disable-next-line max-statements
     mouseDown: function mouseDown(point) {
       Microdraw.mouseUndo = Microdraw.getUndo();
       Microdraw.handle = null;
+      Microdraw.tools.rectangleAnnotation.resizing = null;
 
-      const hitResult = paper.project.hitTest(point, {
+      const hitResult = Microdraw.hitTest(point, {
         tolerance : Microdraw.tolerance/paper.view.zoom,
         stroke: true,
         segments: true,

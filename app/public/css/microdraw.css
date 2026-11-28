@@ -607,8 +607,8 @@ b.layer-item {
 /*-----------------*/
 
 /*------------------*/
-/*  Text Annotation */
-#text-annotation-panel {
+/*  Text and Rectangle Annotation */
+#text-annotation-panel, #rectangle-annotation-panel {
     display: none;
     position: fixed;
     top: 50%;
@@ -621,28 +621,50 @@ b.layer-item {
     z-index: 100;
     font-size: 0.8rem;
 }
-#text-annotation-panel > #header {
+#text-annotation-panel > #header, #rectangle-annotation-panel > .annotation-header {
     height: 36px;
     background-color: var(--nwl-grey-66);
     padding: 0 5px 0 10px;
-    pointer-events: none;
+    /* the panel is dragged by it, also with a finger */
+    cursor: move;
+    touch-action: none;
 }
-#add-text-annotation > b {
+#add-text-annotation > b, .annotation-form > b {
     display: inline-block;
     width: 60px;
     margin-left: 10px;
 }
-#add-text-annotation > input[type="text"] {
+/* each label's middle at its field's middle */
+#add-text-annotation > b, .annotation-form > b,
+#add-text-annotation > input, .annotation-form > input, .annotation-form > span {
+    vertical-align: middle;
+}
+/* 10px between a field and the next; the same above and below, so that it stays
+   level with its label */
+#add-text-annotation > input, .annotation-form > input {
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+#add-text-annotation > input[type="text"], .annotation-form > input[type="text"] {
     width: calc(100% - 80px);
 }
-#add-text-annotation > input[type="color"], input[type="number"] {
+#add-text-annotation > input[type="color"], .annotation-form > input[type="color"], input[type="number"] {
     width: 60px;
 }
-#add-text-annotation > div {
+#add-text-annotation > div, .annotation-form > div {
     display: block;
     position: absolute;
     right: 10px;
     bottom: 10px;
+}
+/* taller than the text annotation's: it has a width and a height */
+#rectangle-annotation-panel {
+    height: 270px;
+    max-height: 100vh;
+}
+/* room for sizes of many digits */
+.annotation-form > input[type="number"] {
+    width: 90px;
 }
 
 /*------------------*/

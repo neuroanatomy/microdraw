@@ -11,7 +11,7 @@ window.ToolToBezier = {toBezier: (function() {
          */
     polygonToBezier: function polygonToBezier() {
       console.log("> polygonToBezier");
-      if (Microdraw.region !== null) {
+      if (Microdraw.region !== null && !Microdraw.isRectangle(Microdraw.region)) {
         if (Microdraw.region.path.hasHandles()) {
           return;
         }

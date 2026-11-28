@@ -107,3 +107,29 @@
     </div>
     </div>
 </div>
+
+<!-- Rectangle Annotation -->
+<div id="rectangle-annotation-panel" class="nwl-panel">
+    <div class="annotation-header nwl-panel-header">
+        <img
+        id="rectangle-annotation-close" class="button" alt="close" src="/lib/nwl-components/icons/times-circle.svg"
+        onclick="Microdraw.tools.rectangleAnnotation.cancel()"
+        style="float:right;pointer-events:auto;"/><br />
+        <b>Rectangle Annotation</b>
+    </div>
+
+    <div class="nwl-panel-body">
+    <div class="annotation-form" onkeydown="Microdraw.tools.rectangleAnnotation.onKeyDown(event)">
+        <b>Text</b> <input type="text" placeholder="Enter annotation text" ></input> <br />
+        <b>Color</b> <input type="color" value="#ff0000" ></input> <br />
+        <b>Width</b> <input type="number" data-size="width" min="1" step="1" aria-label="Width in image pixels"></input> <span>px</span> <br />
+        <b>Height</b> <input type="number" data-size="height" min="1" step="1" aria-label="Height in image pixels"></input> <span>px</span> <br />
+        <br />
+        <div>
+            <button type="button" data-action="add" onclick="Microdraw.tools.rectangleAnnotation.add()">Add</button>
+            <button type="button" data-action="update" onclick="Microdraw.tools.rectangleAnnotation.update()">Update</button>
+            <button type="button" data-action="cancel" onclick="Microdraw.tools.rectangleAnnotation.cancel()">Cancel</button>
+        </div>
+    </div>
+    </div>
+</div>

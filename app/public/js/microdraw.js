@@ -396,9 +396,56 @@ const Microdraw = (function () {
        * @returns {void}
        */
     regionsChanged: function () {
+      me.syncRectangleLabels();
       if (window.RegionsList) {
         window.RegionsList.schedule();
       }
+    },
+
+    /**
+       * @param {object} reg A region
+       * @returns {boolean} true if it is a rectangle annotation: a rectangle
+       * with its own text and colour, not a label of the label set
+       */
+    isRectangle: (reg) => Boolean(reg) && reg.name === "rectangleAnnotation",
+
+    // the labels of the rectangle annotations follow them (rectangle-labels.js)
+    syncRectangleLabels: () => {
+      if (!window.RectangleLabels || !window.paper || !paper.project) {
+        return;
+      }
+      const section = me.ImageInfo[me.currentImage];
+      window.RectangleLabels.sync((section ? section.Regions : []).filter(me.isRectangle).map((reg) => reg.path));
+    },
+
+    /**
+       * @desc paper.js' hitTest, with the labels of the rectangle annotations,
+       * which are drawn on top: a hit on a label is a hit on its rectangle, or
+       * on its corner if one is that close (to resize it)
+       * @param {object} point A point, in project coordinates
+       * @param {object} options The options of paper.js' hitTest
+       * @returns {object|null} The hit result
+       */
+    hitTest: (point, options) => {
+      const id = window.RectangleLabels.pathIdAt(point);
+      const reg = id && me.ImageInfo[me.currentImage].Regions.find((r) => r.path.id === id);
+
+      if (!reg) {
+        return paper.project.hitTest(point, options);
+      }
+      const segment = options.segments && reg.path.segments.find((s) => s.point.getDistance(point) <= options.tolerance);
+
+      return segment ? {type: "segment", item: reg.path, segment} : {type: "fill", item: reg.path};
+    },
+
+    /**
+       * @param {object} point A point, in project coordinates
+       * @returns {object|undefined} The rectangle annotation hit at `point`
+       */
+    rectangleAt: (point) => {
+      const hit = me.hitTest(point, {tolerance: me.tolerance/paper.view.zoom, stroke: true, fill: true});
+
+      return me.ImageInfo[me.currentImage].Regions.find((r) => me.isRectangle(r) && hit && r.path === hit.item);
     },
 
     /**
@@ -485,6 +532,10 @@ const Microdraw = (function () {
        */
     changeRegionName: function (reg, name) {
       if( me.debug>1 ) { console.log("> changeRegionName"); }
+      // a rectangle annotation keeps its name and its own colour
+      if (me.isRectangle(reg)) {
+        return;
+      }
 
       const color = me.regionColor(name);
 
@@ -610,7 +661,7 @@ const Microdraw = (function () {
     _isRegionVisible: function (name) {
       if( me.debug>1 ) { console.log("> isRegionVisible"); }
 
-      if (name === "textAnnotation") {
+      if (name === "textAnnotation" || name === "rectangleAnnotation") {
         return 1;
       }
 
@@ -855,6 +906,7 @@ const Microdraw = (function () {
       ) {
         me.tools[me.selectedTool].mouseDrag(point, dpoint);
       }
+      me.syncRectangleLabels();
       paper.view.draw();
     },
 
@@ -875,7 +927,7 @@ const Microdraw = (function () {
        * @returns {void}
        */
     simplify: function () {
-      if( me.region !== null ) {
+      if( me.region !== null && !me.isRectangle(me.region) ) {
         if( me.debug>1 ) { console.log("> simplifying region path"); }
 
         const origSegments = me.region.path.segments.length;
@@ -1206,8 +1258,11 @@ const Microdraw = (function () {
         reg.path = me._pathFromJSON(JSON.parse(me.copyRegion.path));
         reg.path.fullySelected = true;
 
-        const color = me.regionColor(reg.name);
-        reg.path.fillColor = 'rgba(' + color.red + ',' + color.green + ',' + color.blue + ',0.5)';
+        // a rectangle annotation is pasted with its own colour
+        if (!me.isRectangle(reg)) {
+          const color = me.regionColor(reg.name);
+          reg.path.fillColor = 'rgba(' + color.red + ',' + color.green + ',' + color.blue + ',0.5)';
+        }
 
         const region = me.newRegion({
           name: me.copyRegion.name,
@@ -1255,6 +1310,8 @@ const Microdraw = (function () {
       if( me.tools[me.selectedTool] && me.tools[me.selectedTool].click ) {
         me.tools[me.selectedTool].click(prevTool);
       }
+      // a tool may have changed a rectangle (flip)
+      me.syncRectangleLabels();
     },
 
     /**
@@ -1397,6 +1454,10 @@ const Microdraw = (function () {
       // when loading a new image, deselect any currently selected regions
       // n.b. this needs to be called before me.currentImage is set
       me.selectRegion(null);
+      // a rectangle not yet added, or being edited, is of the slice being left
+      if (me.tools.rectangleAnnotation) {
+        me.tools.rectangleAnnotation.cancel();
+      }
 
       // save previous image for some (later) cleanup
       me.prevImage = me.currentImage;
@@ -1656,6 +1717,9 @@ const Microdraw = (function () {
             blue: rgb[2]
           };
           region.path.fillColor = `rgba(${color.red},${color.green},${color.blue},1)`;
+          visible = true;
+        } else if (me.isRectangle(region)) {
+          // its colour is its own, as stored
           visible = true;
         } else {
           color = me.regionColor(name);
@@ -1920,6 +1984,7 @@ const Microdraw = (function () {
       ];
       paper.view.setCenter(x + (w/2), y + (h/2));
       paper.view.zoom = (sw * z) / me.magicV;
+      me.syncRectangleLabels();
     },
 
     /**
@@ -2264,6 +2329,7 @@ const Microdraw = (function () {
           .then(() => me.loadScript("/js/microdraw-ws.js")),
         me.loadScript("/js/unsaved-stash.js"),
         me.loadScript("/js/regions-list.js"),
+        me.loadScript("/js/rectangle-labels.js"),
         // floatingPanel() for the labels and layers panels (nwl-components 3.2.0)
         me.loadScript("/lib/nwl-components/panel/nwl-components-panel.umd.js")
       ]);
@@ -2419,6 +2485,37 @@ const Microdraw = (function () {
      */
     resetToolbarPosition: () => {
       me.changeToolbarDisplay("left");
+    },
+
+    /**
+     * @desc A floating panel follows a mouse, pen or finger drag of its header
+     * (not of its close button), its header kept inside the window. It stays
+     * where it is put, also when closed and opened again, until the page is left.
+     * @param {HTMLElement} panel A .nwl-panel, centred by a transform at rest
+     * @returns {void}
+     */
+    initPanelDrag: (panel) => {
+      const header = panel.querySelector(".nwl-panel-header");
+      // centred until first pressed, then pinned by its top-left corner (nwl-components)
+      window.nwlComponentsPanel.floatingPanel(panel);
+      let grab = null; // where the pointer holds the panel, from its top-left corner
+      const clamp = (value, max) => Math.min(Math.max(value, 0), Math.max(max, 0));
+      const end = () => { grab = null; };
+      header.addEventListener("pointerdown", (e) => {
+        if (e.button !== 0 || e.target.closest(".button")) { return; }
+        e.preventDefault();
+        const {left, top} = panel.getBoundingClientRect();
+        grab = {x: e.clientX - left, y: e.clientY - top};
+        header.setPointerCapture(e.pointerId);
+      });
+      header.addEventListener("pointermove", (e) => {
+        if (!grab) { return; }
+        const {clientWidth, clientHeight} = document.documentElement;
+        panel.style.left = `${clamp(e.clientX - grab.x, clientWidth - panel.offsetWidth)}px`;
+        panel.style.top = `${clamp(e.clientY - grab.y, clientHeight - header.offsetHeight)}px`;
+      });
+      header.addEventListener("pointerup", end);
+      header.addEventListener("pointercancel", end);
     },
 
     /**
@@ -2578,6 +2675,7 @@ const Microdraw = (function () {
 
       MUI.chose3state(me.dom.querySelector("#text.mui-chose"), me.toggleTextInput);
       me.initToolsDrag();
+      me.dom.querySelectorAll("#text-annotation-panel, #rectangle-annotation-panel").forEach(me.initPanelDrag);
       me.initTextInputResize();
 
       Consolita.init(me.dom.querySelector("#logScript"), me.dom);

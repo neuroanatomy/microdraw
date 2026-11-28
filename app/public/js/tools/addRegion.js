@@ -35,6 +35,9 @@ window.ToolAddRegion = { addRegion : (function() {
 
     _unite: function (hitResult) {
       const hitRegion = tool._findHitRegion(hitResult);
+      if( Microdraw.isRectangle(hitRegion) || Microdraw.isRectangle(Microdraw.region) ) {
+        return;
+      }
       const prevRegion = tool._findPreviousRegion();
 
       if( !prevRegion || !hitRegion || hitRegion === prevRegion) {

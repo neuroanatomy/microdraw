@@ -65,12 +65,12 @@ describe('Tool buttons (UI kit step 9b)', () => {
     const tools = await page.evaluate(() => Array.from(window.Microdraw.dom.querySelectorAll('.mui')).map((el) => ({
       id: el.id, tag: el.tagName, type: el.getAttribute('type'), pressed: el.getAttribute('aria-pressed')
     })));
-    assert.equal(tools.length, 42);
+    assert.equal(tools.length, 43);
     assert.deepEqual(tools.filter((t) => t.tag !== 'BUTTON' || t.type !== 'button'), []);
     const toggles = tools.filter((t) => t.pressed !== null).map((t) => t.id);
     const expected = [
       'fullscreen', 'bubble', 'script', 'navigate', 'select', 'move', 'draw', 'drawPolygon', 'drawLine',
-      'addPoint', 'deletePoint', 'addRegion', 'subtractRegion', 'splitRegion', 'rotate', 'flipRegion', 'textAnnotation'
+      'addPoint', 'deletePoint', 'addRegion', 'subtractRegion', 'splitRegion', 'rotate', 'flipRegion', 'textAnnotation', 'rectangleAnnotation'
     ];
     assert.deepEqual(toggles, expected);
   }).timeout(U.shortTimeout);
@@ -105,7 +105,7 @@ describe('Tool buttons (UI kit step 9b)', () => {
     await click('#draw');
     const clickTools = await ariaPressed(page, '#clickTool');
     assert.deepEqual(Object.entries(clickTools).filter(([, v]) => v === 'true'), [['draw', 'true']]);
-    assert.equal(Object.values(clickTools).filter((v) => v === 'false').length, 13);
+    assert.equal(Object.values(clickTools).filter((v) => v === 'false').length, 14);
   }).timeout(U.shortTimeout);
 
   it('releases chat and script both when the pressed one is clicked again (chose3state)', async () => {
