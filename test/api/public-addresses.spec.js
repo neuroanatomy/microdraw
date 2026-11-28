@@ -122,6 +122,27 @@ describe('the proxies fetch only public addresses', function () {
     });
   });
 
+  // ranges S1b found missing (BrainBox's copy, controller/mri/public-fetch.js):
+  // [range, an address inside, the first address outside]
+  describe('special-purpose ranges', function () {
+    for (const [range, within, outside] of [
+      ['192.0.0.0/24', '192.0.0.170', '192.0.1.0'],
+      ['198.18.0.0/15', '198.19.255.1', '198.20.0.0'],
+      ['64:ff9b::/96', '64:ff9b::7f00:1', '64:ff9b:0:0:0:1::'],
+      ['2002::/16', '2002:7f00:1::1', '2003::']
+    ]) {
+      it(`refuses ${range}, by address and through a name`, async function () {
+        assert.isTrue(guard.isRefusedAddress(within), within);
+        assert.isFalse(guard.isRefusedAddress(outside), outside);
+        const host = within.includes(':') ? `[${within}]` : within;
+        assertRefused(await get('/getTile', 'source', `http://${host}:${upstream.port}/secret`));
+        sinon.stub(guard, 'lookup').resolves([{ address: within, family: within.includes(':') ? 6 : 4 }]);
+        assertRefused(await get('/getJson', 'source', `http://tiles.example.org:${upstream.port}/secret.json`));
+        assert.deepEqual(insideRequests, []);
+      });
+    }
+  });
+
   describe('scheme', function () {
     for (const [route, parameter] of ROUTES) {
       for (const address of ['file:///etc/passwd', 'ftp://example.org/x', 'gopher://127.0.0.1:6379/_x']) {

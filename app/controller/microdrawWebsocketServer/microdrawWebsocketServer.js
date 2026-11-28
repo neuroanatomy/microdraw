@@ -1,4 +1,5 @@
 const fs = require('fs');
+const net = require('net');
 const os = require('os');
 const path = require('path');
 
@@ -17,6 +18,26 @@ const embedConnections = require('./embedConnections');
 // the chat relay: known fields only, at most 1000 characters, in order per sender
 const { chatMessage, relayInOrder } = require('neuroweblab');
 var websocketserver;
+
+/**
+ * The address a connection's peer is listed under in the whitelist and the
+ * blacklist: its whole address, with an IPv4-mapped IPv6 address (the server
+ * listens on IPv4 and IPv6) written as IPv4. Not split at ':' (F6 of the
+ * access audit of 2026-10-19), which turned ::1 and any '...:1' into '1'; as
+ * BrainBox's admin check (d12ee4f).
+ * @param {object} req The upgrade request
+ * @returns {string|null} The address, or null if there is none
+ */
+const peerAddress = (req) => {
+  const socket = req && (req.socket || req.connection);
+  const address = socket && socket.remoteAddress;
+  if (typeof address !== 'string' || net.isIP(address) === 0) {
+    return null;
+  }
+  const mapped = (/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i).exec(address);
+
+  return mapped ? mapped[1] : address.toLowerCase();
+};
 
 /**
  * The chat to relay (neuroweblab's chatMessage), with the sender's nickname
@@ -41,6 +62,29 @@ const microdrawWebsocketServer = (function () {
     // the app's session middleware and native Db (set by app.js)
     sessionParser: null,
     db: null,
+    // who may connect, by peerAddress (read from here, so that the tests can change them)
+    useWhitelist,
+    useBlacklist,
+    whitelist,
+    blacklist,
+    peerAddress,
+
+    /**
+     * Whether a peer may not connect
+     * @param {string|null} ip Its peerAddress
+     * @returns {string|null} Why it is refused, or null
+     */
+    _refusedPeer: (ip) => {
+      const listed = (list) => ip !== null && Object.prototype.hasOwnProperty.call(list, ip) && Boolean(list[ip]);
+      if (me.useWhitelist && !listed(me.whitelist)) {
+        return 'not in whitelist';
+      }
+      if (me.useBlacklist && listed(me.blacklist)) {
+        return 'blacklisted';
+      }
+
+      return null;
+    },
 
     // Joins and live-update notices: liveRooms.js
     notifySaved: (target) => liveRooms.notifySaved(target),
@@ -186,6 +230,27 @@ const microdrawWebsocketServer = (function () {
       me._handleBroadcastWebSocketMessage({data, ws});
     },
 
+    /**
+     * ws's verifyClient: a peer the lists refuse is answered 403 and never
+     * accepted, so none of its messages is handled (it used to be accepted,
+     * and closed 5 s later)
+     * @param {object} info { req, origin, secure }
+     * @param {Function} done Called with (accepted, status, reason)
+     * @returns {void}
+     */
+    _verifyClient: (info, done) => {
+      const ip = peerAddress(info.req);
+      const reason = me._refusedPeer(ip);
+      if (reason === null) {
+        log.debug({ ip }, 'upgrading connection');
+        done(true);
+
+        return;
+      }
+      log.warn({ ip }, 'connection refused: ' + reason);
+      done(false, 403, 'Forbidden');
+    },
+
     _handleWebSocketConnection: (ws, req) => {
       liveRooms.connect(ws, req);
       // embed-only if it presents a ticket (T002 3.7)
@@ -209,34 +274,11 @@ const microdrawWebsocketServer = (function () {
     initSocketConnection: () => {
       log.info({ freeMemory: os.freemem() }, 'websocket server starting');
 
-      me.server.on("upgrade", (req, socket) => {
-        let ip = req.ip
-          || req.connection.remoteAddress
-          || req.socket.remoteAddress
-          || req.connection.socket.remoteAddress;
-        ip = ip.split(":").pop();
-        log.debug({ ip }, 'upgrading connection');
-
-        if(useWhitelist && !whitelist[ip]) {
-          log.warn({ ip }, 'connection refused: not in whitelist');
-          setTimeout(function() {
-            socket.destroy();
-          }, 5000);
-        }
-
-        if (useBlacklist && blacklist[ip]) {
-          log.warn({ ip }, 'connection refused: blacklisted');
-          setTimeout(function() {
-            socket.destroy();
-          }, 5000);
-        }
-      });
-
       // Init WS connection
       try {
         websocketserver = new WebSocketServer({
-          server: me.server
-          // verifyClient: me.verifyClient
+          server: me.server,
+          verifyClient: me._verifyClient
         });
         websocketserver.on("connection", me._handleWebSocketConnection);
         websocketserver.on("error", (err) => {

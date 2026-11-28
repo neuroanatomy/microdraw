@@ -24,12 +24,16 @@ const refused = new net.BlockList();
   ['127.0.0.0', 8], // loopback
   ['169.254.0.0', 16], // link-local, the cloud metadata service
   ['172.16.0.0', 12], // private
+  ['192.0.0.0', 24], // IETF protocol assignments
   ['192.168.0.0', 16], // private
+  ['198.18.0.0', 15], // benchmarking
   ['224.0.0.0', 4], // multicast
   ['240.0.0.0', 4] // reserved, broadcast
 ].forEach(([address, prefix]) => refused.addSubnet(address, prefix, 'ipv4'));
 [
   ['::', 96], // unspecified, loopback and the old IPv4-compatible form
+  ['64:ff9b::', 96], // NAT64: an IPv4 address behind a gateway
+  ['2002::', 16], // 6to4: an IPv4 address inside
   ['fc00::', 7], // unique-local
   ['fe80::', 10], // link-local
   ['fec0::', 10], // site-local (old)
